@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <script>
+        // Function to get query parameter value
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        // Function to get the device type
+        function getDeviceType() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            if (/android/.test(userAgent)) {
+                return /mobile/.test(userAgent) ? "android_phone" : "android_pad";
+            } else if (/iphone/.test(userAgent)) {
+                return "iPhone";
+            } else if (/ipad/.test(userAgent)) {
+                return "iPad";
+            } else if (/windows/.test(userAgent) && /trident/.test(userAgent)) {
+                return "Windows_IE";
+            } else if (/windows/.test(userAgent) && /chrome/.test(userAgent)) {
+                return "Windows_Chrome";
+            } else if (/macintosh/.test(userAgent)) {
+                return "macOS";
+            } else if (/symbian/.test(userAgent)) {
+                return "Symbian";
+            } else {
+                return "unknown";
+            }
+        }
+
+        // Function to handle file reading and redirection
+        async function handleRedirect() {
+            try {
+                // Get the value of the 'q' parameter
+                const qValue = getQueryParam('q');
+                if (!qValue) {
+                    throw new Error("Invalid arguments");
+                }
+
+                // Construct the file path
+                const filePath = `./database/${qValue}.js`;
+
+                // Fetch the content of the file (this will only work on a server)
+                const response = await fetch(filePath);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch file: ${response.status}`);
+                }
+
+                // Get the content of the file
+                const fileContent = await response.text();
+
+                // Parse the JSON content
+                const linkData = JSON.parse(fileContent);
+
+                // Get the device type
+                const deviceType = getDeviceType();
+
+                // Check if the device type is in the AR array
+                if (linkData.AR.includes(deviceType)) {
+                    // Redirect to the URL specified in the file content
+                    window.location.href = linkData.to;
+                } else {
+                    // Display error message
+                    document.getElementById('error').innerText = `ERROR: Unsupported devices, UID: ${linkData.uid}`;
+                }
+            } catch (error) {
+                // Handle errors and display an error message
+                document.getElementById('error').innerText = `ERROR: ${error.message}`;
+            }
+        }
+
+        // Call the function when the page loads
+        window.onload = handleRedirect;
+    </script>
+</head>
+<body>
+    <div id="error" style="color: red; font-weight: bold;"></div>
+</body>
+</html>
