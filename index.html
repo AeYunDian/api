@@ -54,8 +54,13 @@
                 // Get the content of the file
                 const fileContent = await response.text();
 
-                // Parse the JSON content
-                const linkData = JSON.parse(fileContent);
+                // Create a script element and set its text to the file content
+                const script = document.createElement('script');
+                script.text = fileContent;
+                document.head.appendChild(script);
+
+                // Get the link_data object from the global scope
+                const linkData = window.link_data;
 
                 // Get the device type
                 const deviceType = getDeviceType();
