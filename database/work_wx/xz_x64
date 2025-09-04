@@ -1,0 +1,6 @@
+var link_data = 
+{
+"uid": 2002,
+"to": "https://work.weixin.qq.com/wework_admin/commdownload?platform=win&from=wwindex",
+"AR": ["Windows_IE", "Windows_Chrome"]
+}
