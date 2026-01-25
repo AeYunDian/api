@@ -18,7 +18,14 @@ export default {
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
     }
-
+    
+    if (request.method === 'GET') {
+      return new Response('Hello World!', { 
+      status: 200,
+      headers: corsHeaders
+    });
+    }
+    
     // 路由处理
     if (request.method === 'POST') {
       if (path === '/api/vermail/send') {
@@ -51,5 +58,6 @@ export default {
     });
   }
 };
+
 
 
