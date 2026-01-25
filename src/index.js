@@ -1,7 +1,7 @@
 // 导入处理函数
 import { handleSendVerification } from './send.js';
 import { handleVerifyCode } from './verify.js';
-
+import { addTransferredMail } from './atf.js';
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -35,6 +35,13 @@ export default {
           response.headers.set(key, value);
         }
         return response;
+      } else if (path === '/api/yspost/transferredmail') {
+        const response = await addTransferredMail(request, env);
+        // 添加 CORS 头
+        for (const [key, value] of Object.entries(corsHeaders)) {
+          response.headers.set(key, value);
+        }
+        return response;
       }
     }
 
@@ -44,4 +51,5 @@ export default {
     });
   }
 };
+
 
