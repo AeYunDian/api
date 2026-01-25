@@ -21,14 +21,14 @@ export default {
 
     // 路由处理
     if (request.method === 'POST') {
-      if (path === '/api/mail/send') {
+      if (path === '/api/vermail/send') {
         const response = await handleSendVerification(request, env);
         // 添加 CORS 头
         for (const [key, value] of Object.entries(corsHeaders)) {
           response.headers.set(key, value);
         }
         return response;
-      } else if (path === '/api/mail/verify') {
+      } else if (path === '/api/vermail/verify') {
         const response = await handleVerifyCode(request, env);
         // 添加 CORS 头
         for (const [key, value] of Object.entries(corsHeaders)) {
@@ -44,3 +44,4 @@ export default {
     });
   }
 };
+
