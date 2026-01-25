@@ -43,7 +43,7 @@ export async function handleSendVerification(request, env) {
     const token = generateToken();
     
     // 存储到 KV，有效期 5 分钟
-    await env.EMAIL_VERIFICATION.put(
+    await env.kv.put(
       `token:${token}`, 
       JSON.stringify({ email, code: verificationCode }),
       { expirationTtl: 300 } // 5 分钟
@@ -105,4 +105,5 @@ export async function handleSendVerification(request, env) {
   }
 
 }
+
 
