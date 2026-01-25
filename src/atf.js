@@ -34,7 +34,7 @@ export async function addTransferredMail(request, env) {
 
     
     // 存储到 KV，有效期 一星期
-    await env.EMAIL_VERIFICATION.put(
+    await env.kv.put(
       `TransferredMail:${email}`, 
       JSON.stringify({ email}),
       { expirationTtl: 604800 } // 一星期
