@@ -3,17 +3,14 @@ compatibility_date = "2025-10-01"
 main = "./src/index.js"
 
 kv_namespaces = [
-  { binding = "EMAIL_VERIFICATION", id = "16637e6b6e7640ae983759572409ae49" }
+  { binding = "kv", id = "483f0fad0c2841a2888c72869e041dfd" }
 ]
 
 # 添加您的 Resend API 密钥
-vars = { RESEND_API_KEY = "re_McTn56M4_HcU2bWX5R7cixx9ewUF8YNTi" }
+vars = { RESEND_API_KEY = "re_VpCQ5voG_9rngzHmoZedrZPg8FBgn46N7"}
 
-[assets]
-binding = "ASSETS"	
-directory = "./public"	
-not_found_handling = "single-page-application"
-run_worker_first = true
+
+
 
 
 
