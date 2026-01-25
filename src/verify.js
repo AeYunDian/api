@@ -33,7 +33,7 @@ export async function handleVerifyCode(request, env) {
     }
 
     // 从 KV 获取验证数据
-    const storedData = await env.EMAIL_VERIFICATION.get(`token:${token}`);
+    const storedData = await env.kv.get(`token:${token}`);
     
     if (!storedData) {
       return new Response(
@@ -55,7 +55,7 @@ export async function handleVerifyCode(request, env) {
     
     if (isValid) {
       // 验证成功后删除 token
-      await env.EMAIL_VERIFICATION.delete(`token:${token}`);
+      await env.kv.delete(`token:${token}`);
     }
 
     return new Response(
@@ -81,4 +81,5 @@ export async function handleVerifyCode(request, env) {
       }
     );
   }
+
 }
