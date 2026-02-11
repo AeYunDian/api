@@ -84,7 +84,7 @@ function getDevice(ua) {
 }
 
 
-export async function logout(request, env) {
+export async function Logout(request, env) {
         try{
             let uuid="0", token="0";
          try{
