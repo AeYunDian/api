@@ -59,7 +59,6 @@ export default {
         }
         return response;
       } else if (path === '/api/crossfire/account/init') {
-        // 添加数据库初始化路由
         const response = await initDatabase(request, env);
         // 添加 CORS 头
         for (const [key, value] of Object.entries(corsHeaders)) {
@@ -75,3 +74,4 @@ export default {
     });
   }
 };
+
