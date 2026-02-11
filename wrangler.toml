@@ -5,9 +5,15 @@ main = "./src/index.js"
 kv_namespaces = [
   { binding = "kv", id = "483f0fad0c2841a2888c72869e041dfd" }
 ]
+# 核心：D1数据库绑定配置
+[[d1_databases]]
+binding = "db"  # ！！！重要：这是你在代码中使用的变量名
+database_name = "api_db" # 你的数据库名称
+database_id = "b611335c-fa63-4315-a293-f7b515f6e5c2" # 替换为你的实际数据库ID
 
-# 添加您的 Resend API 密钥
+#  Resend API 密钥
 vars = { RESEND_API_KEY = "re_VpCQ5voG_9rngzHmoZedrZPg8FBgn46N7"}
+
 
 
 
