@@ -7,12 +7,27 @@ kv_namespaces = [
 ]
 # 核心：D1数据库绑定配置
 [[d1_databases]]
-binding = "db"  # ！！！重要：这是你在代码中使用的变量名
-database_name = "api_db" # 你的数据库名称
-database_id = "aa999f5d-188b-4fe7-83be-24ec7d521060" # 替换为你的实际数据库ID
+binding = "db" 
+database_name = "api_db" 
+database_id = "aa999f5d-188b-4fe7-83be-24ec7d521060" 
 
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
 #  Resend API 密钥
 vars = { RESEND_API_KEY = "re_VpCQ5voG_9rngzHmoZedrZPg8FBgn46N7"}
+
 
 
 
