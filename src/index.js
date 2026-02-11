@@ -2,7 +2,7 @@
 import { handleSendVerification } from './send.js';
 import { handleVerifyCode } from './verify.js';
 import { addTransferredMail } from './atf.js';
-import { CreateAccount, initDatabase , Login , PushUserBag, GetUserBag} from './crossfire.js'; // 添加 initDatabase 导入
+import { CreateAccount, InitDatabase , Login , PushUserBag, GetUserBag, Logout} from './crossfire.js'; // 添加 initDatabase 导入
 
 export default {
   async fetch(request, env) {
@@ -59,7 +59,7 @@ export default {
         }
         return response;
       } else if (path === '/api/crossfire/account/init') {
-        const response = await initDatabase(request, env);
+        const response = await InitDatabase(request, env);
         // 添加 CORS 头
         for (const [key, value] of Object.entries(corsHeaders)) {
           response.headers.set(key, value);
@@ -72,7 +72,14 @@ export default {
           response.headers.set(key, value);
         }
         return response;
-      } else if (path === '/api/crossfire/bag/get') {
+      }  else if (path === '/api/crossfire/account/logout') {
+        const response = await Logout(request, env);
+        // 添加 CORS 头
+        for (const [key, value] of Object.entries(corsHeaders)) {
+          response.headers.set(key, value);
+        }
+        return response;
+      }  else if (path === '/api/crossfire/bag/get') {
         const response = await GetUserBag(request, env);
         // 添加 CORS 头
         for (const [key, value] of Object.entries(corsHeaders)) {
@@ -95,6 +102,7 @@ export default {
     });
   }
 };
+
 
 
 
