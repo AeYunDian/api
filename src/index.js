@@ -2,7 +2,7 @@
 import { handleSendVerification } from './send.js';
 import { handleVerifyCode } from './verify.js';
 import { addTransferredMail } from './atf.js';
-import { CreateAccount, initDatabase } from './crossfire.js'; // 添加 initDatabase 导入
+import { CreateAccount, initDatabase , Login} from './crossfire.js'; // 添加 initDatabase 导入
 
 export default {
   async fetch(request, env) {
@@ -65,6 +65,13 @@ export default {
           response.headers.set(key, value);
         }
         return response;
+      }  else if (path === '/api/crossfire/account/login') {
+        const response = await Login(request, env);
+        // 添加 CORS 头
+        for (const [key, value] of Object.entries(corsHeaders)) {
+          response.headers.set(key, value);
+        }
+        return response;
       }
     }
 
@@ -74,4 +81,5 @@ export default {
     });
   }
 };
+
 
