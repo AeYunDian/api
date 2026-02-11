@@ -604,7 +604,7 @@ if (errMsg.includes('uuid')) {
 
 }
 
-export async function initDatabase(request, env) {
+export async function InitDatabase(request, env) {
   try {
     // 分步执行 SQL 语句，避免 exec() 的问题
     const statements = [
