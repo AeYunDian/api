@@ -21,7 +21,7 @@ export default {
     }
     
     if (request.method === 'GET') {
-      return new Response('Hello World!', { 
+      return new Response('Hello World!  Path: ' + url.pathname, { 
       status: 200,
       headers: corsHeaders
     });
@@ -66,6 +66,7 @@ export default {
     });
   }
 };
+
 
 
 
