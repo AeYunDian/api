@@ -2,7 +2,8 @@
 import { handleSendVerification } from './send.js';
 import { handleVerifyCode } from './verify.js';
 import { addTransferredMail } from './atf.js';
-import { CreateAccount } from './crossfire.js';
+import { CreateAccount, initDatabase } from './crossfire.js'; // 添加 initDatabase 导入
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -22,9 +23,9 @@ export default {
     
     if (request.method === 'GET') {
       return new Response('Hello World!  Path: ' + url.pathname, { 
-      status: 200,
-      headers: corsHeaders
-    });
+        status: 200,
+        headers: corsHeaders
+      });
     }
     
     // 路由处理
@@ -57,6 +58,14 @@ export default {
           response.headers.set(key, value);
         }
         return response;
+      } else if (path === '/api/crossfire/account/init') {
+        // 添加数据库初始化路由
+        const response = await initDatabase(request, env);
+        // 添加 CORS 头
+        for (const [key, value] of Object.entries(corsHeaders)) {
+          response.headers.set(key, value);
+        }
+        return response;
       }
     }
 
@@ -66,8 +75,3 @@ export default {
     });
   }
 };
-
-
-
-
-
