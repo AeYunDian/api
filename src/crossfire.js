@@ -82,6 +82,59 @@ function getDevice(ua) {
   else if (ua.includes('tablet')) device = 'Tablet';
   return device;
 }
+
+
+export async function logout(request, env) {
+        try{
+            let uuid="0", token="0";
+         try{
+         const body = await request.json();
+         token = body.token;
+         uuid = body.uuid;
+        }catch (e){
+        return new Response(
+        JSON.stringify({ error: 'Invalid JSON' }), 
+        { 
+          status: 400, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );}
+        const storedData = await env.kv.get(`uuid:${uuid}`);
+
+        if(storedData == token){
+        await env.kv.delete(`uuid:${uuid}`);
+        }
+      
+     
+            
+       return new Response(
+        JSON.stringify({ status: 'success'}), 
+        { 
+          status: 200, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );
+        }catch (e) {
+      return new Response(
+        JSON.stringify({ error: 'Internal server error' }), 
+        { 
+          status: 500, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );
+    }
+}
+
+
 export async function PushUserBag(request, env) {
         try{
             let uuid="0", token="0", willSetLevel=0;
@@ -486,7 +539,7 @@ if (errMsg.includes('uuid')) {
             { status: 409, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
           );
         }
-      }
+      
       console.error('Database error:', dbError);
       return new Response(
         JSON.stringify({ error: 'Database operation failed' }), 
