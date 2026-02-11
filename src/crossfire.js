@@ -82,6 +82,176 @@ function getDevice(ua) {
   else if (ua.includes('tablet')) device = 'Tablet';
   return device;
 }
+export async function PushUserBag(request, env) {
+        try{
+            let uuid="0", token="0", willSetLevel=0;
+         try{
+         const body = await request.json();
+         token = body.token;
+         uuid = body.uuid;
+         willSetLevel = body.level;
+        }catch (e){
+        return new Response(
+        JSON.stringify({ error: 'Invalid JSON' }), 
+        { 
+          status: 400, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );}
+        const storedData = await env.kv.get(`uuid:${uuid}`);
+        if(!storedData){
+        return new Response(
+        JSON.stringify({ error: 'Invalid Parameter' }), 
+        { 
+          status: 400, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );}
+      if(storedData != token){
+        return new Response(
+        JSON.stringify({ error: 'Login session has expired, please log in again' }), 
+        { 
+          status: 401, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );}
+     if(willSetLevel > 10000 || willSetLevel < 0){return new Response(
+        JSON.stringify({ error: 'The value passed in is abnormal' }), 
+        { 
+          status: 400, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );}
+     let result = await env.db.prepare(
+        "UPDATE bag SET level = ? WHERE uuid = ?"
+       ).bind(willSetLevel, uuid).run();
+  if (result.changes === 0) {
+
+          return new Response(
+        JSON.stringify({ error: 'Unable to find the corresponding data on the server' }), 
+        { 
+          status: 404, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );
+  }
+            
+       return new Response(
+        JSON.stringify({ status: 'success'}), 
+        { 
+          status: 200, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );
+        }catch (e) {
+      return new Response(
+        JSON.stringify({ error: 'Internal server error' }), 
+        { 
+          status: 500, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );
+    }
+}
+
+export async function GetUserBag(request, env) {
+        try{
+         let uuid, token;
+         try{
+         const body = await request.json();
+         token = body.token;
+         uuid = body.uuid;
+        }catch (e){
+        return new Response(
+        JSON.stringify({ error: 'Invalid JSON' }), 
+        { 
+          status: 400, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );}
+        const storedData = await env.kv.get(`uuid:${uuid}`);
+        if(!storedData){
+        return new Response(
+        JSON.stringify({ error: 'Invalid Parameter' }), 
+        { 
+          status: 400, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );}
+      if(storedData != token){
+        return new Response(
+        JSON.stringify({ error: 'Login session has expired, please log in again' }), 
+        { 
+          status: 401, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );}
+       const userStmt = env.db.prepare("SELECT level FROM bag WHERE uuid = ?");
+       const user = await userStmt.bind(uuid).first();
+       if(!user){
+        return new Response(
+        JSON.stringify({ error: 'Unable to find the corresponding data on the server' }), 
+        { 
+          status: 404, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );}
+       return new Response(
+        JSON.stringify({ status: 'success', level: user.level }), 
+        { 
+          status: 200, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );
+        }catch (e) {
+      return new Response(
+        JSON.stringify({ error: 'Internal server error' }), 
+        { 
+          status: 500, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );
+    }
+}
 export async function Login(request, env) {
     try{
      let timestamp=new Date().getTime();
@@ -115,7 +285,7 @@ export async function Login(request, env) {
 
 }
         const user = await env.db.prepare(
-        "SELECT password_key, is_del, uuid ,password , status FROM users WHERE email = ?"
+        "SELECT password_key, is_del, uuid ,password ,name, status FROM users WHERE email = ?"
         ).bind(email).first();
         if(!user){
             return new Response(
@@ -163,7 +333,7 @@ await env.db.prepare(
 ).bind(timestamp , browser, os , device, user.uuid).run();
 
   return new Response(
-    JSON.stringify({ status: 'success', token: token, uuid: user.uuid }),
+    JSON.stringify({ status: 'success', token: token, uuid: user.uuid,name: user.name }),
     { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
   );
     
@@ -263,9 +433,10 @@ export async function CreateAccount(request, env) {  //项目内使用的自定�
   const result = await env.db.prepare(
     "INSERT INTO users (name, uuid, email, password, password_key, permission, status, create_time,  active_time, is_del, browser, create_ip, device, os) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   ).bind(name,uuid, email, password, pw_key, permission, status, create_time, active_time, is_del, browser, create_ip, device, os).run();
+
     } catch (dbError) {
       // ---------- 5. 处理数据库约束错误 ----------
-      const errMsg = dbError.message || '';
+      let errMsg = dbError.message || '';
       
       // 检查是否为唯一约束冲突
       if (errMsg.includes('UNIQUE constraint failed') || errMsg.includes('SQLITE_CONSTRAINT')) {
@@ -294,7 +465,34 @@ export async function CreateAccount(request, env) {  //项目内使用的自定�
       );
     }
 
-
+  try {
+  const result = await env.db.prepare(
+    "INSERT INTO bag (uuid, level) VALUES (?, ?)"
+  ).bind(uuid, 0).run();
+    } catch (dbError) {
+      // ---------- 5. 处理数据库约束错误 ----------
+      let errMsg = dbError.message || '';
+      
+      // 检查是否为唯一约束冲突
+if (errMsg.includes('uuid')) {
+          // UUID冲突概率极低，但万一发生可以重试或返回错误
+          return new Response(
+            JSON.stringify({ error: 'Internal error, please try again', code: 'UUID_CONFLICT' }), 
+            { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+          );
+        } else {
+          return new Response(
+            JSON.stringify({ error: 'Duplicate data', code: 'DUPLICATE' }), 
+            { status: 409, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+          );
+        }
+      }
+      console.error('Database error:', dbError);
+      return new Response(
+        JSON.stringify({ error: 'Database operation failed' }), 
+        { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      );
+    }
     /*  将来会用，先等待
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -374,9 +572,15 @@ export async function initDatabase(request, env) {
         device TEXT,
         os TEXT
       )`,
+    `CREATE TABLE IF NOT EXISTS bag (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        uuid TEXT NOT NULL UNIQUE,
+        level INTEGER NOT NULL
+      )`,
       "CREATE INDEX IF NOT EXISTS idx_email ON users(email)",
       "CREATE INDEX IF NOT EXISTS idx_status ON users(status)",
-      "CREATE INDEX IF NOT EXISTS idx_create_time ON users(create_time)"
+      "CREATE INDEX IF NOT EXISTS idx_create_time ON users(create_time)",
+      "CREATE INDEX IF NOT EXISTS idx_bag_uuid ON bag(uuid);"
     ];
     
     // 批量执行所有语句
