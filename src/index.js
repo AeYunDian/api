@@ -2,6 +2,7 @@
 import { handleSendVerification } from './send.js';
 import { handleVerifyCode } from './verify.js';
 import { addTransferredMail } from './atf.js';
+import { CreateAccount } from './crossfire.js';
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -49,6 +50,13 @@ export default {
           response.headers.set(key, value);
         }
         return response;
+      } else if (path === '/api/crossfire/account/create') {
+        const response = await CreateAccount(request, env);
+        // 添加 CORS 头
+        for (const [key, value] of Object.entries(corsHeaders)) {
+          response.headers.set(key, value);
+        }
+        return response;
       }
     }
 
@@ -58,6 +66,7 @@ export default {
     });
   }
 };
+
 
 
 
