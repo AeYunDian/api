@@ -1,3 +1,4 @@
+
 function generateTimeOrderedUUID() {
     const bytes = new Uint8Array(16);
     let ms = Date.now();
@@ -81,6 +82,105 @@ function getDevice(ua) {
   else if (ua.includes('tablet')) device = 'Tablet';
   return device;
 }
+export async function Login(request, env) {
+    try{
+     let timestamp=new Date().getTime();
+     let password, email;
+    try{
+         const body = await request.json();
+         email = body.email?.trim().toLowerCase();  // 邮箱统一转小写，去掉空格
+         password = body.password;
+        }catch (e){
+        return new Response(
+        JSON.stringify({ error: 'Invalid JSON' }), 
+        { 
+          status: 400, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );}
+                if (!email) {
+          return new Response(
+           JSON.stringify({ error: 'Email is required' }),
+         { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+            );
+        }
+     if (!password) {
+        return new Response(
+       JSON.stringify({ error: 'Password is required' }),
+       { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+     );
+
+}
+        const user = await env.db.prepare(
+        "SELECT password_key, is_del, uuid ,password , status FROM users WHERE email = ?"
+        ).bind(email).first();
+        if(!user){
+            return new Response(
+            JSON.stringify({ error: 'Invalid email or password' }),
+            { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+          );
+        }
+    
+        if (user.is_del == 1 ){
+            return new Response(
+            JSON.stringify({ error: 'Invalid email or password' }),
+            { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+          );
+         }
+         if (user.status == 1 ){ //被封禁的账号
+            return new Response(
+            JSON.stringify({ error: 'This account has been banned' }),
+            { status: 403, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+          );
+         }
+        const inputHash = await calculateHMAC(password, user.password_key);
+if (inputHash !== user.password ) {
+  return new Response(
+    JSON.stringify({ error: 'Invalid email or password' }),
+    { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+  );
+}
+
+    const storedData = await env.kv.get(`uuid:${user.uuid}`);
+    if (storedData){
+         await env.kv.delete(`uuid:${user.uuid}`);
+    }
+         const token = generateTimeOrderedUUID();
+         await env.kv.put( 
+          `uuid:${user.uuid}`, 
+         token,
+        { expirationTtl: 604800 } //一个星期的时间
+      );
+        const userAgentString = request.headers.get('User-Agent') || '';
+    let os = getSystem(userAgentString);
+    let browser = getBrowser(userAgentString);
+    let device = getDevice(userAgentString);
+await env.db.prepare(
+  "UPDATE users SET active_time = ? , browser = ? , os = ?, device = ? WHERE uuid = ?"
+).bind(timestamp , browser, os , device, user.uuid).run();
+
+  return new Response(
+    JSON.stringify({ status: 'success', token: token, uuid: user.uuid }),
+    { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+  );
+    
+    }catch (e) {
+      return new Response(
+        JSON.stringify({ error: 'Internal server error' }), 
+        { 
+          status: 500, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );
+    }
+}
+
 export async function CreateAccount(request, env) {  //项目内使用的自定义状态码在操作手册内定义
 
   try {
@@ -89,12 +189,12 @@ export async function CreateAccount(request, env) {  //项目内使用的自定�
     let create_time=timestamp;
     let uuid=generateTimeOrderedUUID();
     let active_time=timestamp;
-    let pw_key="aW8uaGIuY25feXVuZF9jcm9zc2ZpcmUtdXNlci1rZXlfdGhvc2Vfd2hvX2JyZWFrX3RoZV9ydWxlc19oYXZlX25vX3BhcmVudHNfMjAyNi0wMi0xMl8wODowMDowMF9mdWNrX3lvdQ";
+    const pw_key=uuid+"_"+create_time;
     let email="";
     let password="";
     let name="";
     let is_del=0;
-    let status=1; //未验证的邮箱
+    let status=0; //正常状态
     let browser="";
     let create_ip="0.0.0.0";
     let device="";
@@ -107,7 +207,7 @@ export async function CreateAccount(request, env) {  //项目内使用的自定�
     create_ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || '0.0.0.0';
     try {
       const body = await request.json();
-      email = body.email;
+      email = body.email?.trim().toLowerCase();
       password = await calculateHMAC(body.password, pw_key);
       name = body.name;
     } catch (e) {
@@ -159,11 +259,42 @@ export async function CreateAccount(request, env) {  //项目内使用的自定�
         }
       );
     }
-
+  try {
   const result = await env.db.prepare(
     "INSERT INTO users (name, uuid, email, password, password_key, permission, status, create_time,  active_time, is_del, browser, create_ip, device, os) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   ).bind(name,uuid, email, password, pw_key, permission, status, create_time, active_time, is_del, browser, create_ip, device, os).run();
-    
+    } catch (dbError) {
+      // ---------- 5. 处理数据库约束错误 ----------
+      const errMsg = dbError.message || '';
+      
+      // 检查是否为唯一约束冲突
+      if (errMsg.includes('UNIQUE constraint failed') || errMsg.includes('SQLITE_CONSTRAINT')) {
+        if (errMsg.includes('email')) {
+          return new Response(
+            JSON.stringify({ error: 'Email already exists', code: 'EMAIL_EXISTS' }), 
+            { status: 409, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+          );
+        } else if (errMsg.includes('uuid')) {
+          // UUID冲突概率极低，但万一发生可以重试或返回错误
+          return new Response(
+            JSON.stringify({ error: 'Internal error, please try again', code: 'UUID_CONFLICT' }), 
+            { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+          );
+        } else {
+          return new Response(
+            JSON.stringify({ error: 'Duplicate data', code: 'DUPLICATE' }), 
+            { status: 409, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+          );
+        }
+      }
+      console.error('Database error:', dbError);
+      return new Response(
+        JSON.stringify({ error: 'Database operation failed' }), 
+        { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      );
+    }
+
+
     /*  将来会用，先等待
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -209,7 +340,7 @@ export async function CreateAccount(request, env) {  //项目内使用的自定�
   } catch (error) {
     console.error('Error in send verification:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error, Unk' }), 
+      JSON.stringify({ error: 'Internal server error' }), 
       { 
         status: 500, 
         headers: { 
