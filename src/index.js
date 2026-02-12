@@ -51,42 +51,42 @@ export default {
           response.headers.set(key, value);
         }
         return response;
-      } else if (path === '/api/crossfire/account/create') {
+      } else if (path === '/api/crossfire/v1/account/create') {
         const response = await CreateAccount(request, env);
         // 添加 CORS 头
         for (const [key, value] of Object.entries(corsHeaders)) {
           response.headers.set(key, value);
         }
         return response;
-      } else if (path === '/api/crossfire/account/init') {
+      } else if (path === '/api/crossfire/v1/account/init') {
         const response = await InitDatabase(request, env);
         // 添加 CORS 头
         for (const [key, value] of Object.entries(corsHeaders)) {
           response.headers.set(key, value);
         }
         return response;
-      }  else if (path === '/api/crossfire/account/login') {
+      }  else if (path === '/api/crossfire/v1/account/login') {
         const response = await Login(request, env);
         // 添加 CORS 头
         for (const [key, value] of Object.entries(corsHeaders)) {
           response.headers.set(key, value);
         }
         return response;
-      }  else if (path === '/api/crossfire/account/logout') {
+      }  else if (path === '/api/crossfire/v1/account/logout') {
         const response = await Logout(request, env);
         // 添加 CORS 头
         for (const [key, value] of Object.entries(corsHeaders)) {
           response.headers.set(key, value);
         }
         return response;
-      }  else if (path === '/api/crossfire/bag/get') {
+      }  else if (path === '/api/crossfire/v1/bag/get') {
         const response = await GetUserBag(request, env);
         // 添加 CORS 头
         for (const [key, value] of Object.entries(corsHeaders)) {
           response.headers.set(key, value);
         }
         return response;
-      }  else if (path === '/api/crossfire/bag/push') {
+      }  else if (path === '/api/crossfire/v1/bag/push') {
         const response = await PushUserBag(request, env);
         // 添加 CORS 头
         for (const [key, value] of Object.entries(corsHeaders)) {
@@ -102,6 +102,7 @@ export default {
     });
   }
 };
+
 
 
 
