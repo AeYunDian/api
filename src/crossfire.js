@@ -326,13 +326,13 @@ export async function Login(request, env) {
       );}
                 if (!email) {
           return new Response(
-           JSON.stringify({ error: 'Email is required' }),
+           JSON.stringify({ error: 'Invalid email or password' }),
          { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
             );
         }
      if (!password) {
         return new Response(
-       JSON.stringify({ error: 'Password is required' }),
+       JSON.stringify({ error: 'Invalid email or password' }),
        { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
      );
 
