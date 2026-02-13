@@ -353,12 +353,7 @@ export async function Login(request, env) {
             { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
           );
          }
-         if (user.status == 1 ){ //被封禁的账号
-            return new Response(
-            JSON.stringify({ error: 'This account has been banned' }),
-            { status: 403, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-          );
-         }
+
         const inputHash = await calculateHMAC(password, user.password_key);
 if (inputHash !== user.password ) {
   return new Response(
@@ -366,7 +361,12 @@ if (inputHash !== user.password ) {
     { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
   );
 }
-
+         if (user.status == 1 ){ //被封禁的账号
+            return new Response(
+            JSON.stringify({ error: 'This account has been banned' }),
+            { status: 403, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+          );
+         }
     const storedData = await env.kv.get(`uuid:${user.uuid}`);
     if (storedData){
          await env.kv.delete(`uuid:${user.uuid}`);
