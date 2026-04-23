@@ -2,6 +2,9 @@
 import { handleSendVerification } from './send.js';
 import { handleVerifyCode } from './verify.js';
 import { addTransferredMail } from './atf.js';
+import { parseLink } from './go/parse.js';
+import { addLink } from './go/addlink.js';
+import { initLink } from './go/init.js';
 import { CreateAccount, InitDatabase , Login , PushUserBag, GetUserBag, Logout} from './crossfire.js'; // 添加 initDatabase 导入
 
 export default {
@@ -22,7 +25,31 @@ export default {
     }
     
     if (request.method === 'GET') {
-      return new Response('Hello World!  Path: ' + url.pathname, { 
+      if (path === '/go/parse') {
+        const response = await parseLink(request, env);
+        // 添加 CORS 头
+        for (const [key, value] of Object.entries(corsHeaders)) {
+          response.headers.set(key, value);
+        }
+        return response;
+      }
+      if (path === '/go/init') {
+        const response = await initLink(request, env);
+        // 添加 CORS 头
+        for (const [key, value] of Object.entries(corsHeaders)) {
+          response.headers.set(key, value);
+        }
+        return response;
+      }
+      if (path === '/go/addlink') {
+        const response = await addLink(request, env);
+        // 添加 CORS 头
+        for (const [key, value] of Object.entries(corsHeaders)) {
+          response.headers.set(key, value);
+        }
+        return response;
+      }
+      return new Response(url.pathname, { 
         status: 200,
         headers: corsHeaders
       });
