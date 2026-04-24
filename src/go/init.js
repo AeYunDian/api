@@ -5,7 +5,7 @@ export async function initLink(request, env, ctx) {
       return new Response('Unauthorized', { status: 401 });
     }
     try {
-      await env.DB.prepare(`
+      await env.db.prepare(`
         CREATE TABLE IF NOT EXISTS links (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           link TEXT NOT NULL UNIQUE,
@@ -16,7 +16,7 @@ export async function initLink(request, env, ctx) {
           hit_count INTEGER DEFAULT 0
         )
       `).run();
-      await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_link ON links (link)`).run();
+      await env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_link ON links (link)`).run();
       return new Response('Table initialized', { status: 200 });
     } catch (e) {
       return new Response('Error: ' + e.message, { status: 500 });

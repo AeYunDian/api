@@ -5,7 +5,7 @@ export async function parseLink(request, env) {
       return new Response(JSON.stringify({ code: 400, message: 'Missing link' }), { status: 400 });
     }
     try {
-      const result = await env.DB.prepare(`
+      const result = await env.db.prepare(`
         SELECT target, tip, expires_at FROM links 
         WHERE link = ? AND (expires_at IS NULL OR expires_at > strftime('%s', 'now'))
       `).bind(link).first();
