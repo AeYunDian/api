@@ -33,7 +33,7 @@ export default {
         }
         return response;
       }
-      if (path === '/go/init') {
+      else if (path === '/go/init') {
         const response = await initLink(request, env);
         // 添加 CORS 头
         for (const [key, value] of Object.entries(corsHeaders)) {
@@ -41,14 +41,7 @@ export default {
         }
         return response;
       }
-      if (path === '/go/addlink') {
-        const response = await addLink(request, env);
-        // 添加 CORS 头
-        for (const [key, value] of Object.entries(corsHeaders)) {
-          response.headers.set(key, value);
-        }
-        return response;
-      }
+
       return new Response(url.pathname, { 
         status: 200,
         headers: corsHeaders
@@ -115,6 +108,13 @@ export default {
         return response;
       }  else if (path === '/api/crossfire/v1/bag/push') {
         const response = await PushUserBag(request, env);
+        // 添加 CORS 头
+        for (const [key, value] of Object.entries(corsHeaders)) {
+          response.headers.set(key, value);
+        }
+        return response;
+      } else if (path === '/go/addlink') {
+        const response = await addLink(request, env);
         // 添加 CORS 头
         for (const [key, value] of Object.entries(corsHeaders)) {
           response.headers.set(key, value);
