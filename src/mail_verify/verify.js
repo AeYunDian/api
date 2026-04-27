@@ -1,11 +1,11 @@
-// 添加邮箱到kv一星期共后台查看
-export async function addTransferredMail(request, env) {
+export async function handleVerifyCode(request, env) {
   try {
     // 解析请求体
-    let email;
+    let token, code;
     try {
       const body = await request.json();
-      email = body.email;
+      token = body.token;
+      code = body.code;
     } catch (e) {
       return new Response(
         JSON.stringify({ error: 'Invalid JSON' }), 
@@ -19,9 +19,9 @@ export async function addTransferredMail(request, env) {
       );
     }
     
-    if (!email) {
+    if (!token || !code) {
       return new Response(
-        JSON.stringify({ error: 'Email is required' }), 
+        JSON.stringify({ error: 'Token and code are required' }), 
         { 
           status: 400, 
           headers: { 
@@ -32,18 +32,36 @@ export async function addTransferredMail(request, env) {
       );
     }
 
+    // 从 KV 获取验证数据
+    const storedData = await env.kv.get(`token:${token}`);
     
-    // 存储到 KV，有效期 一星期
-    await env.kv.put(
-      `TransferredMail:${email}`, 
-      JSON.stringify({ email}),
-      { expirationTtl: 604800 } // 一星期
-    );
+    if (!storedData) {
+      return new Response(
+        JSON.stringify({ valid: false, error: 'Invalid or expired token' }), 
+        { 
+          status: 200, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
+      );
+    }
+
+    const { email, code: storedCode } = JSON.parse(storedData);
+    
+    // 验证代码
+    const isValid = code === storedCode;
+    
+    if (isValid) {
+      // 验证成功后删除 token
+      await env.kv.delete(`token:${token}`);
+    }
 
     return new Response(
-      JSON.stringify({ email }), 
+      JSON.stringify({ valid: isValid }), 
       { 
-        status: 201, 
+        status: 200, 
         headers: { 
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
@@ -51,11 +69,11 @@ export async function addTransferredMail(request, env) {
       }
     );
   } catch (error) {
-    console.error('Error in send verification:', error);
+    console.error('Error in verify code:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }), 
       { 
-        status: 403, 
+        status: 500, 
         headers: { 
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
