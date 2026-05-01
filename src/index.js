@@ -28,11 +28,14 @@ export default {
       }
 
       if (request.method === 'GET') {
-        let response = new Response("404 Not found",
+        let response = new Response("302",
           {
             status: 302,
             headers: { 'Location': url.protocol + '//' + url.hostname, }
           });
+        if (path === "/") {
+          return new Response(getMainPage(), { status: 200 });
+        }
 
         if (path === '/go/parse') {
           response = await parseLink(request, env);
@@ -41,7 +44,10 @@ export default {
           response = await initLink(request, env);
         }
         if (path.startsWith('/gh/')) {
-          const gh_path = path.replace("/gh/", "");
+          let gh_path = path.replace("/gh/", "");
+          if (!gh_path.includes('://')) {
+            gh_path = url.protocol + '//' + gh_path;
+          }
           try {
             const gh_response = await fetch(gh_path, {
               method: "GET",
@@ -52,7 +58,7 @@ export default {
               { headers: { 'Content-Type': gh_response.headers.get('Content-Type') || 'text/plain', } });
 
           } catch (e) {
-            response = new Response("500 Server Error",{status: 500,});
+            response = new Response("Unable to request the target URL, please check the address: \n\n" + e, { status: 500, });
           }
         }
 
@@ -64,6 +70,7 @@ export default {
             return new Response("Failed to trigger workflow: " + err.message, { status: 500 });
           }
         }
+
 
 
         for (const [key, value] of Object.entries(corsHeaders)) {
@@ -119,7 +126,39 @@ export default {
     }
   }
 };
-
+function getMainPage() {
+  return `<!DOCTYPE html>
+  <html lang="zh-CN">
+    <head>
+      <meta charset="UTF-8">
+      <link rel="icon" href="//r1.undz.cn/favicon.ico" type="image/x-icon" />
+      <link rel="shortcut icon" href="//r1.undz.cn/favicon.ico" type="image/x-icon" />
+      <title>AyUndz API</title>
+      <style>
+        body { font-family: Arial, 'Microsoft Sans Serif', 'Tahoma', 'Geneva', '宋体', 'WenQuanYi Micro Hei', 'Noto Sans CJK SC', monospace, sans-serif !important; margin: 0;  }
+        .about-page {
+          text-align: center;
+        }
+        .about-page img {
+          height: 100px;
+          vertical-align: middle;
+        }
+        .about-page h2 {
+          display: inline-block;
+          vertical-align: middle; 
+          margin: 0 0 0 12px; 
+        }
+      </style>
+    </head>
+    <body>
+      <div class="about-page">
+        <img src="//r1.undz.cn/logo.png"> <h2>AyUndz API</h2>
+      </div>
+      <hr/>
+      <p>© 2025-2026 韵典 AeYunDian | Ay Project | Powered by Cloudflare Workers</p>
+    </body>
+  </html>`;
+}
 async function triggerWorkflow(env) {
   const { GITHUB_TOKEN, OWNER, REPO, WORKFLOW_ID, BRANCH } = env;
 
