@@ -5,7 +5,41 @@ import { parseLink } from './go/parse.js';
 import { addLink } from './go/addlink.js';
 import { initLink } from './go/init.js';
 import { CreateAccount, InitDatabase, Login, PushUserBag, GetUserBag, Logout } from './crossfire/v1/crossfire.js';
+const PROXY_PREFIX_GH = 'https://api.undz.cn/gh/';
+const PROXY_PREFIX_FIX = 'https://api.undz.cn/gh_fix/';
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
 
+function rewriteUrlToFix(rawAttr, baseUrl) {
+  if (!rawAttr) return rawAttr;
+  let absoluteUrl;
+  if (rawAttr.startsWith('http://') || rawAttr.startsWith('https://')) {
+    absoluteUrl = rawAttr;
+  } else if (rawAttr.startsWith('//')) {
+    absoluteUrl = 'https:' + rawAttr;
+  } else if (rawAttr.startsWith('/')) {
+    const base = new URL(baseUrl);
+    absoluteUrl = base.origin + rawAttr;
+  } else {
+    absoluteUrl = new URL(rawAttr, baseUrl).href;
+  }
+  return PROXY_PREFIX_FIX + absoluteUrl;
+}
+class AllUrlRewriter {
+  constructor(attrName, baseUrl) {
+    this.attrName = attrName;
+    this.baseUrl = baseUrl;
+  }
+  element(element) {
+    const oldValue = element.getAttribute(this.attrName);
+    if (!oldValue || oldValue.startsWith(PROXY_PREFIX_FIX)) return;
+    const newValue = rewriteUrlToFix(oldValue, this.baseUrl);
+    element.setAttribute(this.attrName, newValue);
+  }
+}
 export default {
   async scheduled(controller, env, ctx) {
     await triggerWorkflow(env);
@@ -14,11 +48,6 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    };
 
     try {
       // 处理预检请求
@@ -53,11 +82,45 @@ export default {
               { headers: { 'Content-Type': gh_response.headers.get('Content-Type') || 'text/plain', } });
 
           } catch (e) {
-            const errorText = typeof e === 'string' ? e : ( JSON.stringify(e) || e.message);
+            const errorText = typeof e === 'string' ? e : (JSON.stringify(e) || e.message);
             return new Response("Unable to request the target URL, please check the address: \n\n" + errorText.replace("'\n'", "  \n"), { status: 500, });
           }
         }
+        if (path.startsWith('/gh_fix/')) {
+          let gh_path = path.replace('/gh_fix/', '');
+          if (!gh_path.includes('://')) {
+            gh_path = url.protocol + '//' + gh_path;
+          }
+          try {
+            const gh_response = await fetch(gh_path, {
+              method: "GET",
+            });
+            if (!gh_response.ok) throw new Error(`Upstream returned: \n${gh_response}`);
 
+            if (gh_response.headers.get('Content-Type')?.includes('text/html')) {
+              const newHeaders = new Headers(gh_response.headers);
+              newHeaders.delete('Content-Security-Policy'); // 避免 CSP 阻止加载
+              const rewriter = new HTMLRewriter()
+                .on('script[src]', new AllUrlRewriter('src', gh_path))
+                .on('link[href]', new AllUrlRewriter('href', gh_path))
+                .on('img[src]', new AllUrlRewriter('src', gh_path))
+                .on('a[href]', new AllUrlRewriter('href', gh_path))
+                .on('script[integrity]', { element(el) { el.removeAttribute('integrity'); } })
+                .on('link[integrity]', { element(el) { el.removeAttribute('integrity'); } });
+              return rewriter.transform(
+                new Response(gh_response.body, { headers: newHeaders })
+              );
+            }
+
+            return new Response(
+              gh_response.body,
+              { headers: { 'Content-Type': gh_response.headers.get('Content-Type') || 'text/plain', } });
+
+          } catch (e) {
+            const errorText = typeof e === 'string' ? e : (JSON.stringify(e) || e.message);
+            return new Response("Unable to request the target URL, please check the address: \n\n" + errorText.replace("'\n'", "  \n"), { status: 500, });
+          }
+        }
         if (path === "/trigger") {
           try {
             await triggerWorkflow(env);
@@ -129,9 +192,6 @@ function getMainPage() {
       <link rel="icon" href="//r1.undz.cn/favicon.ico" type="image/x-icon" />
       <link rel="shortcut icon" href="//r1.undz.cn/favicon.ico" type="image/x-icon" />
       <title>AyUndz API</title>
-      <style>
-        body { font-family: Arial, 'Microsoft Sans Serif', 'Tahoma', 'Geneva', '宋体', 'WenQuanYi Micro Hei', 'Noto Sans CJK SC', monospace, sans-serif !important; margin: 0;  }
-      </style>
     </head>
     <body>
       <h2>AyUndz API</h2>
