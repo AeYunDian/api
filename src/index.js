@@ -53,7 +53,8 @@ export default {
               { headers: { 'Content-Type': gh_response.headers.get('Content-Type') || 'text/plain', } });
 
           } catch (e) {
-            return new Response("Unable to request the target URL, please check the address: \n\n" + e.replace("'\n'", "  \n"), { status: 500, });
+            const errorText = typeof e === 'string' ? e : ( JSON.stringify(e) || e.message);
+            return new Response("Unable to request the target URL, please check the address: \n\n" + errorText.replace("'\n'", "  \n"), { status: 500, });
           }
         }
 
@@ -130,24 +131,10 @@ function getMainPage() {
       <title>AyUndz API</title>
       <style>
         body { font-family: Arial, 'Microsoft Sans Serif', 'Tahoma', 'Geneva', '宋体', 'WenQuanYi Micro Hei', 'Noto Sans CJK SC', monospace, sans-serif !important; margin: 0;  }
-        .about-page {
-          text-align: center;
-        }
-        .about-page img {
-          height: 100px;
-          vertical-align: middle;
-        }
-        .about-page h2 {
-          display: inline-block;
-          vertical-align: middle; 
-          margin: 0 0 0 12px; 
-        }
       </style>
     </head>
     <body>
-      <div class="about-page">
-        <img src="//r1.undz.cn/logo.png"> <h2>AyUndz API</h2>
-      </div>
+      <h2>AyUndz API</h2>
       <hr/>
       <p>© 2025-2026 韵典 AeYunDian | Ay Project | Powered by Cloudflare Workers</p>
     </body>
