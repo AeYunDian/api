@@ -14,13 +14,12 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
-
-    // 设置 CORS 头
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     };
+
     try {
       // 处理预检请求
       if (request.method === 'OPTIONS') {
@@ -28,20 +27,16 @@ export default {
       }
 
       if (request.method === 'GET') {
-        let response = new Response("302",
-          {
-            status: 302,
-            headers: { 'Location': url.protocol + '//' + url.hostname, }
-          });
+
         if (path === "/") {
-          return new Response(getMainPage(), { status: 200 });
+          return new Response(getMainPage(), { headers: { 'Content-Type': 'text/html' } });
         }
 
         if (path === '/go/parse') {
-          response = await parseLink(request, env);
+          return new Response(await parseLink(request, env), { headers: { 'Content-Type': 'application/json' } });
         }
         if (path === '/go/init') {
-          response = await initLink(request, env);
+          return new Response(await initLink(request, env), { headers: { 'Content-Type': 'application/json' } });
         }
         if (path.startsWith('/gh/')) {
           let gh_path = path.replace("/gh/", "");
@@ -52,13 +47,13 @@ export default {
             const gh_response = await fetch(gh_path, {
               method: "GET",
             });
-            if (!gh_response.ok) throw new Error(`Upstream returned ${gh_response.status}`);
-            response = new Response(
+            if (!gh_response.ok) throw new Error(`Upstream returned: \n${gh_response}`);
+            return new Response(
               gh_response.body,
               { headers: { 'Content-Type': gh_response.headers.get('Content-Type') || 'text/plain', } });
 
           } catch (e) {
-            response = new Response("Unable to request the target URL, please check the address: \n\n" + e, { status: 500, });
+            return new Response("Unable to request the target URL, please check the address: \n\n" + e.replace("'\n'", "  \n"), { status: 500, });
           }
         }
 
@@ -71,12 +66,11 @@ export default {
           }
         }
 
-
-
-        for (const [key, value] of Object.entries(corsHeaders)) {
-          response.headers.set(key, value);
-        }
-        return response;
+        return new Response("302",
+          {
+            status: 302,
+            headers: { 'Location': url.protocol + '//' + url.hostname, }
+          });;
       }
 
       // 路由处理
