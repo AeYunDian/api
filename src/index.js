@@ -82,7 +82,7 @@ export default {
               { headers: { 'Content-Type': gh_response.headers.get('Content-Type') || 'text/plain', } });
 
           } catch (e) {
-            const errorText = typeof e === 'string' ? e : (JSON.stringify(e) || e.message);
+            const errorText = typeof e === 'string' ? e : (e.message || JSON.stringify(e));
             return new Response("Unable to request the target URL, please check the address: \n\n" + errorText.replace("'\n'", "  \n"), { status: 500, });
           }
         }
@@ -117,7 +117,7 @@ export default {
               { headers: { 'Content-Type': gh_response.headers.get('Content-Type') || 'text/plain', } });
 
           } catch (e) {
-            const errorText = typeof e === 'string' ? e : (JSON.stringify(e) || e.message);
+            const errorText = typeof e === 'string' ? e : (e.message || JSON.stringify(e));
             return new Response("Unable to request the target URL, please check the address: \n\n" + errorText.replace("'\n'", "  \n"), { status: 500, });
           }
         }
