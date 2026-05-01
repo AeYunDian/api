@@ -68,7 +68,9 @@ export default {
           return new Response(await initLink(request, env), { headers: { 'Content-Type': 'application/json' } });
         }
         if (path.startsWith('/gh/')) {
-          let gh_path = path.replace("/gh/", "");
+          const prefix = '/gh/';
+          const idx = url.href.indexOf(prefix);
+          let gh_path = url.href.slice(idx + prefix.length);   // 保留查询参数
           if (!gh_path.includes('://')) {
             gh_path = url.protocol + '//' + gh_path;
           }
@@ -83,11 +85,13 @@ export default {
 
           } catch (e) {
             const errorText = typeof e === 'string' ? e : (e.message || JSON.stringify(e));
-            return new Response("Unable to request the target URL, please check the address: \n\n" + errorText.replace("'\n'", "  \n"), { status: 500, });
+            return new Response("Unable to request the target URL, please check the address: \n\n" + errorText.replace("\n", "  \n"), { status: 500, });
           }
         }
         if (path.startsWith('/gh_fix/')) {
-          let gh_path = path.replace('/gh_fix/', '');
+          const prefix = '/gh/';
+          const idx = url.href.indexOf(prefix);
+          let gh_path = url.href.slice(idx + prefix.length);   // 保留查询参数
           if (!gh_path.includes('://')) {
             gh_path = url.protocol + '//' + gh_path;
           }
@@ -118,7 +122,7 @@ export default {
 
           } catch (e) {
             const errorText = typeof e === 'string' ? e : (e.message || JSON.stringify(e));
-            return new Response("Unable to request the target URL, please check the address: \n\n" + errorText.replace("'\n'", "  \n"), { status: 500, });
+            return new Response("Unable to request the target URL, please check the address: \n\n" + errorText.replace("\n", "  \n"), { status: 500, });
           }
         }
         if (path === "/trigger") {
