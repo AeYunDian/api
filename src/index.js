@@ -89,7 +89,7 @@ export default {
           }
         }
         if (path.startsWith('/gh_fix/')) {
-          const prefix = '/gh/';
+          const prefix = '/gh_fix/';
           const idx = url.href.indexOf(prefix);
           let gh_path = url.href.slice(idx + prefix.length);   // 保留查询参数
           if (!gh_path.includes('://')) {
