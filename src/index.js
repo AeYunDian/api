@@ -24,7 +24,8 @@ import {
   chat_getChatHtml, chat_getSettingHtml, 
   chat_getSettingLoginHtml, chat_listUsers, 
   chat_deleteUser, chat_listFilterWords, 
-  chat_addFilterWord, chat_removeFilterWord
+  chat_addFilterWord, chat_removeFilterWord,
+  chat_getCleanTime
 } from './chat_room.js';
 
 const corsHeaders_GPO = {
