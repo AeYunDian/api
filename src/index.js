@@ -4,7 +4,7 @@ import { handleVerifyCode } from './mail_verify/verify.js';
 import { sl_parseLink } from './short_link/parse_link.js';
 import { sl_addLink } from './short_link/add_link.js';
 import { sl_initLink } from './short_link/init_database.js';
-import { rewriteUrlToFix, AllUrlRewriter, getMainPage } from './utils.js';
+import { getMainPage, escapeHtml } from './utils.js';
 import { CreateAccount, InitDatabase, Login, PushUserBag, GetUserBag, Logout } from './crossfire/v1/crossfire.js';
 import { triggerWorkflow } from './trigger_workflow.js';
 import { net_proxy } from './net_proxy.js';
@@ -26,7 +26,9 @@ import {
   chat_deleteUser, chat_listFilterWords, 
   chat_addFilterWord, chat_removeFilterWord,
   chat_getCleanTime, CLEAN_WINDOW_MS,
+  chat_isValidMessage, 
 } from './chat_room.js';
+
 
 const corsHeaders_GPO = {
   'Access-Control-Allow-Origin': '*',
@@ -322,7 +324,7 @@ export default {
             if (!isAdminUser && !isValid) {
               return new Response(JSON.stringify({ error: "消息无效（重复、含敏感词或单字符）" }), { status: 400, headers: { "Content-Type": "application/json" } });
             }
-            const finalMsg = isAdminUser ? msg : chat_escapeHtml(msg); // 管理员不转义
+            const finalMsg = isAdminUser ? msg : escapeHtml(msg); // 管理员不转义
             const newMsg = await chat_addMessage(db, room, nick, finalMsg, isAdminUser);
             return new Response(JSON.stringify({ success: true, msg: newMsg }), { headers: { "Content-Type": "application/json" } });
 
