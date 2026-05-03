@@ -1,5 +1,5 @@
 // POST请求，body: { "link": "短码或原始链接", "target": "目标URL", "tip": true/false, "expires_in": 秒数(可选) }
-export async function addLink (request, env) {
+export async function sl_addLink (request, env) {
     const url = new URL(request.url);
     try {
       const body = await request.json();

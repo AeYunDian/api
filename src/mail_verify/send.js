@@ -6,6 +6,7 @@ function generateToken() {
 }
 
 export async function handleSendVerification(request, env) {
+  
   try {
     // 解析请求体
     let email;
@@ -57,7 +58,7 @@ export async function handleSendVerification(request, env) {
         'Authorization': `Bearer ${env.RESEND_API_KEY}`
       },
       body: JSON.stringify({
-        from: 'noreply@io.hb.cn',
+        from: 'noreply@undz.cn',
         to: email,
         subject: '[Ys Post] Your Verification Code',
         html: `<p>Your verification code is: <strong>${verificationCode}</strong></p><p>This code will expire in 5 minutes.</p>`

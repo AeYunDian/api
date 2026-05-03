@@ -1,4 +1,4 @@
-export async function initLink(request, env, ctx) {
+export async function sl_initLink(request, env, ctx) {
     const url = new URL(request.url);
     const key = url.searchParams.get('key');
     if (key !== `${env.GOKEY}`) {

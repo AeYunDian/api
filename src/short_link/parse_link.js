@@ -1,4 +1,4 @@
-export async function parseLink(request, env) {
+export async function sl_parseLink(request, env) {
     const url = new URL(request.url);
     const link = url.searchParams.get('link');
     if (!link) {
@@ -10,7 +10,6 @@ export async function parseLink(request, env) {
         WHERE link = ? AND (expires_at IS NULL OR expires_at > strftime('%s', 'now'))
       `).bind(link).first();
       if (!result) {
-        // 未找到映射，可根据需求返回404或特定提示；这里返回404
         return new Response(JSON.stringify({ code: 404, message: 'Link not found' }), { status: 404 });
       }
       const tipBool = result.tip === 1;
