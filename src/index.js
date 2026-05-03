@@ -120,7 +120,7 @@ export default {
           return response;
         }
 
-        return new Response(getMainPage("AyUndz API Service", "404 Not Found", JSON.stringify({ error: "The page you are looking for cannot be found, please check and try again" })), { status: 404, headers: { 'Content-Type': 'text/html' }, headers: corsHeaders });
+        return new Response(getMainPage("AyUndz API Service", "404 Not Found", JSON.stringify({ error: "The page you are looking for cannot be found, please check and try again" })), { status: 404, headers: { 'Content-Type': 'text/html', ...corsHeaders} });
 
       }
       if (hostname === 'chat.undz.cn' || hostname === 'c.undz.cn') {
@@ -399,7 +399,7 @@ export default {
                 });
             }
           }
-          return new Response(getMainPage("Ay Online Chat Room", "404 Not Found", "The page you are looking for cannot be found, please check and try again"), { status: 404, headers: { 'Content-Type': 'text/html' }, headers: corsHeaders });
+          return new Response(getMainPage("Ay Online Chat Room", "404 Not Found", "The page you are looking for cannot be found, please check and try again"), { status: 404, headers: { 'Content-Type': 'text/html', ...corsHeaders} });
         }
 
       }

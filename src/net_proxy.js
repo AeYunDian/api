@@ -1,6 +1,6 @@
 import { USER_AGENT, rewriteUrlToFix, AllUrlRewriter, PROXY_PREFIX_GH, PROXY_PREFIX_FIX} from "./utils.js";
 
-export function net_proxy(url, request, fixIt = false) {
+export async function net_proxy(url, request, fixIt = false) {
     const prefix = fixIt ? PROXY_PREFIX_FIX : PROXY_PREFIX_GH;
     const idx = url.href.indexOf(prefix);
     let gh_path = url.href.slice(idx + prefix.length);
