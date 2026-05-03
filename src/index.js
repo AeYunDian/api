@@ -25,7 +25,7 @@ import {
   chat_getSettingLoginHtml, chat_listUsers, 
   chat_deleteUser, chat_listFilterWords, 
   chat_addFilterWord, chat_removeFilterWord,
-  chat_getCleanTime, CLEAN_WINDOW_MS
+  chat_getCleanTime, CLEAN_WINDOW_MS,
 } from './chat_room.js';
 
 const corsHeaders_GPO = {
@@ -300,7 +300,7 @@ export default {
 
             if (!room || !nick || !msg) return new Response("无效参数", { status: 400 });
             // 管理员判断（只能通过超级密钥）
-            const isAdminUser = isSuperAdmin(env, key);
+            const isAdminUser = chat_isSuperAdmin(env, key);
             // 昵称校验（管理员可使用保留名）
             if (!isAdminUser) {
               const nickInvalid = await chat_isInvalidNickname(nick, isAdminUser);
