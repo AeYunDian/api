@@ -26,9 +26,8 @@ enabled = false
 persist = true
 head_sampling_rate = 1
 
-vars = { 
-  WORKFLOW_ID = "scheduled-publish.yml",
-  OWNER = "AeYunDian",
-  REPO = "aeyundian.github.io",
-  BRANCH = "main"
-}
+[vars]
+WORKFLOW_ID = "scheduled-publish.yml"
+OWNER = "AeYunDian"
+REPO = "aeyundian.github.io"
+BRANCH = "main"
