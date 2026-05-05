@@ -4,7 +4,7 @@ import { handleVerifyCode } from './mail_verify/verify.js';
 import { sl_parseLink } from './short_link/parse_link.js';
 import { sl_addLink } from './short_link/add_link.js';
 import { sl_initLink } from './short_link/init_database.js';
-import { getMainPage, escapeHtml, proxyStaticFile} from './utils.js';
+import { getMainPage, escapeHtml, proxyStaticFile } from './utils.js';
 import { CreateAccount, InitDatabase, Login, PushUserBag, GetUserBag, Logout } from './crossfire/v1/crossfire.js';
 import { triggerWorkflow } from './trigger_workflow.js';
 import { net_proxy } from './net_proxy.js';
@@ -22,6 +22,7 @@ import {
   chat_poll,
   chat_clean,
   chat_initTables,
+  chat_userLogin,
 } from './chat_room.js';
 
 
@@ -52,6 +53,7 @@ export default {
     const db = env.db;
     const kv = env.kv;
     const isWechat = !!userAgent.match(/MicroMessenger/i);
+    const clientIP = request.headers.get('CF-Connecting-IP');
 
     try {
       if (hostname === 'api.undz.cn') {
@@ -75,6 +77,14 @@ export default {
           }
           if (path.startsWith('/gh_fix/')) {
             return await net_proxy(url, request, true);
+          }
+          if (path.toLowerCase() === "/favicon.ico") {
+            const response = await proxyStaticFile("https://r1.undz.cn/favicon.ico", url.protocol);
+            return response;
+          }
+          if (path.toLowerCase() === "/logo.png") {
+            const response = await proxyStaticFile("https://r1.undz.cn/logo.png", url.protocol);
+            return response;
           }
           if (path === "/trigger") {
             return await triggerWorkflow(env);
@@ -171,6 +181,11 @@ export default {
 
           if (path === "/poll") {
             const response = await chat_poll(db, url);
+            return response;
+          }
+
+          if (path === "/add_room") {
+            const response = await chat_userLogin(clientIP, isSuper, url);
             return response;
           }
 

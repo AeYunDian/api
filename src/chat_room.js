@@ -257,6 +257,21 @@ export async function chat_poll(db, url) {
   const messages = await chat_getMessages(db, room, afterTime, afterId);
   return new Response(JSON.stringify({ messages }), { headers: { "Content-Type": "application/json" } });
 }
+export async function chat_userLogin(clientIP, isAdminUser, url) {
+  const room = url.searchParams.get("room");
+  const nick = url.searchParams.get("nick");
+  const nowDate = url.searchParams.get("nick") || Date.now();
+  if (!room || !nick || !clientIP) return new Response("无效参数", { status: 400 });
+  if (!isAdminUser) {
+    const nickInvalid = await chat_isInvalidNickname(nick, isAdminUser);
+    const nickContainsFilter = await chat_containsFilterWord(db, nick, isAdminUser);
+    if (nickInvalid || nickContainsFilter) {
+      return new Response(JSON.stringify({ error: "昵称无效或包含敏感词" }), { status: 403, headers: { "Content-Type": "application/json" } });
+    }
+  }
+  await chat_addMessage(db, room, "系统", `${nick}进入了房间 | IP ${clientIP} `, isAdminUser, nowDate); 
+}
+
 export async function chat_sendMessage(db, url, env) {
   const room = url.searchParams.get("room");
   const nick = url.searchParams.get("nick");
@@ -558,9 +573,9 @@ export function chat_getIndexHtml() {
             <img src="/logo.png"> <h2>Ay Online Chat Room</h2>
           </div>
           <hr/>
-          <p>在线网络聊天室 v1.3</p>
+          <p>在线网络聊天室 v1.5</p>
           <p>本网站签前端由纯 HTML + 原生 JS搭建，兼容至 IE8，无任何框架依赖。</p>
-          <p style="margin-top:8px; font-size:13px; text-align: center;">© 2025-2026 韵典 AeYunDian | Ay Project | Powered by Cloudflare Workers</p>
+          <p style="margin-top:8px; font-size:13px; text-align: center;">© 2025-2026 韵典 AeYunDian | Ay Project | Powered by Cloudflare</p>
         </div>
        </td>
     </table>
@@ -800,7 +815,14 @@ export function chat_getChatHtml() {
     };
     xhr.send();
   }
-
+  function sendAddRoomMessage() {
+    if (!isAllowed) return;
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/add_room?room=' + encodeURIComponent(room) +
+      '&nick=' + encodeURIComponent(nick) +
+      '&_t=' + (new Date().getTime()), true);
+    xhr.send();
+  }
   function sendMessage(text) {
     if (!isAllowed || isSending) return;
     isSending = true;
@@ -876,6 +898,7 @@ export function chat_getChatHtml() {
   function startChat() {
     var roomInfoSpan = document.getElementById('roomInfo');
     roomInfoSpan.innerHTML = '房间: ' + room + ' | 昵称: ' + escapeHtmlLocal(nick) + (adminKey ? ' [管理员]' : '');
+    sendAddRoomMessage()
     pollInterval = setInterval(pollMessages, 2000);
     pollMessages();
   }

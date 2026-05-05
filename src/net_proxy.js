@@ -37,6 +37,6 @@ export async function net_proxy(url, request, fixIt = false) {
 
     } catch (e) {
         const errorText = typeof e === 'string' ? e : (e.message || JSON.stringify(e));
-        return new Response(getMainPage("Ay Net Proxy", "Proxy Error","Unable to request the target URL, please check: \n\n" + errorText.replace("\n", "  \n")), { status: 500, });
+        return new Response(getMainPage("Ay Net Proxy", "Proxy Error","Unable to request the target URL, please check: \n\n" + errorText.replace("\n", "  \n")), { status: 500, },  { headers: { 'Content-Type': 'application/json' } });
     }
 }

@@ -44,7 +44,7 @@ export function getMainPage(title = "AyUndz API", name = "AyUndz API", descripti
   return `
     <html>
       <head><title>${title}</title></head>
-      <body>
+      <body style="text-align: center;">
         <h1>${name}</h1>
         <p>${description}</p>
         <hr />
