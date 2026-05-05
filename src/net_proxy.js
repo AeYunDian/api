@@ -1,5 +1,4 @@
-import { USER_AGENT, rewriteUrlToFix, AllUrlRewriter, PROXY_PREFIX_GH, PROXY_PREFIX_FIX} from "./utils.js";
-
+import { USER_AGENT, rewriteUrlToFix, AllUrlRewriter, PROXY_PREFIX_GH, PROXY_PREFIX_FIX, getMainPage} from "./utils.js";
 export async function net_proxy(url, request, fixIt = false) {
     const prefix = fixIt ? PROXY_PREFIX_FIX : PROXY_PREFIX_GH;
     const idx = url.href.indexOf(prefix);
@@ -14,7 +13,7 @@ export async function net_proxy(url, request, fixIt = false) {
             headers: { 'User-Agent': USER_AGENT }
         }
         );
-        if (!gh_response.ok) throw new Error(`Upstream returned: \n${gh_response.status} ${gh_response.statusText} - ${await gh_response.text()} ${gh_response.message}`);
+        if (!gh_response.ok) throw new Error(`Upstream returned: \n${gh_response.status} ${gh_response.statusText} ${gh_response.url}`);
 
         if (fixIt) {
             if (gh_response.headers.get('Content-Type')?.includes('text/html')) {
@@ -38,6 +37,6 @@ export async function net_proxy(url, request, fixIt = false) {
 
     } catch (e) {
         const errorText = typeof e === 'string' ? e : (e.message || JSON.stringify(e));
-        return new Response("Unable to request the target URL, please check the address: \n\n" + errorText.replace("\n", "  \n"), { status: 500, });
+        return new Response(getMainPage("Ay Net Proxy", "Proxy Error","Unable to request the target URL, please check: \n\n" + errorText.replace("\n", "  \n")), { status: 500, });
     }
 }

@@ -40,15 +40,34 @@ export function escapeHtml(str) {
   });
 }
 
-export function getMainPage(title = "AyUndz API", name = "AyUndz API", description = "This is the default page of AyUndz API") {
+export function getMainPage(title = "AyUndz API", name = "AyUndz API", description = "This is the default page of AyUndz API", footer = "AyRouter | Powered by <a href=\"https://cloudflare.com\" target=\"_blank\">Cloudflare</a>") {
   return `
     <html>
       <head><title>${title}</title></head>
       <body>
         <h1>${name}</h1>
-        <hr />
         <p>${description}</p>
+        <hr />
+        <p>${footer}</p>
       </body>
     </html>
   `;
+}
+export async function proxyStaticFile(url, protocol = "https:") {
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+    });
+    if (!response.ok) throw new Error(`Upstream returned ${response.status}`);
+    return new Response(
+      response.body,
+      { headers: { 'Content-Type': response.headers.get('Content-Type') || 'image/x-icon', } });
+
+  } catch (e) {
+    return new Response("Server Error",
+      {
+        status: 302,
+        headers: { 'Location': protocol + '//r1.undz.cn/favicon.ico', }
+      });
+  }
 }
