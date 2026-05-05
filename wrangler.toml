@@ -28,11 +28,7 @@ head_sampling_rate = 1
 
 vars = { 
   WORKFLOW_ID = "scheduled-publish.yml",
-  GITHUB_TOKEN = "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",
   OWNER = "AeYunDian",
   REPO = "aeyundian.github.io",
-  BRANCH = "main",
-  RESEND_API_KEY = "re_VpCQ5voG_9rngzHmoZedrZPg8FBgn46N7",
-  KEY = "zhy20131214",
-  GOKEY = "zhy20131214"
+  BRANCH = "main"
 }
