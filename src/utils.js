@@ -41,6 +41,7 @@ export function escapeHtml(str) {
 }
 
 export function getMainPage(title = "AyUndz API", name = "AyUndz API", description = "This is the default page of AyUndz API", footer = "AyRouter | Powered by <a href=\"https://cloudflare.com\" target=\"_blank\">Cloudflare</a>") {
+  const filler = '<!-- ' + 'x'.repeat(510) + ' -->'
   return `
     <html>
       <head><title>${title}</title></head>
@@ -49,6 +50,7 @@ export function getMainPage(title = "AyUndz API", name = "AyUndz API", descripti
         <p>${description}</p>
         <hr />
         <p>${footer}</p>
+        ${filler}
       </body>
     </html>
   `;
