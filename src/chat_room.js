@@ -827,10 +827,13 @@ export function chat_getChatHtml() {
   }
   function sendAddRoomMessage() {
     if (!isAllowed) return;
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', '/add_room?room=' + encodeURIComponent(room) +
+
+    var url = '/add_room?room=' + encodeURIComponent(room) +
       '&nick=' + encodeURIComponent(nick) +
-      '&_t=' + (new Date().getTime()), true);
+      '&_t=' + (new Date().getTime());
+    if (adminKey) url += '&key=' + encodeURIComponent(adminKey);
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
     xhr.send();
   }
   function sendMessage(text) {
