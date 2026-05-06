@@ -185,7 +185,7 @@ export default {
           }
 
           if (path === "/add_room") {
-            const response = await chat_userLogin(clientIP, isSuper, url);
+            const response = await chat_userLogin(clientIP, isSuper, url, db);
             return response;
           }
 

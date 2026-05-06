@@ -257,19 +257,19 @@ export async function chat_poll(db, url) {
   const messages = await chat_getMessages(db, room, afterTime, afterId);
   return new Response(JSON.stringify({ messages }), { headers: { "Content-Type": "application/json" } });
 }
-export async function chat_userLogin(clientIP, isAdminUser, url) {
+export async function chat_userLogin(clientIP, isAdminUser, url,db) {
   const room = url.searchParams.get("room");
   const nick = url.searchParams.get("nick");
   const nowDate = url.searchParams.get("nick") || Date.now();
-  if (!room || !nick || !clientIP) return new Response("无效参数", { status: 400 });
-  if (!isAdminUser) {
+  if (!room || !nick ) return new Response("无效参数", { status: 400 });
+  if (!isAdminUser) { 
     const nickInvalid = await chat_isInvalidNickname(nick, isAdminUser);
     const nickContainsFilter = await chat_containsFilterWord(db, nick, isAdminUser);
     if (nickInvalid || nickContainsFilter) {
       return new Response(JSON.stringify({ error: "昵称无效或包含敏感词" }), { status: 403, headers: { "Content-Type": "application/json" } });
     }
   }
-  await chat_addMessage(db, room, "系统", `${nick}进入了房间 | IP ${clientIP} `, isAdminUser, nowDate); 
+  await chat_addMessage(db, room, "系统", `${nick}进入了房间 ${clientIP ? `| IP ${clientIP}` : '' }`, isAdminUser, nowDate); 
 }
 
 export async function chat_sendMessage(db, url, env) {
