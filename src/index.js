@@ -90,7 +90,7 @@ export default {
             return await triggerWorkflow(env);
           }
           if (path === "/debuginfo") {
-            const info = await getDebugInfo(env);
+            const info = await getDebugInfo(env, request);
             return new Response(JSON.stringify(info, null, 2), {
               headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO }
             });
@@ -218,41 +218,19 @@ export default {
     }
   }
 };
-async function getDebugInfo(env) {
+async function getDebugInfo(env, request) {
+  const url = new URL(request.url);
+  const keyParam = url.searchParams.get("key") || '';
+  const userAgent = request.headers.get('User-Agent') || '';
+  const platform = request.headers.get('sec-ch-ua-platform') || '';
+  const cookie = request.headers.get('Cookie') || '';
+  const isWechat = !!userAgent.match(/MicroMessenger/i);
+  const clientIP = request.headers.get('CF-Connecting-IP');
+
   const info = {
     status: 'ok',
     timestamp: Date.now(),
     iso_time: new Date().toISOString(),
-    api_routes: [
-      'GET /',
-      'GET /debuginfo',
-      'GET /go/parse?link=',
-      'GET /go/init?key=',
-      'GET /gh/* (proxy)',
-      'GET /gh_fix/* (proxy with rewrite)',
-      'GET /trigger',
-      'POST /api/verifymail/v1/send',
-      'POST /api/verifymail/v1/verify',
-      'POST /api/crossfire/v1/account/create',
-      'POST /api/crossfire/v1/account/init',
-      'POST /api/crossfire/v1/account/login',
-      'POST /api/crossfire/v1/account/logout',
-      'POST /api/crossfire/v1/bag/get',
-      'POST /api/crossfire/v1/bag/push',
-      'POST /go/addlink',
-    ],
-    chat_routes: [
-      'GET / (chat index)',
-      'GET /chat (chat room)',
-      'GET /setting (admin)',
-      'GET /init (init tables)',
-      'GET /create (create user)',
-      'GET /verify (verify user)',
-      'GET /send (send message)',
-      'GET /poll (poll messages)',
-      'GET /clean (admin clean)',
-      'GET /api/admin/* (admin api)',
-    ],
     env_vars: {
       // 仅显示是否已设置，不暴露实际值
       GITHUB_TOKEN: !!env.GITHUB_TOKEN,
@@ -265,6 +243,11 @@ async function getDebugInfo(env) {
       GOKEY: !!env.GOKEY,
       DB: !!env.db,
       KV: !!env.kv,
+      isWechat: isWechat,
+      clientIP: clientIP,
+      cookie: keyParam ? cookie : 'Hiden (no key provided)',
+      userAgent: userAgent,
+      platform: platform,
     },
     db_test: null,
     kv_test: null,
