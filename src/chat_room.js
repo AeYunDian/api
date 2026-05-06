@@ -121,8 +121,9 @@ async function chat_getMessages(db, roomId, afterTime = 0, afterId = 0) {
   const { results } = await stmt.all();
   return results.map(row => ({
     id: row.id,
-    type: "message",
-    nick: row.nick,
+    type: row.nick === "1f1494b0-3331-6412-8ed8-39d5825fb60e" ? "system" : "message",
+    // nick: row.nick,
+    nick: row.nick === "1f1494b0-3331-6412-8ed8-39d5825fb60e" ? "系统" : row.nick,
     text: row.msg,
     time: row.time,
     isAdmin: row.is_admin === 1
@@ -260,7 +261,6 @@ export async function chat_poll(db, url) {
 export async function chat_userLogin(clientIP, isAdminUser, url,db) {
   const room = url.searchParams.get("room");
   const nick = url.searchParams.get("nick");
-  const nowDate = url.searchParams.get("nick") || Date.now();
   if (!room || !nick ) return new Response("无效参数", { status: 400 });
   if (!isAdminUser) { 
     const nickInvalid = await chat_isInvalidNickname(nick, isAdminUser);
@@ -269,7 +269,8 @@ export async function chat_userLogin(clientIP, isAdminUser, url,db) {
       return new Response(JSON.stringify({ error: "昵称无效或包含敏感词" }), { status: 403, headers: { "Content-Type": "application/json" } });
     }
   }
-  await chat_addMessage(db, room, "系统", `${nick}进入了房间 ${clientIP ? `| IP ${clientIP}` : '' }`, isAdminUser, nowDate); 
+  await chat_addMessage(db, room, "1f1494b0-3331-6412-8ed8-39d5825fb60e", `<span class="nickname">${nick}</span> 进入了房间 ${clientIP ? `| IP ${clientIP}` : '' }`, isAdminUser, Date.now()); 
+  return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
 }
 
 export async function chat_sendMessage(db, url, env) {
@@ -685,6 +686,7 @@ export function chat_getChatHtml() {
     .messages-area { background: #ffffff; border: 2px inset #808080; height: 380px; overflow-y: auto; padding: 6px; font-family: Arial, 'Microsoft Sans Serif', 'Tahoma', 'Geneva', '宋体', 'WenQuanYi Micro Hei', 'Noto Sans CJK SC', monospace, sans-serif !important; font-size: 12px; }
     .message { margin: 4px 0; word-wrap: break-word; }
     .system { color: #800000; font-style: italic; }
+    .nickname { font-weight: bold; color: #000080; }
     .self { background: #e0ffe0; border-left: 4px solid #008000; padding-left: 4px; }
     .other { background: #ffffe0; border-left: 4px solid #c0c000; padding-left: 4px; }
     .nick { font-weight: bold; color: #000080; }
