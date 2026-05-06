@@ -71,3 +71,103 @@ export async function proxyStaticFile(url, protocol = "https:") {
       });
   }
 }
+
+export function anonymizeIp(ipString) {
+    // 1. 提取纯地址并移除端口
+    let pureAddress = '';
+    
+    // 处理带方括号的IPv6（可能带端口）
+    const bracketMatch = ipString.match(/^\[([0-9a-fA-F:]+)\](?::\d+)?$/);
+    if (bracketMatch) {
+        pureAddress = bracketMatch[1];
+    } 
+    // 处理IPv4（可能带端口）
+    else {
+        const ipv4Match = ipString.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d+)?$/);
+        if (ipv4Match) {
+            pureAddress = ipv4Match[1];
+        } 
+        // 无端口的标准IPv6（无方括号）
+        else {
+            pureAddress = ipString;
+        }
+    }
+
+    // 2. 处理IPv4
+    if (pureAddress.includes('.') && !pureAddress.includes(':')) {
+        const parts = pureAddress.split('.');
+        if (parts.length === 4) {
+            parts[2] = '*';
+            return parts.join('.');
+        }
+        return pureAddress; // 回退
+    }
+
+    // 3. 处理IPv6 (必须包含冒号)
+    if (pureAddress.includes(':')) {
+        // 3.1 展开压缩格式为完整的8组十六进制数
+        const groups = expandIPv6(pureAddress);
+        
+        // 3.2 隐藏中间两组（索引2和3）
+        groups[2] = '****';
+        groups[3] = '****';
+        
+        // 3.3 简化其他组（去除前导零），保留星号组不变
+        const finalGroups = groups.map(group => {
+            if (group === '****') return group;
+            // 将十六进制字符串转为无前导零的小写形式（0 转为 '0'）
+            return parseInt(group, 16).toString(16);
+        });
+        
+        return finalGroups.join(':');
+    }
+
+    // 未识别格式，返回原字符串
+    return ipString;
+}
+
+// 辅助函数：将IPv6地址展开为8组标准十六进制字符串（每组保留原长度用于后续转换）
+function expandIPv6(addr) {
+    if (addr === '::') {
+        return new Array(8).fill('0');
+    }
+    
+    const parts = addr.split(':');
+    let groups = new Array(8).fill(null);
+    
+    // 查找压缩标记 "::" 的位置
+    let emptyIndex = -1;
+    for (let i = 0; i < parts.length; i++) {
+        if (parts[i] === '') {
+            emptyIndex = i;
+            break;
+        }
+    }
+    
+    if (emptyIndex === -1) {
+        // 无压缩，直接使用现有各组（必须是8组）
+        return parts.map(p => p || '0');
+    }
+    
+    // 有压缩，计算缺失的组数
+    const nonEmptyParts = parts.filter(p => p !== '');
+    const missingCount = 8 - nonEmptyParts.length;
+    
+    const result = [];
+    // 压缩标记前的部分
+    for (let i = 0; i < emptyIndex; i++) {
+        result.push(parts[i]);
+    }
+    // 填充缺失的零组
+    for (let i = 0; i < missingCount; i++) {
+        result.push('0');
+    }
+    // 压缩标记后的部分
+    for (let i = emptyIndex + 1; i < parts.length; i++) {
+        if (parts[i] !== '') {
+            result.push(parts[i]);
+        }
+    }
+    
+    return result;
+}
