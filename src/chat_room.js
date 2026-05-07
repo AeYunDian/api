@@ -603,7 +603,7 @@ export function chat_getIndexHtml() {
             <img src="/logo.png"> <h2>Ay Online Chat Room</h2>
           </div>
           <hr/>
-          <p>在线网络聊天室 v1.5</p>
+          <p>在线网络聊天室 v1.6</p>
           <p>本网站签前端由纯 HTML + 原生 JS搭建，兼容至 IE8，无任何框架依赖。</p>
           <p style="margin-top:8px; font-size:13px; text-align: center;">© 2025-2026 韵典 AeYunDian | Ay Project | Powered by Cloudflare</p>
         </div>
