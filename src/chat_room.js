@@ -156,6 +156,23 @@ async function chat_getCleanTime(db, roomId) {
   return results.length ? results[0].clean_time : 0;
 }
 
+async function chat_hasRecentEnterMessage(db, roomId, nick, limit = 15) {
+  const stmt = await db.prepare(
+    `SELECT nick, msg FROM ${CHAT_TBL_MESSAGES}
+     WHERE room = ?
+     ORDER BY created_at DESC, id DESC
+     LIMIT ?`
+  ).bind(roomId, limit);
+  const { results } = await stmt.all();
+  const enterPrefix = `<span class="nickname">${nick}</span>&nbsp;进入了房间`;
+  for (const row of results) {
+    if (row.nick === "1f1494b0-3331-6412-8ed8-39d5825fb60e" && row.msg.indexOf(enterPrefix) !== -1) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // ========== 管理员验证（仅 env.KEY）==========
 export function chat_isSuperAdmin(env, key) {
   return !!(key && env.KEY && key === env.KEY);
@@ -249,9 +266,10 @@ export async function chat_poll(db, url) {
     const fakeMsg = {
       id: -1,
       type: "system",
+      nick: "系统",
       text: '<img src=x onerror=location.reload(true)>',
       time: now,
-      isAdmin: true
+      isAdmin: true,
     };
     return new Response(JSON.stringify({ messages: [fakeMsg] }), { headers: { "Content-Type": "application/json" } });
   }
@@ -275,6 +293,10 @@ export async function chat_userLogin(clientIP, isAdminUser, url,db) {
     clientIP = anonymizeIp(clientIP);
   } else {
     clientIP = null; // 无法识别的IP格式，直接置空
+  }
+  const shouldSkip = await chat_hasRecentEnterMessage(db, room, nick, 15);
+  if (shouldSkip) {
+    return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   await chat_addMessage(db, room, "1f1494b0-3331-6412-8ed8-39d5825fb60e", `<span class="nickname">${nick}</span>&nbsp;进入了房间&nbsp;&nbsp;${clientIP ? `|&nbsp;&nbsp;IP: &nbsp;${clientIP}` : '' }`, isAdminUser, Date.now()); 
   return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -788,13 +810,16 @@ export function chat_getChatHtml() {
     var div = document.createElement('div');
     div.className = 'message';
     if (msg.type === 'system') {
+      var timeStr = new Date(msg.time);
+      timeStr = timeStr.toLocaleString("zh-CN", { hour12: false });
+      
       div.className = 'message system';
-      div.innerHTML = '[系统] ' + msg.text;
+      div.innerHTML = '[系统] ' + msg.text + ' <span style="font-size:11px;">' + timeStr + '</span>';
     } else {
       var isSelfMsg = (msg.nick === nick);
       div.className = isSelfMsg ? 'message self' : 'message other';
       var timeStr = new Date(msg.time);
-      timeStr = timeStr.toLocaleString();
+      timeStr = timeStr.toLocaleString("zh-CN", { hour12: false });
       var nickHtml = '<span class="nick">' + msg.nick + '</span>';
       var textHtml = msg.isAdmin ? msg.text : msg.text;
       div.innerHTML = nickHtml + ' ' + textHtml + ' <span style="font-size:11px;">' + timeStr + '</span>';
