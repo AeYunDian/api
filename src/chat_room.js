@@ -294,7 +294,7 @@ export async function chat_userLogin(clientIP, isAdminUser, url,db) {
   } else {
     clientIP = null; // 无法识别的IP格式，直接置空
   }
-  const shouldSkip = await chat_hasRecentEnterMessage(db, room, nick, 32);
+  const shouldSkip = await chat_hasRecentEnterMessage(db, room, nick, 16);
   if (shouldSkip) {
     return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
