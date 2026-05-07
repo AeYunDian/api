@@ -124,9 +124,9 @@ export function anonymizeIp(ipString) {
     groups[6] = '*'.repeat(groups[6].length);
     // 3.3 简化其他组（去除前导零），保留星号组不变
     const finalGroups = groups.map(group => {
-      if (group === '****') return group;
-      // 将十六进制字符串转为无前导零的小写形式（0 转为 '0'）
-      return parseInt(group, 16).toString(16);
+      if (group.includes('*')) return group;
+      const num = parseInt(group, 16);
+      return Number.isNaN(num) ? group : num.toString(16);
     });
 
     return finalGroups.join(':');
