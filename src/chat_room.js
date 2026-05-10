@@ -158,7 +158,7 @@ async function chat_getCleanTime(db, roomId) {
 
 async function chat_hasRecentEnterMessage(db, roomId, nick, limit = 15) {
   const stmt = await db.prepare(
-    `SELECT nick, msg FROM ${CHAT_TBL_MESSAGES}
+    `SELECT nick, msg, created_at FROM ${CHAT_TBL_MESSAGES}
      WHERE room = ?
      ORDER BY created_at DESC, id DESC
      LIMIT ?`
@@ -167,10 +167,10 @@ async function chat_hasRecentEnterMessage(db, roomId, nick, limit = 15) {
   const enterPrefix = `<span class="nickname">${nick}</span>&nbsp;进入了房间`;
   for (const row of results) {
     if (row.nick === "1f1494b0-3331-6412-8ed8-39d5825fb60e" && row.msg.indexOf(enterPrefix) !== -1) {
-      return true;
+      return row.created_at; // 返回最近进入消息的时间
     }
   }
-  return false;
+  return null; // 没有找到最近的进入消息
 }
 
 // ========== 管理员验证（仅 env.KEY）==========
@@ -294,11 +294,15 @@ export async function chat_userLogin(clientIP, isAdminUser, url,db) {
   } else {
     clientIP = null; // 无法识别的IP格式，直接置空
   }
-  const shouldSkip = await chat_hasRecentEnterMessage(db, room, nick, 16);
-  if (shouldSkip) {
+  const lastIn15 = await chat_hasRecentEnterMessage(db, room, nick, 15);
+  if (lastIn15 !== null) { // 之前的逻辑：15条消息内有进入消息，就跳过
     return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
-  await chat_addMessage(db, room, "1f1494b0-3331-6412-8ed8-39d5825fb60e", `<span class="nickname">${nick}</span>&nbsp;进入了房间&nbsp;&nbsp;${clientIP ? `|&nbsp;&nbsp;IP: &nbsp;${clientIP}` : '' }`, isAdminUser, Date.now()); 
+  const lastRecent = await chat_hasRecentEnterMessage(db, room, nick, 100);
+  if (lastRecent !== null && Date.now() - lastRecent < 1800000) { // 现在的逻辑：30分钟内有进入消息，就跳过
+    return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+  await chat_addMessage(db, room, "1f1494b0-3331-6412-8ed8-39d5825fb60e", `<span class="nickname">${nick}</span>&nbsp;进入了房间&nbsp;&nbsp;${clientIP ? `|&nbsp;&nbsp;IP: &nbsp;${clientIP}` : '' }`, true, Date.now()); 
   return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
 }
 
