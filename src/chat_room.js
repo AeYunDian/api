@@ -276,11 +276,11 @@ export async function chat_poll(db, url) {
   const messages = await chat_getMessages(db, room, afterTime, afterId);
   return new Response(JSON.stringify({ messages }), { headers: { "Content-Type": "application/json" } });
 }
-export async function chat_userLogin(clientIP, isAdminUser, url,db) {
+export async function chat_userLogin(clientIP, isAdminUser, url, db) {
   const room = url.searchParams.get("room");
   const nick = url.searchParams.get("nick");
-  if (!room || !nick ) return new Response("无效参数", { status: 400 });
-  if (!isAdminUser) { 
+  if (!room || !nick) return new Response("无效参数", { status: 400 });
+  if (!isAdminUser) {
     const nickInvalid = await chat_isInvalidNickname(nick, isAdminUser);
     const nickContainsFilter = await chat_containsFilterWord(db, nick, isAdminUser);
     if (nickInvalid || nickContainsFilter) {
@@ -294,15 +294,18 @@ export async function chat_userLogin(clientIP, isAdminUser, url,db) {
   } else {
     clientIP = null; // 无法识别的IP格式，直接置空
   }
+  const lastRecent = await chat_hasRecentEnterMessage(db, room, nick, 100);
+  if (lastRecent !== null && Date.now() - lastRecent < 1800000) { // 现在的逻辑：30分钟内有进入消息，就跳过
+    return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
+  } else {
+    await chat_addMessage(db, room, "1f1494b0-3331-6412-8ed8-39d5825fb60e", `<span class="nickname">${nick}</span>&nbsp;进入了房间&nbsp;&nbsp;${clientIP ? `|&nbsp;&nbsp;IP: &nbsp;${clientIP}` : ''}`, true, Date.now());
+  }
   const lastIn15 = await chat_hasRecentEnterMessage(db, room, nick, 15);
   if (lastIn15 !== null) { // 之前的逻辑：15条消息内有进入消息，就跳过
     return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
-  const lastRecent = await chat_hasRecentEnterMessage(db, room, nick, 100);
-  if (lastRecent !== null && Date.now() - lastRecent < 1800000) { // 现在的逻辑：30分钟内有进入消息，就跳过
-    return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
-  }
-  await chat_addMessage(db, room, "1f1494b0-3331-6412-8ed8-39d5825fb60e", `<span class="nickname">${nick}</span>&nbsp;进入了房间&nbsp;&nbsp;${clientIP ? `|&nbsp;&nbsp;IP: &nbsp;${clientIP}` : '' }`, true, Date.now()); 
+  await chat_addMessage(db, room, "1f1494b0-3331-6412-8ed8-39d5825fb60e", `<span class="nickname">${nick}</span>&nbsp;进入了房间&nbsp;&nbsp;${clientIP ? `|&nbsp;&nbsp;IP: &nbsp;${clientIP}` : ''}`, true, Date.now());
+
   return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
 }
 
