@@ -3,7 +3,10 @@ export async function sl_addLink (request, env) {
     const url = new URL(request.url);
     try {
       const body = await request.json();
-      const { link, target, tip = false, expires_in = null } = body;
+      const { link, target, tip = false, expires_in = null, key = null } = body;
+      if (env.KEY && key !== env.KEY) {
+        return new Response(JSON.stringify({ code: 403, message: 'Forbidden: Invalid API key' }), { status: 403 });
+      }
       if (!link || !target) {
         return new Response(JSON.stringify({ code: 400, message: 'Missing link or target' }), { status: 400 });
       }
