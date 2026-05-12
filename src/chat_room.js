@@ -1425,16 +1425,69 @@ loadServiceStatus();
 </body></html>`;
 }
 export function chat_getMobileTip() {
-    return `
-    <html>
-      <head><title>提示</title><meta http-equiv="refresh" content="5;url=/"></head>
-
-      <body style="text-align: center;">
-        <h3>您貌似在使用移动端访问此网站</h3>
-        <p>该网站是专为桌面端UI设计的，移动端访问可能导致内容排版错误。</p>
-        <p>将会在5s后跳转到桌面版页面...</p>
-        <p>没有跳转？<a href="/">点击这里</a></p>
-      </body>
-    </html>
+  return `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>提示</title>
+    <meta http-equiv="refresh" content="5;url=/">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            text-align: center;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            max-width: 360px;
+            width: 100%;
+        }
+        h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+        }
+        p {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 12px;
+        }
+        .countdown {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 16px;
+        }
+        a {
+            color: #007aff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h3>您正在使用移动设备</h3>
+        <p>本站专为桌面端优化，移动端可能排版不佳。</p>
+        <p class="countdown">5 秒后自动跳转至桌面版…</p>
+        <p>没有跳转？<a href="/">点此手动跳转</a></p>
+    </div>
+</body>
+</html>
   `;
 }

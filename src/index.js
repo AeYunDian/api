@@ -169,6 +169,14 @@ export default {
           }
 
           if (await chat_checkServiceSuspended(db)) { return new Response(JSON.stringify({ error: "503 Service Suspended" }), { status: 503, headers: { "Content-Type": "application/json" } }); }
+          if (isMobile && cookies['CHAT_did_prompt_appear'] != 'true' || isWechat) {
+            const setCookie = serialize('CHAT_did_prompt_appear', 'true', {
+              secure: false,
+              sameSite: 'lax',
+              path: '/'
+            });
+            return new Response(chat_getMobileTip(), { headers: { "Content-Type": "text/html; charset=utf-8", "Set-Cookie": setCookie } });
+          }
 
           if (path === "/create") {
             const response = await chat_createUserPublic(db, url, isSuper, keyParam);
@@ -201,14 +209,6 @@ export default {
           }
 
           if (path === "/") {
-            if (isMobile && cookies['CHAT_did_prompt_appear'] != 'true' || isWechat) {
-              const setCookie = serialize('CHAT_did_prompt_appear', 'true', {
-                secure: false,
-                sameSite: 'lax',
-                path: '/'
-              });
-              return new Response(chat_getMobileTip(), { headers: { "Content-Type": "text/html; charset=utf-8", "Set-Cookie": setCookie } });
-            }
             return new Response(chat_getIndexHtml(), { headers: { "Content-Type": "text/html; charset=utf-8" } });
           }
 
