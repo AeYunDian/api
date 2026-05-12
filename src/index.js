@@ -169,7 +169,8 @@ export default {
           }
 
           if (await chat_checkServiceSuspended(db)) { return new Response(JSON.stringify({ error: "503 Service Suspended" }), { status: 503, headers: { "Content-Type": "application/json" } }); }
-          if (isMobile && cookies['CHAT_did_prompt_appear'] != 'true' || isWechat  && cookies['CHAT_did_prompt_appear'] != 'true' ) {
+          const hasNotSeenPrompt = cookies['CHAT_did_prompt_appear'] !== 'true';
+          if ((isMobile || isWechat) && hasNotSeenPrompt) {
             const setCookie = serialize('CHAT_did_prompt_appear', 'true', {
               secure: false,
               sameSite: 'lax',
