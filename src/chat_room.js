@@ -1424,3 +1424,17 @@ loadServiceStatus();
 </script>
 </body></html>`;
 }
+export function chat_getMobileTip() {
+    return `
+    <html>
+      <head><title>提示</title><meta http-equiv="refresh" content="5;url=/"></head>
+
+      <body style="text-align: center;">
+        <h3>您貌似在使用移动端访问此网站</h3>
+        <p>该网站是专为桌面端UI设计的，移动端访问可能导致内容排版错误。</p>
+        <p>将会在5s后跳转到桌面版页面...</p>
+        <p>没有跳转？<a href="/">点击这里</a></p>
+      </body>
+    </html>
+  `;
+}

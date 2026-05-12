@@ -8,6 +8,7 @@ import { getMainPage, escapeHtml, proxyStaticFile } from './utils.js';
 import { CreateAccount, InitDatabase, Login, PushUserBag, GetUserBag, Logout } from './crossfire/v1/crossfire.js';
 import { triggerWorkflow } from './trigger_workflow.js';
 import { net_proxy } from './net_proxy.js';
+import { parse, serialize } from 'cookie';
 import {
   chat_getIndexHtml,
   chat_getChatHtml,
@@ -23,6 +24,7 @@ import {
   chat_clean,
   chat_initTables,
   chat_userLogin,
+  chat_getMobileTip,
 } from './chat_room.js';
 
 
@@ -37,6 +39,7 @@ const corsHeaders_GO = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
+const mobileRegex = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|windows phone|phone|webos|kindle|tablet/i;
 
 export default {
   async scheduled(controller, env) {
@@ -54,6 +57,8 @@ export default {
     const kv = env.kv;
     const isWechat = !!userAgent.match(/MicroMessenger/i);
     const clientIP = request.headers.get('CF-Connecting-IP');
+    const isMobile = mobileRegex.test(userAgent) || false;
+    const cookies = parse(cookie);
 
     try {
       if (hostname === 'api.undz.cn') {
@@ -139,6 +144,7 @@ export default {
 
       }
       if (hostname === 'chat.undz.cn' || hostname === 'c.undz.cn') {
+
         if (request.method === 'OPTIONS') { return new Response(null, { headers: corsHeaders_GO }); }
 
         if (request.method === 'GET') {
@@ -194,7 +200,17 @@ export default {
             return response;
           }
 
-          if (path === "/") return new Response(chat_getIndexHtml(), { headers: { "Content-Type": "text/html; charset=utf-8" } });
+          if (path === "/") {
+            if (isMobile && cookies['CHAT_did_prompt_appear'] != 'true' || isWechat) {
+              const setCookie = serialize('CHAT_did_prompt_appear', 'true', {
+                secure: false,
+                sameSite: 'lax',
+                path: '/'
+              });
+              return new Response(chat_getMobileTip(), { headers: { "Content-Type": "text/html; charset=utf-8", "Set-Cookie": setCookie } });
+            }
+            return new Response(chat_getIndexHtml(), { headers: { "Content-Type": "text/html; charset=utf-8" } });
+          }
 
           if (path === "/chat") return new Response(chat_getChatHtml(), { headers: { "Content-Type": "text/html; charset=utf-8" } });
 

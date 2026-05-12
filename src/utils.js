@@ -56,10 +56,7 @@ export function getMainPage(title = "AyUndz API", name = "AyUndz API", descripti
     <!-- a padding to disable MSIE and Chrome friendly error page -->
     <!-- a padding to disable MSIE and Chrome friendly error page -->
     <!-- a padding to disable MSIE and Chrome friendly error page -->
-    <!-- a padding to disable MSIE and Chrome friendly error page -->
-    <!-- a padding to disable MSIE and Chrome friendly error page -->
     ${filler}
-    <!-- F**K MSIE and Chrome... -->
   `;
 }
 export async function proxyStaticFile(url, protocol = "https:") {
@@ -122,6 +119,7 @@ export function anonymizeIp(ipString) {
     groups[2] = '*'.repeat(groups[2].length);
     groups[3] = '*'.repeat(groups[3].length);
     groups[6] = '*'.repeat(groups[6].length);
+    groups[7] = '*'.repeat(groups[7].length);
     // 3.3 简化其他组（去除前导零），保留星号组不变
     const finalGroups = groups.map(group => {
       if (group.includes('*')) return group;
