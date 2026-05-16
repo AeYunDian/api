@@ -77,7 +77,7 @@ export default {
           }
           if (path === "/auth-proxy") {
             const key = url.searchParams.get("key") || '';
-            if (key === env.KEY) {
+            if (key === env.KEY || key === env.Bac2) {
               const setCookie = serialize('undz_api_proxy', 'true', {
                 secure: true,
                 httpOnly: true,
