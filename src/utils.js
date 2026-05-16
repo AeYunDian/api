@@ -42,6 +42,21 @@ export function escapeHtml(str) {
     return m;
   });
 }
+export function isGithubUrl(str) {
+  try {
+    const url = new URL(str);
+    return url.hostname.endsWith('github.com') || 
+    url.hostname.endsWith('github.io') || 
+    url.hostname.endsWith('githubusercontent.com') || 
+    url.hostname.endsWith('fastly.net') || 
+    url.hostname.endsWith('camo.githubusercontent.com') || 
+    url.hostname.endsWith('avatars.githubusercontent.com') || 
+    url.hostname.endsWith('user-content.githubusercontent.com') || 
+    url.hostname.endsWith('assets-cdn.github.com');
+  } catch (e) {
+    return false;
+  }
+}
 export function convertGhUrl(gh_type) {
   try {
     switch (gh_type) {

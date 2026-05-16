@@ -1,22 +1,73 @@
-import { USER_AGENT, rewriteUrlToFix, AllUrlRewriter, PROXY_PREFIX_GH, PROXY_PREFIX_FIX_GH, PROXY_PREFIX, PROXY_PREFIX_FIX, getMainPage, convertGhUrl } from "./utils.js";
+import { USER_AGENT, rewriteUrlToFix, AllUrlRewriter, PROXY_PREFIX_GH, isGithubUrl, PROXY_PREFIX_FIX_GH, PROXY_PREFIX, PROXY_PREFIX_FIX, getMainPage, convertGhUrl } from "./utils.js";
 export async function net_proxy(url, fixIt = false, restricted_from_gh = false) {
     let gh_path;
     if (!restricted_from_gh) {
+        // ========== 通用代理模式（/proxy/ 或 /proxy_fix/） ==========
         const prefix = fixIt ? PROXY_PREFIX_FIX : PROXY_PREFIX;
-        const idx = url.href.indexOf(prefix);
-        gh_path = url.href.slice(idx + prefix.length);
-        if (!gh_path.includes('://')) {
-            gh_path = url.protocol + '//' + gh_path;
+        try {
+            gh_path = extractTargetUrl(url, prefix, url.protocol);
+        } catch (e) {
+            return new Response(
+                getMainPage("Ay Net Proxy", "Proxy Error", "Invalid proxy URL format."),
+                { status: 400, headers: { 'Content-Type': 'text/html' } }
+            );
         }
     } else {
-        const url_path = fixIt ? url.pathname.replace(PROXY_PREFIX_FIX_GH, '') : url.pathname.replace(PROXY_PREFIX_GH, '');
-        const gh_type = url_path.split('/')[0];
-        const converted = convertGhUrl(gh_type);
-        if (!converted) {
-            return new Response(getMainPage("Ay Net Proxy", "Proxy Error", "Unsupported GitHub URL type: " + gh_type), { status: 400, headers: { 'Content-Type': 'text/html' } });
+        // ========== GitHub 专用代理模式（/gh/ 或 /gh_fix/） ==========
+        const ghPrefix = fixIt ? PROXY_PREFIX_FIX_GH : PROXY_PREFIX_GH;
+
+        // 1. 去掉路径前缀，得到剩余部分（可能包含完整 URL 或短域名格式）
+        let pathWithoutPrefix;
+        if (fixIt) {
+            pathWithoutPrefix = url.pathname.replace(PROXY_PREFIX_FIX_GH, '');
+        } else {
+            pathWithoutPrefix = url.pathname.replace(PROXY_PREFIX_GH, '');
         }
-        const newPath = url_path.slice(gh_type.length);
-        gh_path = url.protocol + '//' + converted + newPath + url.search;
+
+        // 2. 尝试解析为完整 URL，并检查是否是 GitHub 域名
+        let maybeFullUrl = pathWithoutPrefix;
+        if (!maybeFullUrl.includes('://')) {
+            maybeFullUrl = url.protocol + '//' + maybeFullUrl;
+        }
+
+        let isFullGithubUrl = false;
+        try {
+            const parsed = new URL(maybeFullUrl);
+            if (isGithubUrl(parsed.hostname)) {
+                isFullGithubUrl = true;
+                gh_path = maybeFullUrl;
+            }
+        } catch (e) {
+            // 不是有效 URL，忽略，继续尝试短域名转换
+        }
+
+        if (!isFullGithubUrl) {
+            // 3. 短域名转换模式：第一段为类型（如 www, raw, gist...）
+            const url_path = pathWithoutPrefix;
+            const firstSlash = url_path.indexOf('/');
+            let gh_type, restPath;
+            if (firstSlash === -1) {
+                gh_type = url_path;
+                restPath = '';
+            } else {
+                gh_type = url_path.slice(0, firstSlash);
+                restPath = url_path.slice(firstSlash);
+            }
+
+            const converted = convertGhUrl(gh_type);
+            if (!converted) {
+                return new Response(
+                    getMainPage("Ay Net Proxy", "Proxy Error", "Unsupported GitHub URL type: " + gh_type),
+                    { status: 400, headers: { 'Content-Type': 'text/html' } }
+                );
+            }
+
+            let targetUrl = url.protocol + '//' + converted + restPath;
+            if (url.search) {
+                targetUrl += url.search;
+            }
+            gh_path = targetUrl;
+        }
     }
 
     try {
@@ -53,7 +104,18 @@ export async function net_proxy(url, fixIt = false, restricted_from_gh = false) 
         return new Response(getMainPage("Ay Net Proxy", "Proxy Error", "Unable to request the target URL, please check: \n\n" + errorText.replace(/\n/g, "  \n")), { status: 500, headers: { 'Content-Type': 'text/html' } });
     }
 }
-export async function getProxyAuthPage(tips) {
+function extractTargetUrl(url, prefix, fallbackProtocol) {
+    const idx = url.href.indexOf(prefix);
+    if (idx === -1) {
+        throw new Error(`Prefix "${prefix}" not found in URL`);
+    }
+    let target = url.href.slice(idx + prefix.length);
+    if (!target.includes('://')) {
+        target = fallbackProtocol + '//' + target;
+    }
+    return target;
+}
+export function getProxyAuthPage(tips) {
     return `<!DOCTYPE html>
 <html>
 <head>
