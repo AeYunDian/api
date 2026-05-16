@@ -85,7 +85,7 @@ export default {
                 sameSite: 'lax',
                 path: '/'
               });
-              const setKey = serialize('undz_api_key', await md5Hex(clientIP + key), {
+              const setKey = serialize('undz_api_key', await md5Hex(clientIP + env.KEY), {
                 secure: true,
                 httpOnly: true,
                 maxAge: 7 * 24 * 60 * 60, // 7天
@@ -95,9 +95,8 @@ export default {
               return new Response(getMainPage("Authorization successful!", "Authorization successful!", "You have successfully obtained 7-day access to this API."), { headers: { 'Content-Type': 'text/html', 'Set-Cookie': `${setCookie}; ${setKey}` } });
             } else if (key !== '') {
               return new Response(getProxyAuthPage("密钥不正确"), { headers: { 'Content-Type': 'text/html' } });
-            } else {
-              return new Response(getProxyAuthPage(), { headers: { 'Content-Type': 'text/html' } });
-            }
+            } 
+            return new Response(getProxyAuthPage(), { headers: { 'Content-Type': 'text/html' } });
           }
           if (path === "/") {
             return new Response(getMainPage(), { headers: { 'Content-Type': 'text/html' } });
