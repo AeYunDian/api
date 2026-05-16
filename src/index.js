@@ -94,8 +94,22 @@ export default {
               });
               return new Response(getMainPage("Authorization successful!", "Authorization successful!", "You have successfully obtained 7-day access to this API."), { headers: { 'Content-Type': 'text/html', 'Set-Cookie': `${setCookie}; ${setKey}` } });
             } else if (key !== '') {
-              return new Response(getProxyAuthPage("密钥不正确"), { headers: { 'Content-Type': 'text/html' } });
-            } 
+              const setCookie = serialize('undz_api_proxy', '', {
+                secure: true,
+                httpOnly: true,
+                maxAge: 0,
+                sameSite: 'lax',
+                path: '/'
+              });
+              const setKey = serialize('undz_api_key', '', {
+                secure: true,
+                maxAge: 0,
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/'
+              });
+              return new Response(getProxyAuthPage("密钥不正确"), { headers: { 'Content-Type': 'text/html', "Set-Cookie": `${setCookie}; ${setKey}` } });
+            }
             return new Response(getProxyAuthPage(), { headers: { 'Content-Type': 'text/html' } });
           }
           if (path === "/") {
@@ -108,18 +122,18 @@ export default {
             return new Response(await sl_initLink(request, env), { headers: { 'Content-Type': 'application/json' } });
           }
           if (path.startsWith('/gh/')) {
-            return await net_proxy(url,  false, true);
+            return await net_proxy(url, false, true);
           }
           if (path.startsWith('/gh_fix/')) {
-            return await net_proxy(url,  true, true);
+            return await net_proxy(url, true, true);
           }
           if (path.startsWith('/proxy/')) {
             if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + env.KEY))) {
               return new Response(getMainPage("AyUndz API Service", "403 Forbidden", "You are not authorized to access this resource.<a href=\"/auth-proxy\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html' } });
             }
-            return await net_proxy(url,  false, false);
+            return await net_proxy(url, false, false);
           }
-          if (path.startsWith('/proxy_fix/') ) {
+          if (path.startsWith('/proxy_fix/')) {
             if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + env.KEY))) {
               return new Response(getMainPage("AyUndz API Service", "403 Forbidden", "You are not authorized to access this resource.<a href=\"/auth-proxy\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html' } });
             }
