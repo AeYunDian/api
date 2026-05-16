@@ -112,9 +112,6 @@ export default {
             }
             return new Response(getProxyAuthPage(), { headers: { 'Content-Type': 'text/html' } });
           }
-          if (path === "/") {
-            return new Response(getMainPage(), { headers: { 'Content-Type': 'text/html' } });
-          }
           if (path === '/go/parse') {
             return new Response(await sl_parseLink(request, env), { headers: { 'Content-Type': 'application/json' } });
           }
