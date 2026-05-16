@@ -65,7 +65,7 @@ export default {
         const response = await proxyStaticFile("https://r1.undz.cn/favicon.ico", url.protocol);
         return response;
       }
-      if (hostname === 'api.undz.cn') {
+      if (hostname === 'api.undz.cn' || hostname === 'api.io.hb.cn') {
         if (request.method === 'OPTIONS') {
           return new Response(null, { headers: corsHeaders_GPO });
         }
