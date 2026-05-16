@@ -44,15 +44,14 @@ export function escapeHtml(str) {
 }
 export function isGithubUrl(str) {
   try {
-    const url = new URL(str);
-    return url.hostname.endsWith('github.com') || 
-    url.hostname.endsWith('github.io') || 
-    url.hostname.endsWith('githubusercontent.com') || 
-    url.hostname.endsWith('fastly.net') || 
-    url.hostname.endsWith('camo.githubusercontent.com') || 
-    url.hostname.endsWith('avatars.githubusercontent.com') || 
-    url.hostname.endsWith('user-content.githubusercontent.com') || 
-    url.hostname.endsWith('assets-cdn.github.com');
+    return str.endsWith('github.com') || 
+    str.endsWith('github.io') || 
+    str.endsWith('githubusercontent.com') || 
+    str.endsWith('fastly.net') || 
+    str.endsWith('camo.githubusercontent.com') || 
+    str.endsWith('avatars.githubusercontent.com') || 
+    str.endsWith('user-content.githubusercontent.com') || 
+    str.endsWith('assets-cdn.github.com');
   } catch (e) {
     return false;
   }

@@ -69,7 +69,9 @@ export async function net_proxy(url, fixIt = false, restricted_from_gh = false) 
             gh_path = targetUrl;
         }
     }
-
+    if (!gh_path) {
+        return new Response(getMainPage("Ay Net Proxy", "Proxy Error", "Unable to extract target URL from the request."), { status: 400, headers: { 'Content-Type': 'text/html' } });
+    }
     try {
         const gh_response = await fetch(gh_path, {
             method: "GET",
