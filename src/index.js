@@ -114,13 +114,13 @@ export default {
             return await net_proxy(url,  true, true);
           }
           if (path.startsWith('/proxy/')) {
-            if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + key))) {
+            if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + env.KEY))) {
               return new Response(getMainPage("AyUndz API Service", "403 Forbidden", "You are not authorized to access this resource.<a href=\"/auth-proxy\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html' } });
             }
             return await net_proxy(url,  false, false);
           }
           if (path.startsWith('/proxy_fix/') ) {
-            if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + key))) {
+            if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + env.KEY))) {
               return new Response(getMainPage("AyUndz API Service", "403 Forbidden", "You are not authorized to access this resource.<a href=\"/auth-proxy\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html' } });
             }
             return await net_proxy(url, true, false);
