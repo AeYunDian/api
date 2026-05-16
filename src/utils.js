@@ -51,7 +51,8 @@ export function isGithubUrl(str) {
     str.endsWith('camo.githubusercontent.com') || 
     str.endsWith('avatars.githubusercontent.com') || 
     str.endsWith('user-content.githubusercontent.com') || 
-    str.endsWith('assets-cdn.github.com');
+    str.endsWith('assets-cdn.github.com') || 
+    str.endsWith('githubassets.com');
   } catch (e) {
     return false;
   }
