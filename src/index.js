@@ -4,10 +4,10 @@ import { handleVerifyCode } from './mail_verify/verify.js';
 import { sl_parseLink } from './short_link/parse_link.js';
 import { sl_addLink } from './short_link/add_link.js';
 import { sl_initLink } from './short_link/init_database.js';
-import { getMainPage, escapeHtml, proxyStaticFile } from './utils.js';
+import { getMainPage, escapeHtml, proxyStaticFile, md5Hex } from './utils.js';
 import { CreateAccount, InitDatabase, Login, PushUserBag, GetUserBag, Logout } from './crossfire/v1/crossfire.js';
 import { triggerWorkflow } from './trigger_workflow.js';
-import { net_proxy } from './net_proxy.js';
+import { net_proxy, getProxyAuthPage } from './net_proxy.js';
 import { parse, serialize } from 'cookie';
 import {
   chat_getIndexHtml,
@@ -61,6 +61,10 @@ export default {
     const cookies = parse(cookie);
 
     try {
+      if (path.toLowerCase() === "/favicon.ico") {
+        const response = await proxyStaticFile("https://r1.undz.cn/favicon.ico", url.protocol);
+        return response;
+      }
       if (hostname === 'api.undz.cn') {
         if (request.method === 'OPTIONS') {
           return new Response(null, { headers: corsHeaders_GPO });
@@ -71,6 +75,33 @@ export default {
           if (path === "/") {
             return new Response(getMainPage(), { headers: { 'Content-Type': 'text/html' } });
           }
+          if (path === "/auth-proxy") {
+            const key = url.searchParams.get("key") || '';
+            if (key === env.KEY) {
+              const setCookie = serialize('undz_api_proxy', 'true', {
+                secure: true,
+                httpOnly: true,
+                maxAge: 7 * 24 * 60 * 60, // 7天
+                sameSite: 'lax',
+                path: '/'
+              });
+              const setKey = serialize('undz_api_key', await md5Hex(clientIP + key), {
+                secure: true,
+                httpOnly: true,
+                maxAge: 7 * 24 * 60 * 60, // 7天
+                sameSite: 'lax',
+                path: '/'
+              });
+              return new Response(getMainPage("Authorization successful!", "Authorization successful!", "You have successfully obtained 7-day access to this API."), { headers: { 'Content-Type': 'text/html', 'Set-Cookie': `${setCookie}; ${setKey}` } });
+            } else if (key !== '') {
+              return new Response(getProxyAuthPage("密钥不正确"), { headers: { 'Content-Type': 'text/html' } });
+            } else {
+              return new Response(getProxyAuthPage(), { headers: { 'Content-Type': 'text/html' } });
+            }
+          }
+          if (path === "/") {
+            return new Response(getMainPage(), { headers: { 'Content-Type': 'text/html' } });
+          }
           if (path === '/go/parse') {
             return new Response(await sl_parseLink(request, env), { headers: { 'Content-Type': 'application/json' } });
           }
@@ -78,14 +109,22 @@ export default {
             return new Response(await sl_initLink(request, env), { headers: { 'Content-Type': 'application/json' } });
           }
           if (path.startsWith('/gh/')) {
-            return await net_proxy(url, request, false);
+            return await net_proxy(url,  false, true);
           }
           if (path.startsWith('/gh_fix/')) {
-            return await net_proxy(url, request, true);
+            return await net_proxy(url,  true, true);
           }
-          if (path.toLowerCase() === "/favicon.ico") {
-            const response = await proxyStaticFile("https://r1.undz.cn/favicon.ico", url.protocol);
-            return response;
+          if (path.startsWith('/proxy/')) {
+            if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + key))) {
+              return new Response(getMainPage("AyUndz API Service", "403 Forbidden", "You are not authorized to access this resource.<a href=\"/auth-proxy\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html' } });
+            }
+            return await net_proxy(url,  false, false);
+          }
+          if (path.startsWith('/proxy_fix/') ) {
+            if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + key))) {
+              return new Response(getMainPage("AyUndz API Service", "403 Forbidden", "You are not authorized to access this resource.<a href=\"/auth-proxy\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html' } });
+            }
+            return await net_proxy(url, true, false);
           }
           if (path.toLowerCase() === "/logo.png") {
             const response = await proxyStaticFile("https://r1.undz.cn/logo.png", url.protocol);
@@ -215,10 +254,6 @@ export default {
 
           if (path === "/chat") return new Response(chat_getChatHtml(), { headers: { "Content-Type": "text/html; charset=utf-8" } });
 
-          if (path.toLowerCase() === "/favicon.ico") {
-            const response = await proxyStaticFile("https://r1.undz.cn/favicon.ico", url.protocol);
-            return response;
-          }
           if (path.toLowerCase() === "/logo.png") {
             const response = await proxyStaticFile("https://r1.undz.cn/logo.png", url.protocol);
             return response;

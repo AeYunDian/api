@@ -1,7 +1,9 @@
 export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36';
+export const PROXY_PREFIX = '/proxy/';
+export const PROXY_PREFIX_FIX = '/proxy_fix/';
 export const PROXY_PREFIX_GH = '/gh/';
-export const PROXY_PREFIX_FIX = '/gh_fix/';
-export function rewriteUrlToFix(rawAttr, baseUrl) {
+export const PROXY_PREFIX_FIX_GH = '/gh_fix/';
+export function rewriteUrlToFix(rawAttr, baseUrl, proxyPrefix) {
   if (!rawAttr) return rawAttr;
   let absoluteUrl;
   if (rawAttr.startsWith('http://') || rawAttr.startsWith('https://')) {
@@ -14,18 +16,19 @@ export function rewriteUrlToFix(rawAttr, baseUrl) {
   } else {
     absoluteUrl = new URL(rawAttr, baseUrl).href;
   }
-  return PROXY_PREFIX_FIX + absoluteUrl;
+  return proxyPrefix + absoluteUrl;
 }
 
 export class AllUrlRewriter {
-  constructor(attrName, baseUrl) {
+  constructor(attrName, baseUrl, proxyPrefix) {
     this.attrName = attrName;
     this.baseUrl = baseUrl;
+    this.proxyPrefix = proxyPrefix;
   }
   element(element) {
     const oldValue = element.getAttribute(this.attrName);
-    if (!oldValue || oldValue.startsWith(PROXY_PREFIX_FIX)) return;
-    const newValue = rewriteUrlToFix(oldValue, this.baseUrl);
+    if (!oldValue || oldValue.startsWith(this.proxyPrefix)) return;
+    const newValue = rewriteUrlToFix(oldValue, this.baseUrl, this.proxyPrefix);
     element.setAttribute(this.attrName, newValue);
   }
 }
@@ -39,7 +42,43 @@ export function escapeHtml(str) {
     return m;
   });
 }
-
+export function convertGhUrl(gh_type) {
+  try {
+    switch (gh_type) {
+      case 'www':
+        return "github.com";
+      case 'raw':
+        return "raw.githubusercontent.com";
+      case 'gist':
+        return "gist.github.com";
+      case 'api':
+        return "api.github.com";
+      case 'io':
+        return "github.io";
+      case 'camo':
+        return "camo.githubusercontent.com";
+      case 'avatars':
+        return "avatars.githubusercontent.com";
+      case 'usercontent':
+        return "user-content.githubusercontent.com";
+      case 'assets':
+        return "assets-cdn.github.com";
+      case 'fastly':
+        return "github.global.ssl.fastly.net";
+      default:
+        return null;
+    }
+  } catch(e) {
+    return null;
+  }
+}
+export async function md5Hex(data) {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(data);
+  const hashBuffer = await crypto.subtle.digest('MD5', bytes);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 export function getMainPage(title = "AyUndz API", name = "AyUndz API", description = "This is the default page of AyUndz API", footer = "AyRouter | Powered by <a href=\"https://cloudflare.com\" target=\"_blank\">Cloudflare</a>") {
   const filler = '<!-- ' + 'x'.repeat(256) + ' -->'
   return `
