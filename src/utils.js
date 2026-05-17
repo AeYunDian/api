@@ -44,15 +44,41 @@ export function escapeHtml(str) {
 }
 export function isGithubUrl(str) {
   try {
-    return str.endsWith('github.com') || 
-    str.endsWith('github.io') || 
-    str.endsWith('githubusercontent.com') || 
-    str.endsWith('fastly.net') || 
-    str.endsWith('camo.githubusercontent.com') || 
-    str.endsWith('avatars.githubusercontent.com') || 
-    str.endsWith('user-content.githubusercontent.com') || 
-    str.endsWith('assets-cdn.github.com') || 
-    str.endsWith('githubassets.com');
+    return str.endsWith('github.com') ||
+      str.endsWith('github.io') ||
+      str.endsWith('githubusercontent.com') ||
+      str.endsWith('fastly.net') ||
+      str.endsWith('camo.githubusercontent.com') ||
+      str.endsWith('avatars.githubusercontent.com') ||
+      str.endsWith('user-content.githubusercontent.com') ||
+      str.endsWith('assets-cdn.github.com') ||
+      str.endsWith('githubassets.com') ||
+      str.endsWith('support-assets.githubassets.com') ||
+      str.endsWith('education.github.com') ||
+      str.endsWith('resources.github.com') ||
+      str.endsWith('uploads.github.com') ||
+      str.endsWith('archiveprogram.github.com') ||
+      str.endsWith('githubusercontent.com') ||
+      str.endsWith('raw.githubusercontent.com') ||
+      str.endsWith('cloud.githubusercontent.com') ||
+      str.endsWith('avatars0.githubusercontent.com') ||
+      str.endsWith('avatars1.githubusercontent.com') ||
+      str.endsWith('avatars2.githubusercontent.com') ||
+      str.endsWith('avatars3.githubusercontent.com') ||
+      str.endsWith('avatars4.githubusercontent.com') ||
+      str.endsWith('user-images.githubusercontent.com') ||
+      str.endsWith('objects.githubusercontent.com') ||
+      str.endsWith('private-user-images.githubusercontent.com') ||
+      str.endsWith('pages.github.com') ||
+      str.endsWith('githubapp.com') ||
+      str.endsWith('greasyfork.org') ||
+      str.endsWith('update.greasyfork.org') ||
+      str.endsWith('github.dev') ||
+      str.endsWith('github.global.ssl.fastly.net') ||
+      str.endsWith('gist.github.com') ||
+      str.endsWith('github.githubassets.com') ||
+      str.endsWith('api.github.com') ||
+      str.endsWith('github.githubassets.com');
   } catch (e) {
     return false;
   }
@@ -78,12 +104,54 @@ export function convertGhUrl(gh_type) {
         return "user-content.githubusercontent.com";
       case 'assets':
         return "assets-cdn.github.com";
-      case 'fastly':
+      case 'ghs':
         return "github.global.ssl.fastly.net";
+      case 'greasyfork':
+        return "greasyfork.org";
+      case 'upgf':
+        return "update.greasyfork.org";
+      case 'dev':
+        return "github.dev";
+      case 'githubassets':
+        return "github.githubassets.com";
+      case 'support':
+        return "support-assets.githubassets.com";
+      case 'edu':
+        return "education.github.com";
+      case 'res':
+        return "resources.github.com";
+      case 'upload':
+        return "uploads.github.com";
+      case 'ap':
+        return "archiveprogram.github.com";
+      case 'guc':
+        return "githubusercontent.com";
+      case 'cloud':
+        return "cloud.githubusercontent.com";
+      case 'avatars0':
+        return "avatars0.githubusercontent.com";
+      case 'avatars1':
+        return "avatars1.githubusercontent.com";
+      case 'avatars2':
+        return "avatars2.githubusercontent.com";
+      case 'avatars3':
+        return "avatars3.githubusercontent.com";
+      case 'avatars4':
+        return "avatars4.githubusercontent.com";
+      case 'userimg':
+        return "user-images.githubusercontent.com";
+      case 'objects':
+        return "objects.githubusercontent.com";
+      case 'pui':
+        return "private-user-images.githubusercontent.com";
+      case 'pages':
+        return "pages.github.com";
+      case 'app':
+        return "githubapp.com";
       default:
         return null;
     }
-  } catch(e) {
+  } catch (e) {
     return null;
   }
 }
