@@ -98,22 +98,22 @@ export default {
                   <a href="#" onclick="cancelReturn()" id="cancelReturnLBL">Cancel return?</a> <a href="#" onclick="returnImmediately()" id="returnImmediatelyLBL">Return immediately?</a>
                 </div>
                 <script>
-                  let cancelReturn = false;
+                  let cancelAutoReturn = false;
                   function cancelReturn() {
                     document.getElementById('cancelReturnLBL').style.display = 'none';
                     document.getElementById('returnMessage').textContent = 'Automatic return has been canceled. You can close this page or click back.';
                     document.getElementById('returnImmediatelyLBL').textContent = 'Return';
-                    cancelReturn = true;
+                    cancelAutoReturn = true;
                   }
                   function returnImmediately() {
                     window.location.href = "${escapeHtml(url.searchParams.get("redirect-to") || "/")}"
                   }
                   setTimeout(() => {
-                    if (cancelReturn) return;
+                    if (cancelAutoReturn) return;
                     window.location.href = "${escapeHtml(url.searchParams.get("redirect-to") || "/")}"
                   }, 5000);
                   if ("${escapeHtml(url.searchParams.get("redirect-to") || "/")}" === "/") {
-                    cancelReturn = true;
+                    cancelAutoReturn = true;
                     document.getElementById('returnSection').style.display = 'none';
                   }
                 </script>
