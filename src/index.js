@@ -92,7 +92,7 @@ export default {
                 sameSite: 'lax',
                 path: '/'
               });
-              return new Response(getMainPage("Authorization successful!", "Authorization successful!", `<p>You have successfully obtained 7-day access to this API. </p>
+              return new Response(getMainPage("Authorization successful!", "<h1>Authorization successful!<h1>", `<p>You have successfully obtained 7-day access to this API. </p>
                 <div id="returnSection">
                   <p id="returnMessage">Will return after 5s.</p>
                   <a href="#" onclick="cancelReturn()" id="cancelReturnLBL">Cancel return?</a> <a href="#" onclick="returnImmediately()" id="returnImmediatelyLBL">Return immediately?</a>
@@ -133,9 +133,9 @@ export default {
                 sameSite: 'lax',
                 path: '/'
               });
-              return new Response(getProxyAuthPage("密钥不正确"), { headers: { 'Content-Type': 'text/html', "Set-Cookie": `${setCookie}; ${setKey}` } });
+              return new Response(getProxyAuthPage("密钥不正确", null), { headers: { 'Content-Type': 'text/html', "Set-Cookie": `${setCookie}; ${setKey}` } });
             }
-            return new Response(getProxyAuthPage(), { headers: { 'Content-Type': 'text/html' } });
+            return new Response(getProxyAuthPage(null, escapeHtml(url.searchParams.get("redirect-to") || null)), { headers: { 'Content-Type': 'text/html' } });
           }
           if (path === '/go/parse') {
             return new Response(await sl_parseLink(request, env), { headers: { 'Content-Type': 'application/json' } });
