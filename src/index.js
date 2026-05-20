@@ -92,7 +92,32 @@ export default {
                 sameSite: 'lax',
                 path: '/'
               });
-              return new Response(getMainPage("Authorization successful!", "Authorization successful!", "You have successfully obtained 7-day access to this API."), { headers: { 'Content-Type': 'text/html', 'Set-Cookie': `${setCookie}; ${setKey}` } });
+              return new Response(getMainPage("Authorization successful!", "Authorization successful!", `<p>You have successfully obtained 7-day access to this API. </p>
+                <div id="returnSection">
+                  <p id="returnMessage">Will return after 5s.</p>
+                  <a href="#" onclick="cancelReturn()" id="cancelReturnLBL">Cancel return?</a> <a href="#" onclick="returnImmediately()" id="returnImmediatelyLBL">Return immediately?</a>
+                </div>
+                <script>
+                  var cancelReturn = false;
+                  function cancelReturn() {
+                    document.getElementById('cancelReturnLBL').style.display = 'none';
+                    document.getElementById('returnMessage').textContent = 'Automatic return has been canceled. You can close this page or click back.';
+                    document.getElementById('returnImmediatelyLBL').textContent = 'Return';
+                    cancelReturn = true;
+                  }
+                  function returnImmediately() {
+                    window.location.href = "${escapeHtml(url.searchParams.get("redirect-to") || "/")}"
+                  }
+                  setTimeout(() => {
+                    if (cancelReturn) return;
+                    window.location.href = "${escapeHtml(url.searchParams.get("redirect-to") || "/")}"
+                  }, 5000);
+                  if ("${escapeHtml(url.searchParams.get("redirect-to") || "/")}" === "/") {
+                    cancelReturn = true;
+                    document.getElementById('returnSection').style.display = 'none';
+                  }
+                </script>
+                `), { headers: { 'Content-Type': 'text/html', 'Set-Cookie': `${setCookie}; ${setKey}` } });
             } else if (key !== '') {
               const setCookie = serialize('undz_api_proxy', '', {
                 secure: true,
@@ -126,13 +151,13 @@ export default {
           }
           if (path.startsWith('/proxy/')) {
             if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + env.KEY))) {
-              return new Response(getMainPage("AyUndz API Service", "403 Forbidden", "You are not authorized to access this resource.<a href=\"/auth-proxy\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html' } });
+              return new Response(getMainPage("AyUndz API Service", "<h1>403 Forbidden</h1>", "<p>You are not authorized to access this resource.</p><a href=\"/auth-proxy?redirect-to=" + encodeURIComponent(url.pathname + url.search) + "\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html' } });
             }
             return await net_proxy(url, false, false);
           }
           if (path.startsWith('/proxy_fix/')) {
             if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + env.KEY))) {
-              return new Response(getMainPage("AyUndz API Service", "403 Forbidden", "You are not authorized to access this resource.<a href=\"/auth-proxy\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html' } });
+              return new Response(getMainPage("AyUndz API Service", "<h1>403 Forbidden</h1>", "<p>You are not authorized to access this resource.</p><a href=\"/auth-proxy?redirect-to=" + encodeURIComponent(url.pathname + url.search) + "\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html' } });
             }
             return await net_proxy(url, true, false);
           }
@@ -149,7 +174,7 @@ export default {
               headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO }
             });
           }
-          return new Response(getMainPage("AyUndz API Service", "404 Not Found", "The page you are trying to access cannot be found, please check and try again."), { status: 404, headers: { 'Content-Type': 'text/html' } });
+          return new Response(getMainPage("AyUndz API Service", "<h1>404 Not Found</h1>", "<p>The page you are trying to access cannot be found, please check and try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html' } });
         }
 
         // 路由处理
@@ -189,7 +214,7 @@ export default {
           return response;
         }
 
-        return new Response(getMainPage("AyUndz API Service", "404 Not Found", JSON.stringify({ error: "The page you are looking for cannot be found, please check and try again" })), { status: 404, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
+        return new Response(getMainPage("AyUndz API Service", "<h1>404 Not Found</h1>", "<p>The page you are looking for cannot be found, please check and try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
 
       }
       if (hostname === 'chat.undz.cn' || hostname === 'c.undz.cn') {
@@ -269,11 +294,11 @@ export default {
             return response;
           }
 
-          return new Response(getMainPage("Ay Online Chat Room", "404 Not Found", "The page you are looking for cannot be found, please check and try again"), { status: 404, headers: { 'Content-Type': 'text/html', ...corsHeaders_GO } });
+          return new Response(getMainPage("Ay Online Chat Room", "<h1>404 Not Found</h1>", "<p>The page you are looking for cannot be found, please check and try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html', ...corsHeaders_GO } });
         }
 
       }
-      return new Response(getMainPage("Undz Service Router", "Undz Service Router", "Sorry, we can't find the hostname you are trying to access. Please try again."), { status: 404, headers: { 'Content-Type': 'text/html' } });
+      return new Response(getMainPage("Undz Service Router", "<h1>Undz Service Router</h1>", "<p>Sorry, we can't find the hostname you are trying to access. Please try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html' } });
     } catch (err) {
       console.error(err);
       return new Response(`Worker threw exception: ${err.message}\nStack: ${err.stack || "no stack"}`, { status: 500, headers: { "Content-Type": "text/plain" } });

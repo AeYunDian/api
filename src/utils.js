@@ -78,7 +78,9 @@ export function isGithubUrl(str) {
       str.endsWith('gist.github.com') ||
       str.endsWith('github.githubassets.com') ||
       str.endsWith('api.github.com') ||
-      str.endsWith('github.githubassets.com');
+      str.endsWith('github.githubassets.com') || 
+      str.endsWith('undz.cn') || 
+      str.endsWith('io.hb.cn');
   } catch (e) {
     return false;
   }
@@ -162,16 +164,16 @@ export async function md5Hex(data) {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
-export function getMainPage(title = "AyUndz API", name = "AyUndz API", description = "This is the default page of AyUndz API", footer = "AyRouter | Powered by <a href=\"https://cloudflare.com\" target=\"_blank\">Cloudflare</a>") {
+export function getMainPage(title = "AyUndz API", name = "<h1>AyUndz API</h1>", description = "<p>This is the default page of AyUndz API.</p>", footer = "<p>AyRouter | Powered by <a href=\"https://cloudflare.com\" target=\"_blank\">Cloudflare</a></p>") {
   const filler = '<!-- ' + 'x'.repeat(256) + ' -->'
   return `
     <html>
       <head><title>${title}</title></head>
       <body style="text-align: center;">
-        <h1>${name}</h1>
-        <p>${description}</p>
-        <hr />
-        <p>${footer}</p>
+        ${name}
+        ${description}
+        ${footer ? '<hr />' : ''}
+        ${footer}
       </body>
     </html>
     <!-- a padding to disable MSIE and Chrome friendly error page -->

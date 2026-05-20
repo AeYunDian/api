@@ -8,7 +8,7 @@ export async function net_proxy(url, fixIt = false, restricted_from_gh = false) 
             gh_path = extractTargetUrl(url, prefix, url.protocol);
         } catch (e) {
             return new Response(
-                getMainPage("Ay Net Proxy", "Proxy Error", "Invalid proxy URL format."),
+                getMainPage("Ay Net Proxy", "<h1>Proxy Error</h1>", "<p>Invalid proxy URL format.</p>"),
                 { status: 400, headers: { 'Content-Type': 'text/html' } }
             );
         }
@@ -57,7 +57,7 @@ export async function net_proxy(url, fixIt = false, restricted_from_gh = false) 
             const converted = convertGhUrl(gh_type);
             if (!converted) {
                 return new Response(
-                    getMainPage("Ay Net Proxy", "Proxy Error", "Unsupported GitHub URL type: " + gh_type),
+                    getMainPage("Ay Net Proxy", "<h1>Proxy Error</h1>", "<p>Unsupported GitHub URL type: " + gh_type + "</p>"),
                     { status: 400, headers: { 'Content-Type': 'text/html' } }
                 );
             }
@@ -70,7 +70,7 @@ export async function net_proxy(url, fixIt = false, restricted_from_gh = false) 
         }
     }
     if (!gh_path) {
-        return new Response(getMainPage("Ay Net Proxy", "Proxy Error", "Unable to extract target URL from the request."), { status: 400, headers: { 'Content-Type': 'text/html' } });
+        return new Response(getMainPage("Ay Net Proxy", "<h1>Proxy Error</h1>", "<p>Unable to extract target URL from the request.</p>"), { status: 400, headers: { 'Content-Type': 'text/html' } });
     }
     try {
         const gh_response = await fetch(gh_path, {
@@ -103,7 +103,7 @@ export async function net_proxy(url, fixIt = false, restricted_from_gh = false) 
 
     } catch (e) {
         const errorText = typeof e === 'string' ? e : (e.message || JSON.stringify(e));
-        return new Response(getMainPage("Ay Net Proxy", "Proxy Error", "Unable to request the target URL, please check: \n\n" + errorText.replace(/\n/g, "  \n")), { status: 500, headers: { 'Content-Type': 'text/html' } });
+        return new Response(getMainPage("Ay Net Proxy", "<h1>Proxy Error</h1>", "<p>Unable to request the target URL, please check: </p><pre>" + errorText.replace(/\n/g, "  \n") + "</pre>"), { status: 500, headers: { 'Content-Type': 'text/html' } });
     }
 }
 function extractTargetUrl(url, prefix, fallbackProtocol) {
