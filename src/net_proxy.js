@@ -168,7 +168,7 @@ function trim(s){ return s.replace(/^\\s+|\\s+$/g,''); }
 document.getElementById('loginBtn').onclick=function(){
   var key=trim(document.getElementById('adminKey').value);
   if(!key){ alert('请输入密钥'); return; }
-  window.location.href='/auth-proxy?key='+encodeURIComponent(key) ${redirectUrl ? `+ '&redirect-to=' + ${redirectUrl}` : ''} + '&_t=' + (new Date().getTime());
+  window.location.href='/auth-proxy?key='+encodeURIComponent(key) ${redirectUrl ? `+ '&redirect-to=' + "${redirectUrl}"` : ''} + '&_t=' + (new Date().getTime());
 };
 </script>
 </body></html>`;
