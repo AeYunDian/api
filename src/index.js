@@ -92,13 +92,13 @@ export default {
                 sameSite: 'lax',
                 path: '/'
               });
-              return new Response(getMainPage("Authorization successful!", "<h1>Authorization successful!<h1>", `<p>You have successfully obtained 7-day access to this API. </p>
+              return new Response(getMainPage("Authorization successful!", "<h1>Authorization successful!</h1>", `<p>You have successfully obtained 7-day access to this API. </p>
                 <div id="returnSection">
                   <p id="returnMessage">Will return after 5s.</p>
                   <a href="#" onclick="cancelReturn()" id="cancelReturnLBL">Cancel return?</a> <a href="#" onclick="returnImmediately()" id="returnImmediatelyLBL">Return immediately?</a>
                 </div>
                 <script>
-                  var cancelReturn = false;
+                  let cancelReturn = false;
                   function cancelReturn() {
                     document.getElementById('cancelReturnLBL').style.display = 'none';
                     document.getElementById('returnMessage').textContent = 'Automatic return has been canceled. You can close this page or click back.';
