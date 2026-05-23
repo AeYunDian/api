@@ -18,7 +18,11 @@ export function rewriteUrlToFix(rawAttr, baseUrl, proxyPrefix) {
   }
   return proxyPrefix + absoluteUrl;
 }
-
+export function assertString(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('Expected a string');
+  }
+}
 export class AllUrlRewriter {
   constructor(attrName, baseUrl, proxyPrefix) {
     this.attrName = attrName;
@@ -306,7 +310,7 @@ function expandIPv6(addr) {
 const notBase64 = /[^A-Z0-9+\/=]/i;
 
 export function isBase64(str) {
-  assertString(str); // remove this line and make sure you pass in a string
+  assertString(str);
   const len = str.length;
   if (!len || len % 4 !== 0 || notBase64.test(str)) {
     return false;
