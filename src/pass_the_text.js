@@ -52,7 +52,9 @@ export async function handleGetText(path, env) {
     if (!result) {
       return new Response(JSON.stringify({ code: 404, message: 'Content not found' }), { status: 404 });
     }
-    return new Response(result.content, { status: 200 });
+    var buffer = Buffer.from(result.content, 'base64');
+    var decodedData = buffer.toString();
+    return new Response(decodedData, { status: 200 });
   } catch (e) {
     return new Response(JSON.stringify({ code: 500, error: e.message }), { status: 500 });
   }
