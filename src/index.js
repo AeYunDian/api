@@ -26,7 +26,7 @@ import {
   chat_userLogin,
   chat_getMobileTip,
 } from './chat_room.js';
-import { handleSaveText, handleDeleteText, handleGetText } from './pass_the_text.js';
+import { handleSaveText, handleDeleteText, handleGetText, pt_initDatabase } from './pass_the_text.js';
 
 
 const corsHeaders_GPO = {
@@ -72,7 +72,7 @@ export default {
         }
 
         if (request.method === 'GET') {
-
+          
           if (path === "/") {
             return new Response(getMainPage(), { headers: { 'Content-Type': 'text/html' } });
           }
@@ -164,6 +164,9 @@ export default {
           }
           if (path.startsWith('/sf/')) {
             return await handleGetText(path, env);
+          }
+          if (path === "sf_init") {
+            return await pt_initDatabase(request, env);
           }
           if (path.toLowerCase() === "/logo.png") {
             const response = await proxyStaticFile("https://r1.undz.cn/logo.png", url.protocol);

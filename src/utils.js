@@ -316,3 +316,29 @@ export function isBase64(str) {
     firstPaddingChar === len - 1 ||
     (firstPaddingChar === len - 2 && str[len - 1] === '=');
 }
+export function toBase64(str) {
+    const bytes = new TextEncoder().encode(str);
+    const bin = String.fromCharCode(...bytes);
+    return btoa(bin);
+}
+export function utf8ToBase64(str) {
+    // 将字符串编码为 UTF-8 字节数组
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(str);  // Uint8Array
+    // 将字节数组转换为二进制字符串（每个字节转成对应字符）
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    // 最后 Base64 编码
+    return btoa(binary);
+}
+export function base64ToUtf8(base64Str) {
+    // 标准 Base64 解码为二进制字符串
+    const binary = atob(base64Str);
+    // 将二进制字符串转回 Uint8Array
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+    // 使用 TextDecoder 解码为 UTF-8 字符串
+    const decoder = new TextDecoder();
+    return decoder.decode(bytes);
+}
