@@ -26,6 +26,7 @@ import {
   chat_userLogin,
   chat_getMobileTip,
 } from './chat_room.js';
+import { handleSaveText, handleDeleteText, handleGetText } from './pass_the_text.js';
 
 
 const corsHeaders_GPO = {
@@ -161,6 +162,9 @@ export default {
             }
             return await net_proxy(url, true, false);
           }
+          if (path.startsWith('/sf/')) {
+            return await handleGetText(path, env);
+          }
           if (path.toLowerCase() === "/logo.png") {
             const response = await proxyStaticFile("https://r1.undz.cn/logo.png", url.protocol);
             return response;
@@ -182,6 +186,12 @@ export default {
           let response = new Response(JSON.stringify({ error: "404 Not Found" }), { status: 404 });
           if (path === '/api/verifymail/v1/send') {
             response = await handleSendVerification(request, env);
+          }
+          if (path === '/api/sf/v1/save') {
+            response = await handleSaveText(request, env);
+          }
+          if (path === '/api/sf/v1/delete') {
+            response = await handleDeleteText(request, env);
           }
           if (path === '/api/verifymail/v1/verify') {
             response = await handleVerifyCode(request, env);
