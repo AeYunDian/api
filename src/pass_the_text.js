@@ -1,4 +1,4 @@
-import { isBase64,  toBase64, utf8ToBase64 } from "./utils.js";
+import { isBase64,  toBase64, utf8ToBase64, base64ToUtf8 } from "./utils.js";
 const PASS_TEXT_TBL_MESSAGES = 'pass_text_messages';
 export async function handleSaveText(request, env) {
   // 处理保存文本的请求
