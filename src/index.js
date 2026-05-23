@@ -165,7 +165,7 @@ export default {
           if (path.startsWith('/sf/')) {
             return await handleGetText(path, env);
           }
-          if (path === "sf_init") {
+          if (path === "/sf_init") {
             return await pt_initDatabase(request, env);
           }
           if (path.toLowerCase() === "/logo.png") {
