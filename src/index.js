@@ -180,6 +180,7 @@ export default {
                 </head>
                 <body style="display:flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: Arial, sans-serif;">
                   <p style="font-size: 18px; margin-bottom: 20px;">没有自动跳转？<a href="${link}">点击这里</a>，或手动搜索QQ号 ${escapeHtml(qquid)}</p>
+                  <p style="font-size: 14px; ">最新版QQ因为政策，可能会要求您先打开QQ主程序才能够使用链接唤起添加好友页面</p>
                 </body>
               </html>
             `;
