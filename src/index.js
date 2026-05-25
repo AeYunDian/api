@@ -185,9 +185,9 @@ export default {
               </html>
             `;
             if (isMobile) {
-              return new Response(null, { status: 302, headers: { 'Location': link } });
+              return new Response(html, { status: 302, headers: { 'Location': link } });
             } else {
-              return new Response(null ,{ status: 302, headers: { 'Location': link } });
+              return new Response(html ,{ status: 302, headers: { 'Location': link } });
             }
           }
           if (path === '/go/parse') {
