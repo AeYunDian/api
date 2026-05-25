@@ -66,6 +66,9 @@ export default {
         const response = await proxyStaticFile("https://r1.undz.cn/favicon.ico", url.protocol);
         return response;
       }
+      if (hostname === 'mail.undz.cn' || hostname === 'mail.io.hb.cn') {
+        return new Response("此服务暂时关闭，很抱歉给您带来不便体验", { headers: corsHeaders_GPO });
+      }
       if (hostname === 'api.undz.cn' || hostname === 'api.io.hb.cn') {
         if (request.method === 'OPTIONS') {
           return new Response(null, { headers: corsHeaders_GPO });
