@@ -72,7 +72,7 @@ export default {
         }
 
         if (request.method === 'GET') {
-          
+
           if (path === "/") {
             return new Response(getMainPage(), { headers: { 'Content-Type': 'text/html' } });
           }
@@ -138,6 +138,28 @@ export default {
             }
             return new Response(getProxyAuthPage(null, escapeHtml(url.searchParams.get("redirect-to") || null)), { headers: { 'Content-Type': 'text/html' } });
           }
+          if (path === '/ip') {
+            const cf = request.cf;
+            const queryIP = url.searchParams.get('ip');
+            if (queryIP) {
+              const selfReq = new Request(request.url, {
+                headers: { 'CF-Connecting-IP': queryIP },
+                method: 'GET',
+              })
+              selfReq.cf = {}
+              const selfRes = await fetch(selfReq)
+              const data = await selfRes.json()
+              return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json', } });
+            } else {
+              const info = {
+                code: 200,
+                ip: clientIP,
+                ...cf,
+              };
+              return new Response(JSON.stringify(info), { headers: { 'Content-Type': 'application/json', } });
+            }
+          }
+
           if (path === '/go/parse') {
             return new Response(await sl_parseLink(request, env), { headers: { 'Content-Type': 'application/json' } });
           }
