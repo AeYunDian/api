@@ -171,9 +171,9 @@ export default {
               return new Response(JSON.stringify({ code: 400, message: "Missing uid parameter" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
             }
             if (isMobile) {
-              return new Response(JSON.stringify({ code: 302 }), { status: 302, headers: { 'Content-Type': 'application/json' , 'Location': `mqqapi://card/show_pslcard?src_type=internal&version=1&uin=${qquid}&card_type=person&source=sharecard` } });
+              return new Response({ status: 302, headers: { 'Location': `mqqapi://card/show_pslcard?src_type=internal&version=1&uin=${qquid}&card_type=person&source=sharecard` } });
             } else {
-              return new Response(JSON.stringify({ code: 302 }), { status: 302, headers: { 'Content-Type': 'application/json' , 'Location': `tencent://AddContact/?fromId=45&fromSubId=1&subcmd=all&uin=${qquid}` } });
+              return new Response({ status: 302, headers: { 'Location': `tencent://AddContact/?fromId=45&fromSubId=1&subcmd=all&uin=${qquid}` } });
             }
           }
           if (path === '/go/parse') {
