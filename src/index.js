@@ -167,13 +167,26 @@ export default {
           }
           if (path === '/addqq') {
             const qquid = url.searchParams.get('uid');
+
             if (!qquid) {
               return new Response(JSON.stringify({ code: 400, message: "Missing uid parameter" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
             }
+            const link = isMobile ? `mqqapi://card/show_pslcard?src_type=internal&version=1&uin=${qquid}&card_type=person&source=sharecard` : `tencent://ntqq-open?subCmd=profile&action=openMiniBuddyProfile&actionParams=${encodeURIComponent(JSON.stringify({"uin": qquid,"sourceType": "QrCodeShareBuddyLink"}))}`;
+            const html = `
+              <html>
+                <head>
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+                  <title>添加QQ好友</title>
+                </head>
+                <body style="display:flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: Arial, sans-serif;">
+                  <p style="font-size: 18px; margin-bottom: 20px;">没有自动跳转？<a href="${link}">点击这里</a>，或手动搜索QQ号 ${escapeHtml(qquid)}</p>
+                </body>
+              </html>
+            `;
             if (isMobile) {
-              return new Response(null, { status: 302, headers: { 'Location': `mqqapi://card/show_pslcard?src_type=internal&version=1&uin=${qquid}&card_type=person&source=sharecard` } });
+              return new Response(null, { status: 302, headers: { 'Location': link } });
             } else {
-              return new Response(null ,{ status: 302, headers: { 'Location': `tencent://AddContact/?fromId=45&fromSubId=1&subcmd=all&uin=${qquid}` } });
+              return new Response(null ,{ status: 302, headers: { 'Location': link } });
             }
           }
           if (path === '/go/parse') {
