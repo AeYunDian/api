@@ -27,7 +27,7 @@ import {
   chat_getMobileTip,
 } from './chat_room.js';
 import { handleSaveText, handleDeleteText, handleGetText, pt_initDatabase } from './pass_the_text.js';
-
+import { WorkerMailer } from 'worker-mailer';
 
 const corsHeaders_GPO = {
   'Access-Control-Allow-Origin': '*',
@@ -149,7 +149,7 @@ export default {
                 code: 405,
                 message: "The interface is temporarily closed",
               };
-              return new Response(JSON.stringify(_temp), { status: 405, headers: { 'Content-Type': 'application/json'} });
+              return new Response(JSON.stringify(_temp), { status: 405, headers: { 'Content-Type': 'application/json' } });
 
               // const selfReq = new Request(request.url, {
               //   headers: { 'CF-Connecting-IP': queryIP },
@@ -174,7 +174,7 @@ export default {
             if (!qquid) {
               return new Response(JSON.stringify({ code: 400, message: "Missing uid parameter" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
             }
-            const link = isMobile ? `mqqapi://card/show_pslcard?src_type=internal&version=1&uin=${qquid}&card_type=person&source=sharecard` : `tencent://ntqq-open?subCmd=profile&action=openMiniBuddyProfile&actionParams=${encodeURIComponent(JSON.stringify({"uin": qquid,"sourceType": "QrCodeShareBuddyLink"}))}`;
+            const link = isMobile ? `mqqapi://card/show_pslcard?src_type=internal&version=1&uin=${qquid}&card_type=person&source=sharecard` : `tencent://ntqq-open?subCmd=profile&action=openMiniBuddyProfile&actionParams=${encodeURIComponent(JSON.stringify({ "uin": qquid, "sourceType": "QrCodeShareBuddyLink" }))}`;
             const html = `
               <html>
                 <head>
@@ -190,7 +190,7 @@ export default {
             if (isMobile) {
               return new Response(html, { status: 302, headers: { 'Location': link } });
             } else {
-              return new Response(html ,{ status: 302, headers: { 'Location': link } });
+              return new Response(html, { status: 302, headers: { 'Location': link } });
             }
           }
           if (path === '/go/parse') {
@@ -198,6 +198,41 @@ export default {
           }
           if (path === '/go/init') {
             return new Response(await sl_initLink(request, env), { headers: { 'Content-Type': 'application/json' } });
+          }
+          if (path === '/mailer.send') {
+            const queryEmail = url.searchParams.get('email');
+            const querySubject = url.searchParams.get('subject') || 'Hello from Cloudflare Worker!';
+            const queryText = url.searchParams.get('text') || 'This is a plain text message.';
+            const queryHtml = url.searchParams.get('html'); // 可选的 HTML 内容参数
+            if (!queryEmail || !env.noreply_email || !env.noreply_password || !querySubject || !queryText) {
+              return new Response(JSON.stringify({ code: 400, message: "Missing required parameters" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+            }
+            const mailer = await WorkerMailer.connect({
+              host: 'smtp.qiye.aliyun.com',      // SMTP 服务器地址
+              port: 587,                     // 常用端口 587 (TLS) 或 465 (SSL)[reference:3]
+              secure: false,                 // 使用 port 587 时设为 false
+              startTls: true,                // 启用 STARTTLS，保证连接安全[reference:4]
+              credentials: {
+                username: env.noreply_email, // 完整邮箱地址
+                password: env.noreply_password
+              },
+              authType: 'plain',             // 认证方式，通常用 'plain' 即可
+            });
+
+            // 2. 发送邮件
+            try {
+              await mailer.send({
+                from: { name: 'Noreply', email: 'noreply@undz.cn' },
+                to: { name: 'Recipient', email: queryEmail },
+                subject: querySubject,
+                text: queryText,
+                html: queryHtml || '',
+              });
+
+              return new Response('邮件发送成功！', { status: 200 });
+            } catch (error) {
+              return new Response(`发送失败：${error.message}`, { status: 500 });
+            }
           }
           if (path.startsWith('/gh/')) {
             return await net_proxy(url, false, true);
@@ -285,7 +320,7 @@ export default {
         return new Response(getMainPage("AyUndz API Service", "<h1>404 Not Found</h1>", "<p>The page you are looking for cannot be found, please check and try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
 
       }
-      
+
       if (hostname === 'chat.undz.cn' || hostname === 'c.undz.cn') {
 
         if (request.method === 'OPTIONS') { return new Response(null, { headers: corsHeaders_GO }); }

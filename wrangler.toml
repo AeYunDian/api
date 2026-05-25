@@ -1,7 +1,7 @@
 name = "api"
 compatibility_date = "2025-10-01"
 main = "./src/index.js"
-
+compatibility_flags = ["nodejs_compat"]
 kv_namespaces = [
   { binding = "kv", id = "483f0fad0c2841a2888c72869e041dfd" }
 ]
