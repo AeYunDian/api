@@ -200,6 +200,11 @@ export default {
             return new Response(await sl_initLink(request, env), { headers: { 'Content-Type': 'application/json' } });
           }
           if (path === '/mailer.send') {
+            const _temp = {
+              code: 405,
+              message: "The interface is temporarily closed",
+            };
+            return new Response(JSON.stringify(_temp), { status: 405, headers: { 'Content-Type': 'application/json' } });
             const queryEmail = url.searchParams.get('email');
             const querySubject = url.searchParams.get('subject') || 'Hello from Cloudflare Worker!';
             const queryText = url.searchParams.get('text') || 'This is a plain text message.';
@@ -222,7 +227,7 @@ export default {
             // 2. 发送邮件
             try {
               await mailer.send({
-                from: { name: 'Noreply', email: 'noreply@undz.cn' },
+                from: { name: 'Noreply', email: env.noreply_email },
                 to: { name: 'Recipient', email: queryEmail },
                 subject: querySubject,
                 text: queryText,
