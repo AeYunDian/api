@@ -166,7 +166,7 @@ export default {
             }
           }
           if (path === '/addqq') {
-            qquid = url.searchParams.get('uid');
+            const qquid = url.searchParams.get('uid');
             if (!qquid) {
               return new Response(JSON.stringify({ code: 400, message: "Missing uid parameter" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
             }
