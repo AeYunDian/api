@@ -142,14 +142,20 @@ export default {
             const cf = request.cf;
             const queryIP = url.searchParams.get('ip');
             if (queryIP) {
-              const selfReq = new Request(request.url, {
-                headers: { 'CF-Connecting-IP': queryIP },
-                method: 'GET',
-              })
-              selfReq.cf = {}
-              const selfRes = await fetch(selfReq)
-              const data = await selfRes.json()
-              return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json', } });
+              const _temp = {
+                code: 405,
+                message: "The interface is temporarily closed",
+              };
+              return new Response(JSON.stringify(_temp), { headers: { 'Content-Type': 'application/json', } });
+
+              // const selfReq = new Request(request.url, {
+              //   headers: { 'CF-Connecting-IP': queryIP },
+              //   method: 'GET',
+              // });
+              // selfReq.cf = {}
+              // const selfRes = await fetch(selfReq);
+              // const data = await selfRes.json();
+              // return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json', } });
             } else {
               const info = {
                 code: 200,
