@@ -146,7 +146,7 @@ export default {
                 code: 405,
                 message: "The interface is temporarily closed",
               };
-              return new Response(JSON.stringify(_temp), { headers: { 'Content-Type': 'application/json', } });
+              return new Response(JSON.stringify(_temp), { status: 405, headers: { 'Content-Type': 'application/json'} });
 
               // const selfReq = new Request(request.url, {
               //   headers: { 'CF-Connecting-IP': queryIP },
@@ -258,6 +258,7 @@ export default {
         return new Response(getMainPage("AyUndz API Service", "<h1>404 Not Found</h1>", "<p>The page you are looking for cannot be found, please check and try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
 
       }
+      
       if (hostname === 'chat.undz.cn' || hostname === 'c.undz.cn') {
 
         if (request.method === 'OPTIONS') { return new Response(null, { headers: corsHeaders_GO }); }
