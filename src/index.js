@@ -190,9 +190,9 @@ export default {
               </html>
             `;
             if (isMobile) {
-              return new Response(html, { status: 200 });
+              return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
             } else {
-              return new Response(html, { status: 200 });
+              return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
             }
           }
           if (path === '/go/parse') {
