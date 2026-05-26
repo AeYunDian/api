@@ -1,3 +1,8 @@
+const corsHeaders_GPO = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
 export async function sl_parseLink(request, env) {
     const url = new URL(request.url);
     const link = url.searchParams.get('link');
@@ -19,8 +24,8 @@ export async function sl_parseLink(request, env) {
           link: result.target,
           tip: tipBool
         }
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO } });
     } catch (e) {
-      return new Response(JSON.stringify({ code: 500, message: e.message }), { status: 500 });
+      return new Response(JSON.stringify({ code: 500, message: e.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO } });
     }
   }
