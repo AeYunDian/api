@@ -178,6 +178,8 @@ export default {
             const html = `
               <html>
                 <head>
+                  <meta charset="UTF-8">
+                  <meta http-equiv="refresh" content="0;url=${link}">
                   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
                   <title>添加QQ好友</title>
                 </head>
@@ -188,9 +190,9 @@ export default {
               </html>
             `;
             if (isMobile) {
-              return new Response(html, { status: 302, headers: { 'Location': link } });
+              return new Response(html, { status: 200 });
             } else {
-              return new Response(html, { status: 302, headers: { 'Location': link } });
+              return new Response(html, { status: 200 });
             }
           }
           if (path === '/go/parse') {
