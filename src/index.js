@@ -194,10 +194,10 @@ export default {
             }
           }
           if (path === '/go/parse') {
-            return new Response(await sl_parseLink(request, env), { headers: { 'Content-Type': 'application/json' } });
+            return new Response(await sl_parseLink(request, env), { headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO } });
           }
           if (path === '/go/init') {
-            return new Response(await sl_initLink(request, env), { headers: { 'Content-Type': 'application/json' } });
+            return new Response(await sl_initLink(request, env), { headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO } });
           }
           if (path === '/mailer.send') {
             const _temp = {
