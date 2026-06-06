@@ -409,6 +409,12 @@ export default {
         }
 
       }
+
+      if (hostname === 'icp.undz.cn') {
+        if (path === "/") {
+          return env.assets.fetch(request);
+        }
+      }
       return new Response(getMainPage("Undz Service Router", "<h1>Undz Service Router</h1>", "<p>Sorry, we can't find the hostname you are trying to access. Please try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html' } });
     } catch (err) {
       console.error(err);
