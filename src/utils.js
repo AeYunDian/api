@@ -177,7 +177,7 @@ export function getMainPage(title = "AyUndz API", name = "<h1>AyUndz API</h1>", 
         ${name}
         ${description}
         ${footer ? '<hr />' : ''}
-        ${footer}
+        ${footer ? footer : ''}
       </body>
     </html>
     <!-- a padding to disable MSIE and Chrome friendly error page -->
