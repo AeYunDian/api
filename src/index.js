@@ -187,7 +187,7 @@ export default {
   <div>
     <label for="parse_url">
       <input type="checkbox" name="parse_url" id="parse_url" value="true" />
-      <small>解析URL</small>
+      解析URL
     </label>
   </div>
 
@@ -200,7 +200,6 @@ form > div {
 }
 label {
   display: inline-block;
-  width: 140px;
   font-weight: bold;
 }
 input, select {
