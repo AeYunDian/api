@@ -217,7 +217,7 @@ button {
   cursor: pointer;
 }
 </style>
-                `), { status: 200, headers: { 'Content-Type': 'text/html', 'charset': 'UTF-8', ...corsHeaders_GO } });
+                `, null), { status: 200, headers: { 'Content-Type': 'text/html', 'charset': 'UTF-8', ...corsHeaders_GPO } });
             }
             if (type === 'png') {
               const qr_png = qr.image(text, { type: 'png', margin: margin , ec_level: ec_level, size: size, parse_url: parse_url });
