@@ -172,7 +172,7 @@ export function getMainPage(title = "AyUndz API", name = "<h1>AyUndz API</h1>", 
   const filler = '<!-- ' + 'x'.repeat(256) + ' -->'
   return `
     <html>
-      <head><title>${title}</title></head>
+      <head><meta charset="UTF-8"><title>${title}</title></head>
       <body style="text-align: center;">
         ${name}
         ${description}
