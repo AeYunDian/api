@@ -28,6 +28,7 @@ import {
 } from './chat_room.js';
 import { handleSaveText, handleDeleteText, handleGetText, pt_initDatabase } from './pass_the_text.js';
 import { WorkerMailer } from 'worker-mailer';
+import qr from 'qr-image';
 
 const corsHeaders_GPO = {
   'Access-Control-Allow-Origin': '*',
@@ -140,6 +141,132 @@ export default {
               return new Response(getProxyAuthPage("密钥不正确", null), { headers: { 'Content-Type': 'text/html', "Set-Cookie": `${setCookie}; ${setKey}` } });
             }
             return new Response(getProxyAuthPage(null, escapeHtml(url.searchParams.get("redirect-to") || null)), { headers: { 'Content-Type': 'text/html' } });
+          }
+          if (path === "/qrcode") {
+            const text = url.searchParams.get('text');
+            const type = url.searchParams.get('type') || 'png';
+            const ec_level = url.searchParams.get('level') || 'M'; // L, M, Q, H
+            const margin = parseInt(url.searchParams.get('margin')) || 2;
+            const size = parseInt(url.searchParams.get('size')) || 200;
+            const parse_url = url.searchParams.get('parse_url') === 'true' ? true : false;
+            if (!text) {
+              return new Response(getMainPage('Ay QR Code Online Generator', '<h1>QR Code Online Generator</h1>', `
+<form>
+  <input type="text" name="text" placeholder="请输入要生成二维码的内容" required />
+
+  <div>
+    <label for="type">格式：</label>
+    <select name="type" id="type">
+      <option value="png" selected>PNG（栅格图）</option>
+      <option value="svg">SVG（矢量图）</option>
+      <option value="pdf">PDF（文档）</option>
+    </select>
+  </div>
+
+  <div>
+    <label for="ec_level">纠错等级：</label>
+    <select name="level" id="ec_level">
+      <option value="L">L - 7%</option>
+      <option value="M" selected>M - 15%（默认）</option>
+      <option value="Q">Q - 25%</option>
+      <option value="H">H - 30%</option>
+    </select>
+  </div>
+
+  <div>
+    <label for="size">尺寸（像素，仅 PNG）：</label>
+    <input type="number" name="size" id="size" value="200" min="50" max="1000" step="10" />
+    <small>仅对 PNG 输出有效</small>
+  </div>
+
+  <div>
+    <label for="margin">边距（模块数）：</label>
+    <input type="number" name="margin" id="margin" value="2" min="0" max="10" step="1" />
+  </div>
+
+  <div>
+    <label for="parse_url">
+      <input type="checkbox" name="parse_url" id="parse_url" value="true" />
+      <small>解析URL</small>
+    </label>
+  </div>
+
+  <button type="submit">生成二维码</button>
+</form>
+
+<style>
+form > div {
+  margin-bottom: 12px;
+}
+label {
+  display: inline-block;
+  width: 140px;
+  font-weight: bold;
+}
+input, select {
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+button {
+  padding: 8px 16px;
+  background-color: #0073e6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+</style>
+                `), { status: 200, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
+            }
+            if (type === 'png') {
+              const qr_png = qr.image(text, { type: 'png', margin: margin , ec_level: ec_level, size: size, parse_url: parse_url });
+              // 将生成的数据流转换为 ArrayBuffer
+              const chunks = [];
+              for await (const chunk of qr_png) {
+                chunks.push(chunk);
+              }
+              const qrBuffer = Buffer.concat(chunks);
+              return new Response(qrBuffer, {
+                headers: {
+                  'Content-Type': 'image/png',
+                  'Cache-Control': 'public, max-age=3600',
+                },
+              });
+            }
+            else if (type === 'svg') {
+              const qr_svg = qr.image(text, { type: 'svg', ec_level: ec_level, size: size, parse_url: parse_url });
+              // 将生成的数据流转换为 ArrayBuffer
+              const chunks = [];
+              for await (const chunk of qr_svg) {
+                chunks.push(chunk);
+              }
+              const qrBuffer = Buffer.concat(chunks);
+              return new Response(qrBuffer, {
+                headers: {
+                  'Content-Type': 'image/svg+xml',
+                  'Cache-Control': 'public, max-age=3600',
+                },
+              });
+            }
+            else if (type === 'pdf') {
+              const qr_pdf = qr.image(text, { type: 'pdf', ec_level: ec_level,  parse_url: parse_url });
+              // 将生成的数据流转换为 ArrayBuffer
+              const chunks = [];
+              for await (const chunk of qr_pdf) {
+                chunks.push(chunk);
+              }
+              const qrBuffer = Buffer.concat(chunks);
+              return new Response(qrBuffer, {
+                headers: {
+                  'Content-Type': 'application/pdf',
+                  'Cache-Control': 'public, max-age=3600',
+                },
+              });
+            }
+            else {
+              return new Response(JSON.stringify({ code: 400, message: 'Invalid type parameter' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO } });
+            }
           }
           if (path === '/ip') {
             const cf = request.cf;
@@ -420,8 +547,8 @@ export default {
           if (path.startsWith("/css/") || path.startsWith("/js/")) {
             return env.assets.fetch(request);
           }
+          return new Response(getMainPage("Ay ICP", "<h1>404 Not Found</h1>", "<p>The page you are looking for cannot be found, please check and try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html', ...corsHeaders_GO } });
         }
-        return new Response(getMainPage("Ay ICP", "<h1>404 Not Found</h1>", "<p>The page you are looking for cannot be found, please check and try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html', ...corsHeaders_GO } });
 
       }
       return new Response(getMainPage("Undz Service Router", "<h1>Undz Service Router</h1>", "<p>Sorry, we can't find the hostname you are trying to access. Please try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html' } });
