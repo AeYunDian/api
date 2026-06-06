@@ -417,6 +417,9 @@ export default {
           if (path === "/" || path === "/index.html") {
             return env.assets.fetch(request);
           }
+          if (path.startsWith("/css/") || path.startsWith("/js/")) {
+            return env.assets.fetch(request);
+          }
         }
         return new Response(getMainPage("Ay ICP", "<h1>404 Not Found</h1>", "<p>The page you are looking for cannot be found, please check and try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html', ...corsHeaders_GO } });
 
