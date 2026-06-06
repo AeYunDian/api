@@ -411,9 +411,15 @@ export default {
       }
 
       if (hostname === 'icp.undz.cn') {
-        if (path === "/") {
-          return env.assets.fetch(request);
+        if (request.method === 'OPTIONS') { return new Response(null, { headers: corsHeaders_GO }); }
+
+        if (request.method === 'GET') {
+          if (path === "/" || path === "/index.html") {
+            return env.assets.fetch(request);
+          }
         }
+        return new Response(getMainPage("Ay ICP", "<h1>404 Not Found</h1>", "<p>The page you are looking for cannot be found, please check and try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html', ...corsHeaders_GO } });
+
       }
       return new Response(getMainPage("Undz Service Router", "<h1>Undz Service Router</h1>", "<p>Sorry, we can't find the hostname you are trying to access. Please try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html' } });
     } catch (err) {
