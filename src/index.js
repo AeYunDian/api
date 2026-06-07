@@ -275,7 +275,7 @@ button {
                 code: 405,
                 message: "The interface is temporarily closed",
               };
-              return new Response(JSON.stringify(_temp), { status: 405, headers: { 'Content-Type': 'application/json' } });
+              return new Response(JSON.stringify(_temp), { status: 405, headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO } });
 
               // const selfReq = new Request(request.url, {
               //   headers: { 'CF-Connecting-IP': queryIP },
@@ -284,21 +284,21 @@ button {
               // selfReq.cf = {}
               // const selfRes = await fetch(selfReq);
               // const data = await selfRes.json();
-              // return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json', } });
+              // return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO } });
             } else {
               const info = {
                 code: 200,
                 ip: clientIP,
                 ...cf,
               };
-              return new Response(JSON.stringify(info), { headers: { 'Content-Type': 'application/json', } });
+              return new Response(JSON.stringify(info), { headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO } });
             }
           }
           if (path === '/addqq') {
             const qquid = url.searchParams.get('uid');
 
             if (!qquid) {
-              return new Response(JSON.stringify({ code: 400, message: "Missing uid parameter" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+              return new Response(JSON.stringify({ code: 400, message: "Missing uid parameter" }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO } });
             }
             const link = isMobile ? `mqqapi://card/show_pslcard?src_type=internal&version=1&uin=${qquid}&card_type=person&source=sharecard` : `tencent://ntqq-open?subCmd=profile&action=openMiniBuddyProfile&actionParams=${encodeURIComponent(JSON.stringify({ "uin": qquid, "sourceType": "QrCodeShareBuddyLink" }))}`;
             const html = `
