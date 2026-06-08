@@ -316,9 +316,9 @@ button {
               </html>
             `;
             if (isMobile) {
-              return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
+              return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' , ...corsHeaders_GPO} });
             } else {
-              return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
+              return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
             }
           }
           if (path === '/go/parse') {
@@ -332,13 +332,13 @@ button {
               code: 405,
               message: "The interface is temporarily closed",
             };
-            return new Response(JSON.stringify(_temp), { status: 405, headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify(_temp), { status: 405, headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO } });
             const queryEmail = url.searchParams.get('email');
             const querySubject = url.searchParams.get('subject') || 'Hello from Cloudflare Worker!';
             const queryText = url.searchParams.get('text') || 'This is a plain text message.';
             const queryHtml = url.searchParams.get('html'); // 可选的 HTML 内容参数
             if (!queryEmail || !env.noreply_email || !env.noreply_password || !querySubject || !queryText) {
-              return new Response(JSON.stringify({ code: 400, message: "Missing required parameters" }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+              return new Response(JSON.stringify({ code: 400, message: "Missing required parameters" }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO } });
             }
             const mailer = await WorkerMailer.connect({
               host: 'smtp.qiye.aliyun.com',      // SMTP 服务器地址
@@ -362,9 +362,9 @@ button {
                 html: queryHtml || '',
               });
 
-              return new Response('邮件发送成功！', { status: 200 });
+              return new Response('邮件发送成功！', { status: 200, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
             } catch (error) {
-              return new Response(`发送失败：${error.message}`, { status: 500 });
+              return new Response(`发送失败：${error.message}`, { status: 500, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
             }
           }
           if (path.startsWith('/gh/')) {
@@ -375,13 +375,13 @@ button {
           }
           if (path.startsWith('/proxy/')) {
             if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + env.KEY))) {
-              return new Response(getMainPage("AyUndz API Service", "<h1>403 Forbidden</h1>", "<p>You are not authorized to access this resource.</p><a href=\"/auth-proxy?redirect-to=" + encodeURIComponent(url.pathname + url.search) + "\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html' } });
+              return new Response(getMainPage("AyUndz API Service", "<h1>403 Forbidden</h1>", "<p>You are not authorized to access this resource.</p><a href=\"/auth-proxy?redirect-to=" + encodeURIComponent(url.pathname + url.search) + "\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
             }
             return await net_proxy(url, false, false);
           }
           if (path.startsWith('/proxy_fix/')) {
             if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + env.KEY))) {
-              return new Response(getMainPage("AyUndz API Service", "<h1>403 Forbidden</h1>", "<p>You are not authorized to access this resource.</p><a href=\"/auth-proxy?redirect-to=" + encodeURIComponent(url.pathname + url.search) + "\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html' } });
+              return new Response(getMainPage("AyUndz API Service", "<h1>403 Forbidden</h1>", "<p>You are not authorized to access this resource.</p><a href=\"/auth-proxy?redirect-to=" + encodeURIComponent(url.pathname + url.search) + "\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
             }
             return await net_proxy(url, true, false);
           }
@@ -404,12 +404,12 @@ button {
               headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO }
             });
           }
-          return new Response(getMainPage("AyUndz API Service", "<h1>404 Not Found</h1>", "<p>The page you are trying to access cannot be found, please check and try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html' } });
+          return new Response(getMainPage("AyUndz API Service", "<h1>404 Not Found</h1>", "<p>The page you are trying to access cannot be found, please check and try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
         }
 
         // 路由处理
         if (request.method === 'POST') {
-          let response = new Response(JSON.stringify({ error: "404 Not Found" }), { status: 404 });
+          let response = new Response(JSON.stringify({ error: "404 Not Found" }), { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO } });
           if (path === '/api/verifymail/v1/send') {
             response = await handleSendVerification(request, env);
           }
