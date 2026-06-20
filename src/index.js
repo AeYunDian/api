@@ -42,7 +42,16 @@ const corsHeaders_GO = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 const mobileRegex = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|windows phone|phone|webos|kindle|tablet/i;
-
+// 辅助函数：返回 JSON 响应，并自动添加 CORS 头
+const json = (data, status = 200) => {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders_GPO,
+    },
+  });
+};
 export default {
   async scheduled(controller, env) {
     await triggerWorkflow(env);
@@ -219,7 +228,7 @@ button {
                 `, null), { status: 200, headers: { 'Content-Type': 'text/html', 'charset': 'UTF-8', ...corsHeaders_GPO } });
             }
             if (type === 'png') {
-              const qr_png = qr.image(text, { type: 'png', margin: margin , ec_level: ec_level, size: size, parse_url: parse_url });
+              const qr_png = qr.image(text, { type: 'png', margin: margin, ec_level: ec_level, size: size, parse_url: parse_url });
               // 将生成的数据流转换为 ArrayBuffer
               const chunks = [];
               for await (const chunk of qr_png) {
@@ -249,7 +258,7 @@ button {
               });
             }
             else if (type === 'pdf') {
-              const qr_pdf = qr.image(text, { type: 'pdf', ec_level: ec_level,  parse_url: parse_url });
+              const qr_pdf = qr.image(text, { type: 'pdf', ec_level: ec_level, parse_url: parse_url });
               // 将生成的数据流转换为 ArrayBuffer
               const chunks = [];
               for await (const chunk of qr_pdf) {
@@ -294,6 +303,12 @@ button {
               return new Response(JSON.stringify(info), { headers: { 'Content-Type': 'application/json', ...corsHeaders_GPO } });
             }
           }
+          if (path.startsWith('/api/v1/record/')) {
+            const userId = path.split('/')[4]; // /api/v1/record/{userId}
+            if (userId) {
+              return handleGetRecord(userId, env, json);
+            }
+          }
           if (path === '/addqq') {
             const qquid = url.searchParams.get('uid');
 
@@ -316,7 +331,7 @@ button {
               </html>
             `;
             if (isMobile) {
-              return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' , ...corsHeaders_GPO} });
+              return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
             } else {
               return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
             }
@@ -443,7 +458,15 @@ button {
           if (path === '/go/addlink') {
             response = await sl_addLink(request, env);
           }
-
+          if (path === '/api/v1/verify') {
+            return handleVerify(request, env, json);
+          }
+          if (path === '/api/v1/submit') {
+            return handleSubmit(request, env, json);
+          }
+          if (path === '/api/v1/initdb') {
+            return handleInitDB(env, json);
+          }
           for (const [key, value] of Object.entries(corsHeaders_GPO)) {
             response.headers.set(key, value);
           }
@@ -621,4 +644,165 @@ async function getDebugInfo(env, request) {
   }
 
   return info;
+}
+
+/**
+ * POST /api/v1/verify
+ * 请求体：{ key: string }
+ * 返回：{ code: 200, success: true, userid: number, name: string }
+ *       或错误信息
+ */
+async function handleVerify(request, env, json) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ code: 400, msg: '无效的 JSON 请求体' }, 400);
+  }
+
+  const { key } = body;
+  if (!key || typeof key !== 'string' || key.trim() === '') {
+    return json({ code: 400, msg: '授权码不能为空' }, 400);
+  }
+
+  try {
+    const stmt = env.db.prepare('SELECT user_id, name FROM auth_keys WHERE key = ?');
+    const result = await stmt.bind(key.trim()).first();
+
+    if (result) {
+      return json({
+        code: 200,
+        success: true,
+        userid: result.user_id,
+        name: result.name,
+      });
+    } else {
+      return json({ code: 404, msg: '授权码无效' }, 404);
+    }
+  } catch (error) {
+    console.error('verify error:', error);
+    return json({ code: 500, msg: '服务器内部错误' }, 500);
+  }
+}
+
+/**
+ * POST /api/v1/submit
+ * 请求体：{ userId, key, userInfo: { ... } }
+ * 验证授权码与 userId 匹配，检查重复提交，写入数据库
+ */
+async function handleSubmit(request, env, json) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ code: 400, msg: '无效的 JSON 请求体' }, 400);
+  }
+
+  const { userId, key, userInfo } = body;
+  if (!userId || !key || !userInfo) {
+    return json({ code: 400, msg: '缺少必要参数 userId, key, userInfo' }, 400);
+  }
+
+  try {
+    // 1. 验证授权码与 userId 匹配
+    const authStmt = env.db.prepare('SELECT user_id FROM auth_keys WHERE key = ? AND user_id = ?');
+    const authResult = await authStmt.bind(key, userId).first();
+    if (!authResult) {
+      return json({ code: 403, msg: '授权码与用户不匹配' }, 403);
+    }
+
+    // 2. 检查是否已提交过记录（一个 userId 只能提交一次）
+    const checkStmt = env.db.prepare('SELECT id FROM records WHERE user_id = ?');
+    const existing = await checkStmt.bind(userId).first();
+    if (existing) {
+      return json({ code: 409, msg: '您已提交过同学录，不可重复提交' }, 409);
+    }
+
+    // 3. 将 userInfo 拆分为基础信息和更多信息（可选保留原样）
+    //    这里简单将整个 userInfo 作为一个 JSON 字符串存入 basic_info，more_info 存空对象
+    //    你也可以在前端拆分好后再存入，或者后端按字段拆分，但此处保持灵活性。
+    const basicInfo = JSON.stringify(userInfo); // 或按字段提取
+    const moreInfo = '{}'; // 目前所有字段都放 basicInfo，更多信息也可合并
+
+    // 4. 插入记录
+    const insertStmt = env.db.prepare(
+      'INSERT INTO records (user_id, key, basic_info, more_info) VALUES (?, ?, ?, ?)'
+    );
+    await insertStmt.bind(userId, key, basicInfo, moreInfo).run();
+
+    return json({ code: 200, success: true, msg: '提交成功' });
+  } catch (error) {
+    console.error('submit error:', error);
+    return json({ code: 500, msg: '服务器内部错误' }, 500);
+  }
+}
+
+/**
+ * GET /api/v1/record/:userId
+ * 返回该用户的同学录记录
+ */
+async function handleGetRecord(userId, env, json) {
+  const uid = parseInt(userId, 10);
+  if (isNaN(uid)) {
+    return json({ code: 400, msg: '用户ID无效' }, 400);
+  }
+
+  try {
+    const stmt = env.db.prepare('SELECT * FROM records WHERE user_id = ?');
+    const record = await stmt.bind(uid).first();
+
+    if (record) {
+      record.basic_info = JSON.parse(record.basic_info);
+      record.more_info = JSON.parse(record.more_info);
+      return json({ code: 200, data: record });
+    } else {
+      return json({ code: 404, msg: '未找到记录' }, 404);
+    }
+  } catch (error) {
+    console.error('get record error:', error);
+    return json({ code: 500, msg: '服务器内部错误' }, 500);
+  }
+}
+
+/**
+ * POST /api/v1/initdb
+ * 初始化数据库：创建表并插入一条测试授权码
+ * 生产环境中应移除或加鉴权保护
+ */
+async function handleInitDB(env, json) {
+  try {
+    await env.db.exec(`
+      CREATE TABLE IF NOT EXISTS auth_keys (
+        key TEXT PRIMARY KEY,
+        user_id INTEGER UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
+    await env.db.exec(`
+      CREATE TABLE IF NOT EXISTS records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        key TEXT NOT NULL,
+        basic_info TEXT NOT NULL,
+        more_info TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
+    // 插入一条测试授权码（只在不存在时插入，避免重复）
+    const checkStmt = env.db.prepare('SELECT key FROM auth_keys WHERE key = ?');
+    const existing = await checkStmt.bind('123456').first();
+    if (!existing) {
+      await env.db.prepare(
+        'INSERT INTO auth_keys (key, user_id, name) VALUES (?, ?, ?)'
+      ).bind('123456', 1, '测试用户').run();
+    }
+
+    return json({ code: 200, msg: '数据库初始化成功' });
+  } catch (error) {
+    console.error('initdb error:', error);
+    return json({ code: 500, msg: '数据库初始化失败' }, 500);
+  }
 }
