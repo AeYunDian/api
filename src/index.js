@@ -711,26 +711,28 @@ async function handleSubmit(request, env, json) {
       return json({ code: 403, msg: '授权码与用户不匹配' }, 403);
     }
 
-    // 2. 检查是否已提交过记录（一个 userId 只能提交一次）
+    // 2. 检查是否已存在记录
     const checkStmt = env.db.prepare('SELECT id FROM records WHERE user_id = ?');
     const existing = await checkStmt.bind(userId).first();
+
+    const basicInfo = JSON.stringify(userInfo);
+    const moreInfo = '{}'; // 如有需要可扩展
+
     if (existing) {
-      return json({ code: 409, msg: '您已提交过同学录，不可重复提交' }, 409);
+      // 已存在记录 -> 覆盖更新
+      const updateStmt = env.db.prepare(
+        'UPDATE records SET key = ?, basic_info = ?, more_info = ?, created_at = datetime(\'now\') WHERE user_id = ?'
+      );
+      await updateStmt.bind(key, basicInfo, moreInfo, userId).run();
+      return json({ code: 200, success: true, msg: '提交成功（已更新原有记录）' });
+    } else {
+      // 不存在则插入
+      const insertStmt = env.db.prepare(
+        'INSERT INTO records (user_id, key, basic_info, more_info) VALUES (?, ?, ?, ?)'
+      );
+      await insertStmt.bind(userId, key, basicInfo, moreInfo).run();
+      return json({ code: 200, success: true, msg: '提交成功' });
     }
-
-    // 3. 将 userInfo 拆分为基础信息和更多信息（可选保留原样）
-    //    这里简单将整个 userInfo 作为一个 JSON 字符串存入 basic_info，more_info 存空对象
-    //    你也可以在前端拆分好后再存入，或者后端按字段拆分，但此处保持灵活性。
-    const basicInfo = JSON.stringify(userInfo); // 或按字段提取
-    const moreInfo = '{}'; // 目前所有字段都放 basicInfo，更多信息也可合并
-
-    // 4. 插入记录
-    const insertStmt = env.db.prepare(
-      'INSERT INTO records (user_id, key, basic_info, more_info) VALUES (?, ?, ?, ?)'
-    );
-    await insertStmt.bind(userId, key, basicInfo, moreInfo).run();
-
-    return json({ code: 200, success: true, msg: '提交成功' });
   } catch (error) {
     console.error('submit error:', error);
     return json({ code: 500, msg: '服务器内部错误' }, 500);
