@@ -73,9 +73,22 @@ export default {
 
     try {
       if (path.toLowerCase() === "/favicon.ico") {
-        const response = await proxyStaticFile("https://r1.undz.cn/favicon.ico", url.protocol);
+        const response = await proxyStaticFile("https://r1.undz.cn/favicon.ico");
         return response;
       }
+      if (hostname === 'i0.undz.cn') {
+        const response = await proxyStaticFile(`${url.protocol}//i0.hdslb.com${path}${url.search || ''}`);
+        if (response.status === 200 || response.status === 304) {
+          const headers = new Headers(response.headers);
+
+          if (!headers.has('Cache-Control')) {
+            headers.set('Cache-Control', 'public, max-age=86400');
+          }
+          return new Response(response.body, { headers });
+        }
+        return response; // 透传非成功响应（如 404、302）
+      }
+
       if (hostname === 'mail.undz.cn' || hostname === 'mail.io.hb.cn') {
         return new Response("此服务暂时关闭，很抱歉给您带来不便体验", { headers: corsHeaders_GPO });
       }

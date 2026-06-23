@@ -82,8 +82,8 @@ export function isGithubUrl(str) {
       str.endsWith('gist.github.com') ||
       str.endsWith('github.githubassets.com') ||
       str.endsWith('api.github.com') ||
-      str.endsWith('github.githubassets.com') || 
-      str.endsWith('undz.cn') || 
+      str.endsWith('github.githubassets.com') ||
+      str.endsWith('undz.cn') ||
       str.endsWith('io.hb.cn');
   } catch (e) {
     return false;
@@ -187,22 +187,41 @@ export function getMainPage(title = "AyUndz API", name = "<h1>AyUndz API</h1>", 
     ${filler}
   `;
 }
-export async function proxyStaticFile(url, protocol = "https:") {
+export async function proxyStaticFile(url) {
   try {
-    const response = await fetch(url, {
-      method: "GET",
-    });
-    if (!response.ok) throw new Error(`Upstream returned ${response.status}`);
-    return new Response(
-      response.body,
-      { headers: { 'Content-Type': response.headers.get('Content-Type') || 'image/x-icon', } });
+    const response = await fetch(url, { method: "GET" });
 
+    // 处理 304 Not Modified – 直接透传，不修改
+    if (response.status === 304) return response;
+
+    // 对 4xx 返回明确状态码，而不是抛给 catch
+    if (response.status === 404) {
+      return new Response(`Web Server Down`, { status: 404, headers: { 'Content-Type': 'text/plain' } });
+    }
+    if (response.status >= 400 && response.status < 500) {
+      return new Response(`Web Server Down ${response.status}`, { status: response.status, headers: { 'Content-Type': 'text/plain' } });
+    }
+    if (!response.ok) throw new Error(`Web Server Down ${response.status}`);
+
+    // 成功响应（2xx）：透传所有头，并添加缓存头（若无）
+    const headers = new Headers(response.headers);
+    if (!headers.has('Cache-Control')) {
+      headers.set('Cache-Control', 'public, max-age=86400');
+    }
+    // 确保 Content-Type 有合理默认值
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'image/x-icon');
+    }
+    return new Response(response.body, { headers });
   } catch (e) {
-    return new Response("Server Error",
-      {
-        status: 302,
-        headers: { 'Location': protocol + '//r1.undz.cn/favicon.ico', }
-      });
+    // 网络错误或 5xx：返回 503，并告知不可缓存
+    return new Response('`Web Server Down', {
+      status: 503,
+      headers: {
+        'Content-Type': 'text/plain',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
+    });
   }
 }
 
@@ -321,28 +340,28 @@ export function isBase64(str) {
     (firstPaddingChar === len - 2 && str[len - 1] === '=');
 }
 export function toBase64(str) {
-    const bytes = new TextEncoder().encode(str);
-    const bin = String.fromCharCode(...bytes);
-    return btoa(bin);
+  const bytes = new TextEncoder().encode(str);
+  const bin = String.fromCharCode(...bytes);
+  return btoa(bin);
 }
 export function utf8ToBase64(str) {
-    // 将字符串编码为 UTF-8 字节数组
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(str);  // Uint8Array
-    // 将字节数组转换为二进制字符串（每个字节转成对应字符）
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    // 最后 Base64 编码
-    return btoa(binary);
+  // 将字符串编码为 UTF-8 字节数组
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str);  // Uint8Array
+  // 将字节数组转换为二进制字符串（每个字节转成对应字符）
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  // 最后 Base64 编码
+  return btoa(binary);
 }
 export function base64ToUtf8(base64Str) {
-    // 标准 Base64 解码为二进制字符串
-    const binary = atob(base64Str);
-    // 将二进制字符串转回 Uint8Array
-    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
-    // 使用 TextDecoder 解码为 UTF-8 字符串
-    const decoder = new TextDecoder();
-    return decoder.decode(bytes);
+  // 标准 Base64 解码为二进制字符串
+  const binary = atob(base64Str);
+  // 将二进制字符串转回 Uint8Array
+  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+  // 使用 TextDecoder 解码为 UTF-8 字符串
+  const decoder = new TextDecoder();
+  return decoder.decode(bytes);
 }
