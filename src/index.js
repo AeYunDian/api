@@ -83,7 +83,6 @@ export default {
         if (atIndex === -1) {
           processedPath = processedPath + '@1e_1c.webp';
         } else {
-          // 有 @ 参数
           if (processedPath.includes('@np')) {
             processedPath = processedPath.substring(0, atIndex);
           }
