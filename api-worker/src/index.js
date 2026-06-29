@@ -20,6 +20,7 @@ export default {
 
   async fetch(request, env) {
     const url = new URL(request.url);
+    const hostname = url.hostname;
     //     let _tm_path;
     // try {
     //   _tm_path = decodeURIComponent(url.pathname);
@@ -29,7 +30,7 @@ export default {
     // const path = _tm_path;
     // const userAgent = request.headers.get('User-Agent') || '';
     // const platform = request.headers.get('sec-ch-ua-platform') || '';
-    // const hostname = url.hostname;
+
     // const cookie = request.headers.get('Cookie') || '';
     // const db = env.db;
     // const kv = env.kv;
