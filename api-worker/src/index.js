@@ -1,11 +1,5 @@
-
-
-import { getMainPage, proxyStaticFile } from './utils.js';
+import { getMainPage, proxyStaticFile, mobileRegex } from './utils.js';
 import { triggerWorkflow } from './trigger_workflow.js';
-
-
-
-
 
 import apiundzcn from './api.undz.cn.js';
 import chatundzcn from './chat.undz.cn.js'
@@ -15,7 +9,6 @@ const corsHeaders_GPO = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
-
 
 // const mobileRegex = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|windows phone|phone|webos|kindle|tablet/i;
 
