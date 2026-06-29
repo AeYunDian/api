@@ -26,18 +26,23 @@ export default {
 
   async fetch(request, env) {
     const url = new URL(request.url);
-    const path = url.pathname;
-    // const userAgent = request.headers.get('User-Agent') || '';
-    // const platform = request.headers.get('sec-ch-ua-platform') || '';
+    const userAgent = request.headers.get('User-Agent') || '';
+    const platform = request.headers.get('sec-ch-ua-platform') || '';
     const hostname = url.hostname;
     // const cookie = request.headers.get('Cookie') || '';
     // const db = env.db;
     // const kv = env.kv;
-    // const isWechat = !!userAgent.match(/MicroMessenger/i);
-    // const clientIP = request.headers.get('CF-Connecting-IP');
-    // const isMobile = mobileRegex.test(userAgent) || false;
+    const isWechat = !!userAgent.match(/MicroMessenger/i);
+    const clientIP = request.headers.get('CF-Connecting-IP');
+    const isMobile = mobileRegex.test(userAgent) || false;
     // const cookies = parse(cookie);
-
+    let _tm_path;
+    try {
+      _tm_path = decodeURIComponent(url.pathname);
+    } catch {
+      _tm_path = url.pathname; // 解码失败时直接使用原路径
+    }
+    const path = _tm_path;
     try {
       if (path.toLowerCase() === "/favicon.ico") {
         const response = await proxyStaticFile("https://r1.undz.cn/favicon.ico");
@@ -56,7 +61,26 @@ export default {
       if (hostname === 'chat.undz.cn' || hostname === 'c.undz.cn') {
         return await chatundzcn.fetch(request, env);
       }
-
+      if (hostname === 'online.undz.cn') {
+        if (url.protocol === 'http:' && (!userAgent.includes('MSIE') && !userAgent.includes('Trident'))) {
+          const newUrl = new URL(request.url);
+          newUrl.protocol = 'https:';
+          // 如果原端口是 80，则移除（使用 HTTPS 默认 443）
+          if (newUrl.port === '80') {
+            newUrl.port = '';
+          }
+          return new Response(null, {
+            status: 301,
+            headers: { 'Location': newUrl.toString() }
+          });
+        }
+        if (path.startsWith("/api/")) {
+          return new Response(JSON.stringify({ code: 200, name: "Cloudflare edge server", userAgent, platform, isWechat, clientIP, isMobile }), {
+            headers: { "Content-Type": "application/json" },
+          });
+        } // 预留测试
+        return await chatundzcn.fetch(request, env);
+      }
       return new Response(getMainPage("Undz Service Router", "<h1>Undz Service Router</h1>", "<p>Sorry, we can't find the hostname you are trying to access. Please try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html' } });
     } catch (err) {
       console.error(err);
