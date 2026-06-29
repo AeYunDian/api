@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>认证 SDK 示例</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
+        input, button { padding: 0.5rem; margin: 0.25rem; }
+        .result { background: #f4f4f4; padding: 1rem; border-radius: 4px; white-space: pre-wrap; word-break: break-all; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+    </style>
+</head>
+<body>
+    <h1>🔐 认证 SDK 测试</h1>
+    <div>
+        <input id="username" placeholder="用户名或邮箱" style="width: 200px;" />
+        <input id="password" type="password" placeholder="密码" style="width: 150px;" />
+    </div>
+    <div class="btn-group">
+        <button id="loginBtn">登录</button>
+        <button id="verifyBtn">验证令牌</button>
+        <button id="refreshBtn">刷新令牌</button>
+        <button id="logoutBtn">登出</button>
+    </div>
+    <h3>响应结果：</h3>
+    <div class="result" id="result">等待操作…</div>
+
+    <!-- 加载认证 SDK（需确保该文件可访问） -->
+  <!--   <script src="https://online.undz.cn/auth-sdk.js" ></script> -->
+
+    <script type="module">
+        import { createAuthClient } from '/auth-sdk.js';
+        // 初始化客户端
+        const auth = createAuthClient({
+            baseURL: 'https://online.undz.cn',   // 认证服务地址
+            appId: 'api',                       // 应用标识（仅用于日志）
+            i18n: 'zh-cn'                        // 语言：zh-cn / en-us / zh-hk
+        });
+
+        const resultDiv = document.getElementById('result');
+
+        function showResult(data) {
+            resultDiv.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        }
+
+        // 登录
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            if (!username || !password) {
+                showResult('❌ 请填写用户名/邮箱和密码');
+                return;
+            }
+            try {
+                const data = await auth.login(username, password);
+                showResult({ success: true, message: '登录成功', user: data.user });
+            } catch (err) {
+                showResult({ success: false, error: err.message, code: err.error_code });
+            }
+        });
+
+        // 验证当前令牌
+        document.getElementById('verifyBtn').addEventListener('click', async () => {
+            try {
+                const data = await auth.verify();
+                showResult({ valid: true, user: data.user });
+            } catch (err) {
+                showResult({ valid: false, error: err.message });
+            }
+        });
+
+        // 刷新访问令牌
+        document.getElementById('refreshBtn').addEventListener('click', async () => {
+            try {
+                const data = await auth.refresh();
+                showResult({ success: true, message: '令牌已刷新', data });
+            } catch (err) {
+                showResult({ success: false, error: err.message });
+            }
+        });
+
+        // 登出
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try {
+                const data = await auth.logout();
+                showResult({ success: true, message: '已登出', data });
+            } catch (err) {
+                showResult({ success: false, error: err.message });
+            }
+        });
+    </script>
+</body>
+</html>

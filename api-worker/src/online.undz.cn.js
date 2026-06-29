@@ -152,23 +152,29 @@ async function verifyAccessToken(token, secret) {
 
 // ---------- 数据库操作 ----------
 async function initDatabase(db) {
-    await db.exec(`
-    CREATE TABLE IF NOT EXISTS online_users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      password_salt TEXT NOT NULL,
-      password_hash TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
-      banned INTEGER DEFAULT 0,
-      ban_reason TEXT DEFAULT ''
-    );
-    CREATE INDEX IF NOT EXISTS idx_username ON online_users(username);
-    CREATE INDEX IF NOT EXISTS idx_email ON online_users(email);
-  `);
-}
+    // 分别执行每条 DDL
+    await db.prepare(`
+        CREATE TABLE IF NOT EXISTS online_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_salt TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            banned INTEGER DEFAULT 0,
+            ban_reason TEXT DEFAULT ''
+        )
+    `).run();
 
+    await db.prepare(
+        `CREATE INDEX IF NOT EXISTS idx_username ON online_users(username)`
+    ).run();
+
+    await db.prepare(
+        `CREATE INDEX IF NOT EXISTS idx_email ON online_users(email)`
+    ).run();
+}
 async function registerUser(db, username, email, password) {
     if (!validateEmail(email)) {
         return { success: false, code: 400, error_code: 1000, message: 'Invalid email format' };

@@ -1,5 +1,5 @@
 // auth-sdk.js
-const ALLOWED_APP_IDS = ['chat', 'api', 'admin', 'test', 'default'];
+const ALLOWED_APP_IDS = ['chat', 'api', 'mainwebsite'];
 const BUILTIN_TRANSLATIONS = {
   'zh-cn': {
     'error.1000': '邮箱格式无效',
@@ -116,7 +116,7 @@ class AuthClient {
     }
     if (!ALLOWED_APP_IDS.includes(this.appId)) {
       throw new Error(
-        `[AuthClient] Invalid appId "${this.appId}". Allowed: ${ALLOWED_APP_IDS.join(', ')}`
+        `[AuthClient] Invalid appId "${this.appId}"`
       );
     }
     // 校验语言是否支持
