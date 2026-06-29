@@ -12,20 +12,10 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    ElButton: typeof import('element-plus/es')['ElButton']
-    ElCol: typeof import('element-plus/es')['ElCol']
-    ElColorPicker: typeof import('element-plus/es')['ElColorPicker']
-    ElDatePicker: typeof import('element-plus/es')['ElDatePicker']
-    ElForm: typeof import('element-plus/es')['ElForm']
-    ElFormItem: typeof import('element-plus/es')['ElFormItem']
     ElIcon: typeof import('element-plus/es')['ElIcon']
-    ElInput: typeof import('element-plus/es')['ElInput']
     ElLoading: typeof import('./src/components/ElLoading.vue')['default']
-    ElOption: typeof import('element-plus/es')['ElOption']
-    ElPopover: typeof import('element-plus/es')['ElPopover']
     ElProgress: typeof import('element-plus/es')['ElProgress']
     ElProgressLoading: typeof import('./src/components/ElProgressLoading.vue')['default']
-    ElSelect: typeof import('element-plus/es')['ElSelect']
     IconAbout: typeof import('./src/components/icons/IconAbout.vue')['default']
     IconDocumentation: typeof import('./src/components/icons/IconDocumentation.vue')['default']
     IconHome: typeof import('./src/components/icons/IconHome.vue')['default']
@@ -36,27 +26,14 @@ declare module 'vue' {
     TheWelcome: typeof import('./src/components/TheWelcome.vue')['default']
     WelcomeItem: typeof import('./src/components/WelcomeItem.vue')['default']
   }
-  export interface GlobalDirectives {
-    vLoading: typeof import('element-plus/es')['ElLoadingDirective']
-  }
 }
 
 // For TSX support
 declare global {
-  const ElButton: typeof import('element-plus/es')['ElButton']
-  const ElCol: typeof import('element-plus/es')['ElCol']
-  const ElColorPicker: typeof import('element-plus/es')['ElColorPicker']
-  const ElDatePicker: typeof import('element-plus/es')['ElDatePicker']
-  const ElForm: typeof import('element-plus/es')['ElForm']
-  const ElFormItem: typeof import('element-plus/es')['ElFormItem']
   const ElIcon: typeof import('element-plus/es')['ElIcon']
-  const ElInput: typeof import('element-plus/es')['ElInput']
   const ElLoading: typeof import('./src/components/ElLoading.vue')['default']
-  const ElOption: typeof import('element-plus/es')['ElOption']
-  const ElPopover: typeof import('element-plus/es')['ElPopover']
   const ElProgress: typeof import('element-plus/es')['ElProgress']
   const ElProgressLoading: typeof import('./src/components/ElProgressLoading.vue')['default']
-  const ElSelect: typeof import('element-plus/es')['ElSelect']
   const IconAbout: typeof import('./src/components/icons/IconAbout.vue')['default']
   const IconDocumentation: typeof import('./src/components/icons/IconDocumentation.vue')['default']
   const IconHome: typeof import('./src/components/icons/IconHome.vue')['default']

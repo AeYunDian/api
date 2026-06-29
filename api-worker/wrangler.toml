@@ -49,4 +49,4 @@ REPO = "aeyundian.github.io"
 BRANCH = "main"
 
 [build]
-command = "npm --prefix ../api-vue install && npm --prefix ../api-vue run build"
+command = "npm --prefix ../api-vue install && npm --prefix ../api-vue run build-only"
