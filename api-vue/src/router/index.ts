@@ -26,8 +26,8 @@ const router = createRouter({
 })
 
 router.afterEach((to) => {
-  const baseTitle = 'AY毕业纪念册'
-  const pageTitle = to.meta.title ? `${to.meta.title} | ${baseTitle}` : baseTitle
+  const baseTitle = "AyAccount"
+  const pageTitle = to.meta.title ? to.meta.title : baseTitle
 
   if (typeof document !== 'undefined') {
     document.title = pageTitle

@@ -10,6 +10,7 @@
 
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
+ElMessage.error('Loading Error');
 </script>
 
 <style scoped>
