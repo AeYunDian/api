@@ -1,0 +1,40 @@
+@import './base.css';
+
+a:not(.nodefcolor),
+.green {
+  padding: 3px;
+  color: var(--vt-c-text);
+}
+a {
+  text-decoration: none;
+}
+/* 修复了 hover 伪类语法，增加了 :not 排除 */
+a:not(.nohovercolor):hover {
+  color: var(--vt-c-hover, hsla(160, 100%, 37%, 1));
+}
+
+.none {
+  user-select: none;
+  pointer-events: none;
+  overflow: hidden;
+  display: none;
+  width: 0;
+  height: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+}
+
+body,
+#app {
+  font-family:
+    'Noto Sans HK',
+    'PingFang HK',
+    'Microsoft JhengHei',
+    微軟正黑體,
+    'Noto Sans SC',
+    'Arial',
+    'sans-serif',
+    -apple-system !important;
+}
