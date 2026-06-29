@@ -183,7 +183,7 @@ async function registerUser(db, username, email, password) {
         return { success: false, code: 400, error_code: 1001, message: 'Password must be at least 8 characters and contain only a-z A-Z 0-9 -_=+@#$%' };
     }
     const existing = await db.prepare(
-        'SELECT id FROM users WHERE username = ? OR email = ?'
+        'SELECT id FROM online_users WHERE username = ? OR email = ?'
     ).bind(username, email).first();
     if (existing) {
         return { success: false, code: 409, error_code: 1002, message: 'Username or email already exists' };
