@@ -17,12 +17,6 @@ const router = createRouter({
       component: HomeView,
     },
     {
-      path: '/addrecord',
-      name: 'add_record',
-      meta: { title: '添加记录' },
-      component: () => import('../views/AddRecordView.vue'),
-    },
-    {
       path: '/:pathMatch(.*)*',
       name: '404',
       meta: { title: '404 页面未找到' },
