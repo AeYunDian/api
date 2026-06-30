@@ -1,4 +1,4 @@
-Get-Content .env | ForEach-Object {
+Get-Content ..\.env | ForEach-Object {
     $line = $_.Trim()
     if ($line -match '^([^#].+?)=(.+)$') {
         $key = $matches[1]

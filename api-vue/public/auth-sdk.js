@@ -1,5 +1,6 @@
-// auth-sdk.js
-const ALLOWED_APP_IDS = ['chat', 'api', 'mainwebsite'];
+'v1.2.1 AyAccountSDK';
+
+const VERSION = '1.2.1';
 const BUILTIN_TRANSLATIONS = {
   'zh-cn': {
     'error.1000': '邮箱格式无效',
@@ -18,9 +19,16 @@ const BUILTIN_TRANSLATIONS = {
     'error.1015': '刷新令牌无效或已过期',
     'error.1016': '用户不存在',
     'error.1017': '账号已被封禁',
+    'error.1018': '服务器错误',
+    'error.1019': 'appId 无效',
+    'error.1020': '验证码校验失败',
+    'error.1021': '验证ID无效',
+    'error.1022': '验证码二次校验失败',
+    'error.1023': '需要通过人机验证',
     'common.network_error': '网络请求失败，请检查网络',
     'common.unknown_error': '未知错误，请稍后重试',
     'common.success': '操作成功',
+    'common.complete_verification': '请完成验证',
     'login.success': '登录成功',
     'logout.success': '已登出',
     'register.success': '注册成功',
@@ -44,9 +52,16 @@ const BUILTIN_TRANSLATIONS = {
     'error.1015': 'Invalid or expired refresh token',
     'error.1016': 'User not found',
     'error.1017': 'Account banned',
+    'error.1018': 'Server Error',
+    'error.1019': 'appId is invalid',
+    'error.1020': 'Verification code check failed',
+    'error.1021': 'Invalid verification ID',
+    'error.1022': 'Verification code check failed again',
+    'error.1023': 'You need to pass a human verification',
     'common.network_error': 'Network request failed, please check your connection',
     'common.unknown_error': 'Unknown error, please try again later',
     'common.success': 'Operation successful',
+    'common.complete_verification': 'Please complete the verification',
     'login.success': 'Login successful',
     'logout.success': 'Logged out',
     'register.success': 'Registration successful',
@@ -70,8 +85,15 @@ const BUILTIN_TRANSLATIONS = {
     'error.1015': '刷新令牌無效或已過期',
     'error.1016': '用戶不存在',
     'error.1017': '賬號已被封禁',
+    'error.1018': '伺服器錯誤',
+    'error.1019': 'appId 無效',
+    'error.1020': '驗證碼驗證失敗',
+    'error.1021': '驗證ID無效',
+    'error.1022': '驗證碼第二次驗證失敗',
+    'error.1023': '需要通過人機驗證',
     'common.network_error': '網絡請求失敗，請檢查網絡',
     'common.unknown_error': '未知錯誤，請稍後重試',
+    'common.complete_verification': '麻煩完成驗證',
     'common.success': '操作成功',
     'login.success': '登錄成功',
     'logout.success': '已登出',
@@ -82,15 +104,39 @@ const BUILTIN_TRANSLATIONS = {
 };
 
 // ---------- 工具函数 ----------
+function utf8ToBase64(str) {
+  // 将字符串编码为 UTF-8 字节数组
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str);  // Uint8Array
+  // 将字节数组转换为二进制字符串（每个字节转成对应字符）
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  // 最后 Base64 编码
+  return btoa(binary);
+}
 function isPlainObject(obj) {
   return Object.prototype.toString.call(obj) === '[object Object]';
 }
-
-// ---------- AuthClient 类 ----------
-class AuthClient {
+(() => {
+  // 动态加载 Geetest SDK（仅在浏览器环境中）
+  if (typeof window !== 'undefined' && typeof window.initGeetest4 === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://online.undz.cn/lib/gt4.js';
+    script.async = true;        // 异步加载，不阻塞页面
+    script.onload = () => console.log('[AyAccountSDK] Geetest loaded');
+    script.onerror = () => console.warn('[AyAccountSDK] Failed to load Geetest');
+    document.head.appendChild(script);
+  }
+  console.info(`%c AyAccountSDK %c v${VERSION} `,
+    "padding: 2px 6px; border-radius: 3px 0 0 3px; color: #fff; background: #00aaff; font-weight: bold;",
+    "padding: 2px 6px; border-radius: 0 3px 3px 0; color: #fff; background: #00aadd; font-weight: bold;");
+})();
+// ---------- AyAccount 类 ----------
+class AyAccount {
   /**
    * @param {Object} config
-   * @param {string} config.baseURL - 认证服务根地址，如 'https://online.undz.cn'
    * @param {string} config.appId - 应用标识（目前仅用于日志/统计）
    * @param {string|Object} config.i18n - 语言配置
    *   - 字符串：'zh-cn' | 'en-us' | 'zh-hk'
@@ -98,10 +144,10 @@ class AuthClient {
    *     translations 中的键会覆盖内置翻译（所有语言共享）
    */
   constructor(config) {
-    if (!config || !config.baseURL) {
-      throw new Error('[AuthClient] baseURL is required');
+
+    if (!config) {
+      throw new Error('[AyAccountSDK] config is required');
     }
-    this.baseURL = config.baseURL.replace(/\/+$/, '');
     this.appId = config.appId || 'default';
 
     // 解析 i18n
@@ -114,14 +160,10 @@ class AuthClient {
       lang = i18n.lang || 'zh-cn';
       customTranslations = i18n.translations || {};
     }
-    if (!ALLOWED_APP_IDS.includes(this.appId)) {
-      throw new Error(
-        `[AuthClient] Invalid appId "${this.appId}"`
-      );
-    }
+
     // 校验语言是否支持
     if (!BUILTIN_TRANSLATIONS[lang]) {
-      console.warn(`[AuthClient] Unsupported language "${lang}", fallback to "zh-cn"`);
+      console.warn(`[AyAccountSDK] Unsupported language "${lang}", fallback to "zh-cn"`);
       lang = 'zh-cn';
     }
     this.lang = lang;
@@ -141,7 +183,7 @@ class AuthClient {
     const fallbackDict = BUILTIN_TRANSLATIONS['en-us'];
     if (fallbackDict && fallbackDict[key] !== undefined) return fallbackDict[key];
 
-    return key; // 未找到返回键名
+    return key; // 未找到返回键名，这是想要的效果
   }
 
   /**
@@ -150,7 +192,7 @@ class AuthClient {
    */
   changeLanguage(lang) {
     if (!BUILTIN_TRANSLATIONS[lang]) {
-      console.warn(`[AuthClient] Unsupported language "${lang}", ignoring`);
+      console.warn(`[AyAccountSDK] Unsupported language "${lang}", ignoring`);
       return;
     }
     this.lang = lang;
@@ -158,13 +200,13 @@ class AuthClient {
 
   // ---------- 统一请求方法 ----------
   async _request(path, options = {}) {
-    const url = `${this.baseURL}${path}`;
+    const url = `https://online.undz.cn${path}`;
     const fetchOptions = {
       credentials: 'include', // 自动携带 Cookie
       headers: {
         'Content-Type': 'application/json',
         'X-App-Id': this.appId,
-        ...(options.headers || {}),
+        ...options.headers,
       },
       ...options,
     };
@@ -183,8 +225,8 @@ class AuthClient {
         // 优先使用服务端返回的消息，否则翻译
         let message = rawMessage;
         // 如果服务端返回了 error_code，用翻译替换
-        if (data.error_code !== undefined) {
-          const key = `error.${data.error_code}`;
+        if (errorCode !== undefined) {
+          const key = `error.${errorCode}`;
           const translated = this._t(key);
           if (translated !== key) {
             message = translated;
@@ -195,13 +237,13 @@ class AuthClient {
           message = this._t(fallbackKey);
         }
         const err = new Error(message);
-        err.error_code = data.error_code || 'unknown';
+        err.error_code = errorCode || 'unknown';
         err.response = response;
         err.data = data;
         throw err;
       }
 
-      // 成功响应，可以翻译成功消息（如果有）
+      // 成功响应，可以翻译成功消息
       if (data.message) {
         // 不修改原数据，但可添加翻译字段，我们返回原始数据
       }
@@ -225,13 +267,69 @@ class AuthClient {
    * @param {string} username
    * @param {string} email
    * @param {string} password
-   * @returns {Promise<Object>}
+   * @returns {string}
    */
-  register(username, email, password) {
-    return this._request('/api/ayonline/register', {
-      method: 'POST',
-      body: { username, email, password },
-    });
+  async register(username, email, password) {
+    const self = this;                     // 1. 缓存 this 实例
+    const endpoint = '/api/ayonline/register'; // 2. 定义常量
+
+    try {
+      // 首次请求，可能返回 1023 触发验证
+      const res = await this._request(endpoint, {
+        method: 'POST',
+        body: { username, email, password },
+      });
+      return res; // 无需验证，直接返回
+    } catch (err) {
+      // 3. 判断是否需要人机验证（检查错误码和返回的 gt_code）
+      if (err.error_code === 1023 && err.data?.gt_code) {
+        const gt_code = err.data.gt_code;
+        // 检查极验脚本是否加载
+        if (typeof initGeetest4 === 'undefined') {
+          throw new Error(this._t('common.unknown_error') + ': Geetest4 not loaded');
+        }
+        // 4. 返回一个新的 Promise，让外部可以 await 等待验证结果
+        return new Promise((resolve, reject) => {
+          initGeetest4({
+            captchaId: gt_code,
+            product: 'bind'
+          }, function (captcha) {
+            // 绑定事件
+            captcha.onReady(function () {
+              captcha.showBox(); // 显示验证码
+            }).onSuccess(async function () {
+              const result = captcha.getValidate();
+              if (!result) {
+                alert(self._t('common.complete_verification'));
+                reject(new Error(self._t('common.complete_verification')));
+                return;
+              }
+              result.captcha_id = gt_code;
+
+              // 5. 带上验证结果重新请求注册（这里使用 self 和 endpoint）
+              try {
+                const retryRes = await self._request(endpoint, {
+                  method: 'POST',
+                  body: {
+                    username,
+                    email,
+                    password,
+                    gt: utf8ToBase64(JSON.stringify(result))
+                  },
+                });
+                resolve(retryRes); // 成功返回
+              } catch (retryErr) {
+                reject(retryErr);  // 失败抛出
+              }
+            }).onError(function (error) {
+              reject(new Error('Geetest Error: ' + JSON.stringify(error)));
+            });
+          });
+        });
+      }
+      // 其他错误直接抛出
+      throw err;
+    }
   }
 
   /**
@@ -255,6 +353,21 @@ class AuthClient {
     return this._request('/api/ayonline/logout', {
       method: 'POST',
     });
+  }
+
+  /**
+   * 测试服务端
+   * @return boolen
+   */
+  async testServer() {
+    try {
+      await this._request('/api/ayonline/test', {
+        method: 'POST',
+      });
+      return { success: true };
+    } catch (err) {
+      return { success: false, err };
+    }
   }
 
   /**
@@ -292,12 +405,12 @@ class AuthClient {
 }
 
 // ---------- 工厂函数 ----------
-export function createAuthClient(config) {
-  return new AuthClient(config);
+export function createAyAccount(config) {
+  return new AyAccount(config);
 }
 
 // 如果使用 <script> 标签，暴露全局变量
 if (typeof window !== 'undefined') {
-  window.AuthClient = AuthClient;
-  window.createAuthClient = createAuthClient;
+  window.AyAccount = AyAccount;
+  window.createAyAccount = createAyAccount;
 }

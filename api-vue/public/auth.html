@@ -190,7 +190,7 @@
 <script type="module">
     // ----- 导入 SDK -----
     // 如果 SDK 没有部署在线上，可将上面 importmap 中的 URL 改为本地路径，例如 "./auth-sdk.js"
-    import { createAuthClient } from 'auth-sdk';
+    import { createAyAccount } from 'auth-sdk';
 
     // ----- 全局变量 -----
     let auth = null;
@@ -214,10 +214,10 @@
     function initClient(lang = 'zh-cn') {
         try {
             auth = createAuthClient({
-                baseURL: 'https://online.undz.cn',
-                appId: 'api',
+                appId: 'api2026630',
                 i18n: lang
             });
+            window.auth = auth;
             document.getElementById('currentLang').textContent = lang;
             showResult(document.getElementById('loginResult'), '客户端已初始化，语言：' + lang);
         } catch (e) {

@@ -6,6 +6,7 @@
 
 import { SignJWT, jwtVerify } from 'jose';
 import { serialize, parse } from 'cookie';
+import { base64ToUtf8, utf8ToBase64 } from './utils.js'
 
 // ---------- 常量与配置 ----------
 const JWT_ALG = 'HS256';
@@ -34,6 +35,17 @@ const ALLOWED_ORIGINS = [
     'https://main.exm2.eu.cc',
     'https://main.zyy2.eu.cc',
     'https://test.undz.cn',
+    'https://zyy.undz.cn',
+    'https://zyy.io.hb.cn',
+    'https://zyyos.io.hb.cn',
+    'https://z.net2.eu.cc',
+    'https://zyyos.undz.cn',
+    'https://z.ayd2.eu.cc',
+    'https://z.net3.eu.cc',
+    'https://zyy2.eu.cc',
+    'https://zyy.exm2.eu.cc',
+    'https://zyyos.exm2.eu.cc',
+
 ];
 
 // ---------- 工具函数 ----------
@@ -344,214 +356,265 @@ export default {
                 return jsonResponse({ success: true, message: 'Database initialized' }, 200, cors);
             }
 
-            // ---------- 用户注册 ----------
-            if (path === '/api/ayonline/register' && method === 'POST') {
-                const body = await request.json().catch(() => null);
-                if (!body || !body.username || !body.password || !body.email) {
-                    return jsonResponse({ error: 'Missing required fields', error_code: 1007 }, 400, cors);
+
+            if (path.startsWith('/api/')) {
+                if (!env.ALLOWED_APP_IDS.includes(request.headers.get('X-App-Id'))) {
+                    return jsonResponse({ success: false, code: 403, error_code: 1019, message: 'appId is invalid' }, 403, cors);
                 }
-                const result = await registerUser(env.db, body.username, body.email, body.password);
-                if (!result.success) {
-                    return jsonResponse({ error: result.message, error_code: result.error_code }, result.code, cors);
+                if (path === '/api/ayonline/test') {
+                    return jsonResponse({ success: true, message: 'Server is ready', code: 200 }, 201, cors);
                 }
-                return jsonResponse({ success: true, message: result.message, code: 200 }, 201, cors);
-            }
+                // ---------- 用户注册 ----------
+                if (path === '/api/ayonline/register' && method === 'POST') {
 
-            // ---------- 用户登录 ----------
-            if (path === '/api/ayonline/login' && method === 'POST') {
-                const body = await request.json().catch(() => null);
-                if (!body || (!body.username && !body.email) || !body.password) {
-                    return jsonResponse({ error_code: 1009, error: 'Username/email and password required' }, 400, cors);
-                }
-                const login = body.username || body.email;
-                const authResult = await authenticateUser(env.db, login, body.password);
-                if (!authResult.success) {
-                    return jsonResponse({ error: authResult.message, error_code: authResult.error_code }, authResult.code, cors);
-                }
-
-                const user = authResult.user;
-
-                // 生成访问令牌
-                const accessToken = await signAccessToken(
-                    { sub: user.id, username: user.username, email: user.email },
-                    env.JWT_KEY
-                );
-                // 生成刷新令牌
-                const refreshToken = generateRefreshToken();
-                await storeRefreshToken(env.kv, refreshToken, user.id, REFRESH_TOKEN_TTL);
-
-                // 使用 cookie 库的 serialize 设置两个 Cookie
-                const cookieOptions = {
-                    domain: '.undz.cn',
-                    path: '/',
-                    httpOnly: true,
-                    secure: true,
-                    sameSite: 'None',
-                    maxAge: REFRESH_TOKEN_TTL,
-                };
-
-                const setCookieHeaders = [
-                    serialize('access_token', accessToken, cookieOptions),
-                    serialize('refresh_token', refreshToken, cookieOptions),
-                ];
-
-                return jsonResponse(
-                    {
-                        success: true,
-                        code: 200,
-                        user: { id: user.id, username: user.username, email: user.email },
-                    },
-                    200,
-                    {
-                        ...cors,
-                        'Set-Cookie': setCookieHeaders, // 会生成多个 Set-Cookie 头
+                    const body = await request.json().catch(() => null);
+                    if (!body || !body.username || !body.password || !body.email) {
+                        return jsonResponse({ error: 'Missing required fields', error_code: 1007 }, 400, cors);
                     }
-                );
-            }
-            // ---------- 修改密码 ----------
-            if (path === '/api/ayonline/change-password' && method === 'POST') {
-                // 从 Cookie 获取 access_token 验证身份（也可单独传 token）
-                const cookies = parse(request.headers.get('Cookie') || '');
-                const accessToken = cookies.access_token;
-                if (!accessToken) {
-                    return jsonResponse({ error_code: 1010, error: 'Unauthorized' }, 401, cors);
-                }
-                const payload = await verifyAccessToken(accessToken, env.JWT_KEY);
-                if (!payload) {
-                    return jsonResponse({ error_code: 1011, error: 'Invalid or expired token' }, 401, cors);
-                }
+                    if (body.gt) {
+                        let gt;
+                        try {
+                            const jsonStr = base64ToUtf8(body.gt);
+                            gt = JSON.parse(jsonStr);
+                        } catch {
+                            gt = null;
+                        }//客户传来的是base64编码的json文本
+                        if (gt === null) { return jsonResponse({ error: 'Missing required fields', error_code: 1007 }, 400, cors); }
+                        const prikey = JSON.parse(env.GTCODEMAP)[gt.captcha_id];
 
-                const body = await request.json().catch(() => null);
-                if (!body || !body.oldPassword || !body.newPassword) {
-                    return jsonResponse({ error_code: 1012, error: 'Missing oldPassword or newPassword' }, 400, cors);
-                }
+                        if (!prikey) {
+                            return jsonResponse({ code: 400, 'message': 'id is not in id pools ', error_code: 1021 }, 400, cors);
 
-                const userId = parseInt(payload.sub, 10);
-                const refreshToken = cookies.refresh_token; // 用于登出当前设备
-                const result = await changePassword(env.db, env.kv, userId, body.oldPassword, body.newPassword);
-                if (!result.success) {
-                    return jsonResponse({ error_code: result.error_code, error: result.message }, result.code, cors);
-                }
+                        }
 
-                // 清除当前设备的 Cookie（因为刷新令牌已被删除）
-                const clearOptions = {
-                    domain: '.undz.cn',
-                    path: '/',
-                    httpOnly: true,
-                    secure: true,
-                    sameSite: 'None',
-                    maxAge: 0,
-                };
-                const clearHeaders = [
-                    serialize('access_token', '', clearOptions),
-                    serialize('refresh_token', '', clearOptions),
-                ];
+                        const sign_token = crypto.createHmac('sha256', prikey).update(gt.lot_number).digest('hex');
+                        const query = Object.assign(gt, { sign_token });
+                        console.debug(gt)
+                        const url = new URL('http://gcaptcha4.geetest.com/validate');
+                        url.search = new URLSearchParams(query).toString();
+                        await fetch(url).then(async (res) => {
+                            if (res.data.result === 'success') {
+                                const result = await registerUser(env.db, body.username, body.email, body.password);
+                                if (!result.success) {
+                                    return jsonResponse({ error: result.message, error_code: result.error_code }, result.code, cors);
+                                }
+                                return jsonResponse({ success: true, message: result.message, code: 200 }, 201, cors);
+                            } else {
+                                return jsonResponse({ error_code: 1022, message: 'Verification code check failed again' }, 500, cors);
+                            }
+                        }).catch(() => {
+                            return jsonResponse({ error_code: 1020, message: 'GeeTest Server Error' }, 500, cors);
+                        })
 
-                return jsonResponse({ success: true, message: result.message, code: 200 }, 200, {
-                    ...cors,
-                    'Set-Cookie': clearHeaders,
-                });
-            }
-            // ---------- 用户登出 ----------
-            if (path === '/api/ayonline/logout' && method === 'POST') {
-                const cookies = parse(request.headers.get('Cookie') || '');
-                const refreshToken = cookies.refresh_token;
-                if (refreshToken) {
-                    await deleteRefreshToken(env.kv, refreshToken);
+                    } else {
+                        return jsonResponse({ success: true, gt_code: JSON.parse(env.GTCODE)[0], message: '请求频繁，请稍后再试', error_code: 1023 }, 200, cors);
+                    }
+
                 }
 
-                // 清除 Cookie（maxAge=0）
-                const clearOptions = {
-                    domain: '.undz.cn',
-                    path: '/',
-                    httpOnly: true,
-                    secure: true,
-                    sameSite: 'None',
-                    maxAge: 0,
-                };
-                const clearHeaders = [
-                    serialize('access_token', '', clearOptions),
-                    serialize('refresh_token', '', clearOptions),
-                ];
+                // ---------- 用户登录 ----------
+                if (path === '/api/ayonline/login' && method === 'POST') {
+                    const body = await request.json().catch(() => null);
+                    if (!body || (!body.username && !body.email) || !body.password) {
+                        return jsonResponse({ error_code: 1009, error: 'Username/email and password required' }, 400, cors);
+                    }
+                    const login = body.username || body.email;
+                    const authResult = await authenticateUser(env.db, login, body.password);
+                    if (!authResult.success) {
+                        return jsonResponse({ error: authResult.message, error_code: authResult.error_code }, authResult.code, cors);
+                    }
 
-                return jsonResponse(
-                    { success: true, message: 'Logged out', code: 200 },
-                    200,
-                    {
+                    const user = authResult.user;
+
+                    // 生成访问令牌
+                    const accessToken = await signAccessToken(
+                        { sub: user.id, username: user.username, email: user.email },
+                        env.JWT_KEY
+                    );
+                    // 生成刷新令牌
+                    const refreshToken = generateRefreshToken();
+                    await storeRefreshToken(env.kv, refreshToken, user.id, REFRESH_TOKEN_TTL);
+
+                    // 使用 cookie 库的 serialize 设置两个 Cookie
+                    const cookieOptions = {
+                        domain: '.undz.cn',
+                        path: '/',
+                        httpOnly: true,
+                        secure: true,
+                        sameSite: 'Lax',
+                        maxAge: REFRESH_TOKEN_TTL,
+                    };
+
+                    const setCookieHeaders = [
+                        serialize('access_token', accessToken, cookieOptions),
+                        serialize('refresh_token', refreshToken, cookieOptions),
+                    ];
+
+                    return jsonResponse(
+                        {
+                            success: true,
+                            code: 200,
+                            user: { id: user.id, username: user.username, email: user.email },
+                        },
+                        200,
+                        {
+                            ...cors,
+                            'Set-Cookie': setCookieHeaders, // 会生成多个 Set-Cookie 头
+                        }
+                    );
+                }
+                // ---------- 修改密码 ----------
+                if (path === '/api/ayonline/change-password' && method === 'POST') {
+                    // 从 Cookie 获取 access_token 验证身份（也可单独传 token）
+                    const cookies = parse(request.headers.get('Cookie') || '');
+                    const accessToken = cookies.access_token;
+                    if (!accessToken) {
+                        return jsonResponse({ error_code: 1010, error: 'Unauthorized' }, 401, cors);
+                    }
+                    const payload = await verifyAccessToken(accessToken, env.JWT_KEY);
+                    if (!payload) {
+                        return jsonResponse({ error_code: 1011, error: 'Invalid or expired token' }, 401, cors);
+                    }
+
+                    const body = await request.json().catch(() => null);
+                    if (!body || !body.oldPassword || !body.newPassword) {
+                        return jsonResponse({ error_code: 1012, error: 'Missing oldPassword or newPassword' }, 400, cors);
+                    }
+
+                    const userId = parseInt(payload.sub, 10);
+                    const result = await changePassword(env.db, env.kv, userId, body.oldPassword, body.newPassword);
+                    if (!result.success) {
+                        return jsonResponse({ error_code: result.error_code, error: result.message }, result.code, cors);
+                    }
+
+                    // 清除当前设备的 Cookie（因为刷新令牌已被删除）
+                    const clearOptions = {
+                        domain: '.undz.cn',
+                        path: '/',
+                        httpOnly: true,
+                        secure: true,
+                        sameSite: 'None',
+                        maxAge: 0,
+                    };
+                    const clearHeaders = [
+                        serialize('access_token', '', clearOptions),
+                        serialize('refresh_token', '', clearOptions),
+                    ];
+
+                    return jsonResponse({ success: true, message: result.message, code: 200 }, 200, {
                         ...cors,
                         'Set-Cookie': clearHeaders,
+                    });
+                }
+                // ---------- 用户登出 ----------
+                if (path === '/api/ayonline/logout' && method === 'POST') {
+                    const cookies = parse(request.headers.get('Cookie') || '');
+                    const refreshToken = cookies.refresh_token;
+                    if (refreshToken) {
+                        await deleteRefreshToken(env.kv, refreshToken);
                     }
-                );
-            }
 
-            // ---------- 验证令牌 ----------
-            if (path === '/api/ayonline/verify' && method === 'GET') {
-                const cookies = parse(request.headers.get('Cookie') || '');
-                const accessToken = cookies.access_token;
-                if (!accessToken) {
-                    return jsonResponse({ valid: false, error_code: 1013, error: 'No token' }, 401, cors);
-                }
-                const payload = await verifyAccessToken(accessToken, env.JWT_KEY);
-                if (!payload) {
-                    return jsonResponse({ valid: false, error_code: 1015, error: 'Invalid or expired token' }, 401, cors);
-                }
-                return jsonResponse({
-                    valid: true,
-                    code: 200,
-                    user: {
-                        id: payload.sub,
-                        username: payload.username,
-                        email: payload.email,
-                    },
-                }, 200, cors);
-            }
+                    // 清除 Cookie（maxAge=0）
+                    const clearOptions = {
+                        domain: '.undz.cn',
+                        path: '/',
+                        httpOnly: true,
+                        secure: true,
+                        sameSite: 'None',
+                        maxAge: 0,
+                    };
+                    const clearHeaders = [
+                        serialize('access_token', '', clearOptions),
+                        serialize('refresh_token', '', clearOptions),
+                    ];
 
-            // ---------- 刷新访问令牌 ----------
-            if (path === '/api/ayonline/refresh' && method === 'POST') {
-                const cookies = parse(request.headers.get('Cookie') || '');
-                const refreshToken = cookies.refresh_token;
-                if (!refreshToken) {
-                    return jsonResponse({ error_code: 1014, error: 'Refresh token missing' }, 401, cors);
+                    return jsonResponse(
+                        { success: true, message: 'Logged out', code: 200 },
+                        200,
+                        {
+                            ...cors,
+                            'Set-Cookie': clearHeaders,
+                        }
+                    );
                 }
 
-                const userId = await getUserIdFromRefreshToken(env.kv, refreshToken);
-                if (!userId) {
-                    return jsonResponse({ error_code: 1015, error: 'Invalid or expired refresh token' }, 401, cors);
-                }
-
-                const user = await env.db.prepare(
-                    'SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?'
-                ).bind(userId).first();
-
-                if (!user) {
-                    await deleteRefreshToken(env.kv, refreshToken);
-                    return jsonResponse({ error_code: 1016, error: 'User not found' }, 401, cors);
-                }
-
-                // 检查封禁状态
-                if (user.banned === 1) {
+                // ---------- 验证令牌 ----------
+                if (path === '/api/ayonline/verify' && method === 'GET') {
+                    const cookies = parse(request.headers.get('Cookie') || '');
+                    const accessToken = cookies.access_token;
+                    if (!accessToken) {
+                        return jsonResponse({ valid: false, error_code: 1013, error: 'No token' }, 401, cors);
+                    }
+                    const payload = await verifyAccessToken(accessToken, env.JWT_KEY);
+                    if (!payload) {
+                        return jsonResponse({ valid: false, error_code: 1015, error: 'Invalid or expired token' }, 401, cors);
+                    }
                     return jsonResponse({
-                        error_code: 1017,
-                        error: 'Account banned',
-                        ban_reason: user.ban_reason || 'No reason provided'
-                    }, 403, cors);
+                        valid: true,
+                        code: 200,
+                        user: {
+                            id: payload.sub,
+                            username: payload.username,
+                            email: payload.email,
+                        },
+                    }, 200, cors);
                 }
 
-                const newAccessToken = await signAccessToken(
-                    { sub: user.id, username: user.username, email: user.email },
-                    env.JWT_KEY
-                );
+                // ---------- 刷新访问令牌 ----------
+                if (path === '/api/ayonline/refresh' && method === 'POST') {
+                    const cookies = parse(request.headers.get('Cookie') || '');
+                    const refreshToken = cookies.refresh_token;
+                    if (!refreshToken) {
+                        return jsonResponse({ error_code: 1014, error: 'Refresh token missing' }, 401, cors);
+                    }
 
-                const cookieOptions = {
-                    domain: '.undz.cn',
-                    path: '/',
-                    httpOnly: true,
-                    secure: true,
-                    sameSite: 'None',
-                    maxAge: REFRESH_TOKEN_TTL,
-                };
-                const setCookie = serialize('access_token', newAccessToken, cookieOptions);
+                    const userId = await getUserIdFromRefreshToken(env.kv, refreshToken);
+                    if (!userId) {
+                        return jsonResponse({ error_code: 1015, error: 'Invalid or expired refresh token' }, 401, cors);
+                    }
 
+                    const user = await env.db.prepare(
+                        'SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?'
+                    ).bind(userId).first();
+
+                    if (!user) {
+                        await deleteRefreshToken(env.kv, refreshToken);
+                        return jsonResponse({ error_code: 1016, error: 'User not found' }, 401, cors);
+                    }
+
+                    // 检查封禁状态
+                    if (user.banned === 1) {
+                        return jsonResponse({
+                            error_code: 1017,
+                            error: 'Account banned',
+                            ban_reason: user.ban_reason || 'No reason provided'
+                        }, 403, cors);
+                    }
+
+                    const newAccessToken = await signAccessToken(
+                        { sub: user.id, username: user.username, email: user.email },
+                        env.JWT_KEY
+                    );
+
+                    const cookieOptions = {
+                        domain: '.undz.cn',
+                        path: '/',
+                        httpOnly: true,
+                        secure: true,
+                        sameSite: 'Lax',
+                        maxAge: REFRESH_TOKEN_TTL,
+                    };
+                    const setCookie = serialize('access_token', newAccessToken, cookieOptions);
+
+                    return jsonResponse(
+                        { success: true, message: 'Token refreshed', code: 200 },
+                        200,
+                        {
+                            ...cors,
+                            'Set-Cookie': setCookie,
+                        }
+                    );
+                }
                 return jsonResponse(
                     { success: true, message: 'Token refreshed', code: 200 },
                     200,
@@ -565,7 +628,7 @@ export default {
             return env.assets.fetch(request);
         } catch (error) {
             console.error('Unhandled error:', error);
-            return jsonResponse({ error: 'Internal Server Error' }, 500, cors);
+            return jsonResponse({ error: 'Internal Server Error', error_code: 1018 }, 500, cors);
         }
     },
 };
