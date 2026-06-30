@@ -407,7 +407,7 @@ export default {
                         })
 
                     } else {
-                        return jsonResponse({ success: true, gt_code: JSON.parse(env.GTCODE)[0], message: '请求频繁，请稍后再试', error_code: 1023 }, 200, cors);
+                        return jsonResponse({ success: true, gt_code: JSON.parse(env.GTCODE)[0], message: '请求频繁，请稍后再试', error_code: 1023 }, 429, cors);
                     }
 
                 }
