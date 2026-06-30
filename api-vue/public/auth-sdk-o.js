@@ -116,6 +116,16 @@ function utf8ToBase64(str) {
   // 最后 Base64 编码
   return btoa(binary);
 }
+function removeUselessTestLogo() {
+  const observer = new MutationObserver(() => {
+    const els = document.querySelectorAll('.geetest_box_logo, .geetest_feedback');
+    if (els.length) {
+      els.forEach(el => el.style.display = 'none');
+      observer.disconnect(); // 隐藏后停止观察，避免重复执行
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
 function isPlainObject(obj) {
   return Object.prototype.toString.call(obj) === '[object Object]';
 }
@@ -131,7 +141,7 @@ function isPlainObject(obj) {
   }
   console.info(`%c AyAccountSDK %c v${VERSION} `,
     "padding: 2px 6px; border-radius: 3px 0 0 3px; color: #fff; background: #00aaff; font-weight: bold;",
-    "padding: 2px 6px; border-radius: 0 3px 3px 0; color: #fff; background: #00aadd; font-weight: bold;");
+    "padding: 2px 6px; border-radius: 0 3px 3px 0; color: #fff; background: #00aacc; font-weight: bold;");
 })();
 // ---------- AyAccount 类 ----------
 class AyAccount {
@@ -206,6 +216,7 @@ class AyAccount {
       headers: {
         'Content-Type': 'application/json',
         'X-App-Id': this.appId,
+        'X-SDK-VER': VERSION,
         ...options.headers,
       },
       ...options,
@@ -267,11 +278,11 @@ class AyAccount {
    * @param {string} username
    * @param {string} email
    * @param {string} password
-   * @returns {string}
+   * @returns {Promise}
    */
   async register(username, email, password) {
-    const self = this;                     // 1. 缓存 this 实例
-    const endpoint = '/api/ayonline/register'; // 2. 定义常量
+    const self = this;                     // 缓存 this 实例
+    const endpoint = '/api/ayonline/register'; // 定义常量
 
     try {
       // 首次请求，可能返回 1023 触发验证
@@ -296,6 +307,7 @@ class AyAccount {
           }, function (captcha) {
             // 绑定事件
             captcha.onReady(function () {
+              removeUselessTestLogo();
               captcha.showBox(); // 显示验证码
             }).onSuccess(async function () {
               const result = captcha.getValidate();
@@ -318,8 +330,15 @@ class AyAccount {
                   },
                 });
                 resolve(retryRes); // 成功返回
+
               } catch (retryErr) {
                 reject(retryErr);  // 失败抛出
+
+              } finally {
+                if (captcha && typeof captcha.destroy === 'function') {
+                  captcha.destroy();
+                  captcha = null;
+                }
               }
             }).onError(function (error) {
               reject(new Error('Geetest Error: ' + JSON.stringify(error)));
@@ -338,11 +357,74 @@ class AyAccount {
    * @param {string} password
    * @returns {Promise<{ user: {id, username, email}, code: number }>}
    */
-  login(usernameOrEmail, password) {
-    return this._request('/api/ayonline/login', {
-      method: 'POST',
-      body: { username: usernameOrEmail, email: usernameOrEmail, password },
-    });
+  async login(usernameOrEmail, password) {
+    const self = this;                     // 缓存 this 实例
+    const endpoint = '/api/ayonline/login'; // 定义常量
+
+    try {
+      const res = await this._request(endpoint, {
+        method: 'POST',
+        body: { username: usernameOrEmail, email: usernameOrEmail, password },
+      });
+      return res;
+    } catch (err) {
+      // 判断是否需要人机验证（检查错误码和返回的 gt_code）
+      if (err.error_code === 1023 && err.data?.gt_code) {
+        const gt_code = err.data.gt_code;
+        // 检查极验脚本是否加载
+        if (typeof initGeetest4 === 'undefined') {
+          throw new Error(this._t('common.unknown_error') + ': Geetest4 not loaded');
+        }
+        // 返回一个新的 Promise，让外部可以 await 等待验证结果
+        return new Promise((resolve, reject) => {
+          initGeetest4({
+            captchaId: gt_code,
+            product: 'bind'
+          }, function (captcha) {
+            // 绑定事件
+            captcha.onReady(function () {
+              removeUselessTestLogo();
+              captcha.showBox(); // 显示验证码
+            }).onSuccess(async function () {
+              const result = captcha.getValidate();
+              if (!result) {
+                alert(self._t('common.complete_verification'));
+                reject(new Error(self._t('common.complete_verification')));
+                return;
+              }
+              result.captcha_id = gt_code;
+
+              // 带上验证结果重新请求注册（这里使用 self 和 endpoint）
+              try {
+                const retryRes = await self._request(endpoint, {
+                  method: 'POST',
+                  body: {
+                    username,
+                    email,
+                    password,
+                    gt: utf8ToBase64(JSON.stringify(result))
+                  },
+                });
+                resolve(retryRes); // 成功返回
+
+              } catch (retryErr) {
+                reject(retryErr);  // 失败抛出
+
+              } finally {
+                if (captcha && typeof captcha.destroy === 'function') {
+                  captcha.destroy();
+                  captcha = null;
+                }
+              }
+            }).onError(function (error) {
+              reject(new Error('Geetest Error: ' + JSON.stringify(error)));
+            });
+          });
+        });
+      }
+      // 其他错误直接抛出
+      throw err;
+    }
   }
 
   /**
@@ -396,11 +478,74 @@ class AyAccount {
    * @param {string} newPassword
    * @returns {Promise<Object>}
    */
-  changePassword(oldPassword, newPassword) {
-    return this._request('/api/ayonline/change-password', {
-      method: 'POST',
-      body: { oldPassword, newPassword },
-    });
+  async changePassword(oldPassword, newPassword) {
+    const self = this;                     // 缓存 this 实例
+    const endpoint = '/api/ayonline/change-password'; // 定义常量
+
+    try {
+      const res = await this._request(endpoint, {
+        method: 'POST',
+        body: { oldPassword, newPassword },
+      });
+      return res;
+    } catch (err) {
+      // 判断是否需要人机验证（检查错误码和返回的 gt_code）
+      if (err.error_code === 1023 && err.data?.gt_code) {
+        const gt_code = err.data.gt_code;
+        // 检查极验脚本是否加载
+        if (typeof initGeetest4 === 'undefined') {
+          throw new Error(this._t('common.unknown_error') + ': Geetest4 not loaded');
+        }
+        // 返回一个新的 Promise，让外部可以 await 等待验证结果
+        return new Promise((resolve, reject) => {
+          initGeetest4({
+            captchaId: gt_code,
+            product: 'bind'
+          }, function (captcha) {
+            // 绑定事件
+            captcha.onReady(function () {
+              removeUselessTestLogo();
+              captcha.showBox(); // 显示验证码
+            }).onSuccess(async function () {
+              const result = captcha.getValidate();
+              if (!result) {
+                alert(self._t('common.complete_verification'));
+                reject(new Error(self._t('common.complete_verification')));
+                return;
+              }
+              result.captcha_id = gt_code;
+
+              // 带上验证结果重新请求注册（这里使用 self 和 endpoint）
+              try {
+                const retryRes = await self._request(endpoint, {
+                  method: 'POST',
+                  body: {
+                    username,
+                    email,
+                    password,
+                    gt: utf8ToBase64(JSON.stringify(result))
+                  },
+                });
+                resolve(retryRes); // 成功返回
+
+              } catch (retryErr) {
+                reject(retryErr);  // 失败抛出
+
+              } finally {
+                if (captcha && typeof captcha.destroy === 'function') {
+                  captcha.destroy();
+                  captcha = null;
+                }
+              }
+            }).onError(function (error) {
+              reject(new Error('Geetest Error: ' + JSON.stringify(error)));
+            });
+          });
+        });
+      }
+      // 其他错误直接抛出
+      throw err;
+    }
   }
 }
 
