@@ -6,7 +6,7 @@
 
 import { SignJWT, jwtVerify } from 'jose';
 import { serialize, parse } from 'cookie';
-import { base64ToUtf8, utf8ToBase64 } from './utils.js'
+import { base64ToUtf8 } from './utils.js'
 
 // ---------- 常量与配置 ----------
 const JWT_ALG = 'HS256';
@@ -54,7 +54,22 @@ function generateRandomBytes(length) {
     crypto.getRandomValues(buffer);
     return buffer;
 }
-
+async function hmacSha256(key, message) {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(key);
+    const messageData = encoder.encode(message);
+    const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+    return Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
 function toBase64(buffer) {
     return btoa(String.fromCharCode(...buffer));
 }
@@ -358,7 +373,8 @@ export default {
 
 
             if (path.startsWith('/api/')) {
-                if (!env.ALLOWED_APP_IDS.includes(request.headers.get('X-App-Id'))) {
+                const appId = request.headers.get('X-App-Id') || '';
+                if (!env.ALLOWED_APP_IDS.includes(appId)) {
                     return jsonResponse({ success: false, code: 403, error_code: 1019, message: 'appId is invalid' }, 403, cors);
                 }
                 if (path === '/api/ayonline/test') {
@@ -386,14 +402,13 @@ export default {
                             return jsonResponse({ code: 400, 'message': 'id is not in id pools ', error_code: 1021 }, 400, cors);
 
                         }
-
-                        const sign_token = crypto.createHmac('sha256', prikey).update(gt.lot_number).digest('hex');
+                        const sign_token = await hmacSha256(prikey, gt.lot_number);
                         const query = Object.assign(gt, { sign_token });
                         console.debug(gt)
                         const url = new URL('http://gcaptcha4.geetest.com/validate');
                         url.search = new URLSearchParams(query).toString();
                         await fetch(url).then(async (res) => {
-                            if (res.data.result === 'success') {
+                            if (res.result === 'success') {
                                 const result = await registerUser(env.db, body.username, body.email, body.password);
                                 if (!result.success) {
                                     return jsonResponse({ error: result.message, error_code: result.error_code }, result.code, cors);
