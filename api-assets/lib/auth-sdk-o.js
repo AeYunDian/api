@@ -364,7 +364,7 @@ class AyAccount {
     try {
       const res = await this._request(endpoint, {
         method: 'POST',
-        body: { username: usernameOrEmail, email: usernameOrEmail, password },
+        body: { username: usernameOrEmail, email: usernameOrEmail, password, gt: utf8ToBase64(JSON.stringify(result)) },
       });
       return res;
     } catch (err) {
@@ -398,7 +398,7 @@ class AyAccount {
               try {
                 const retryRes = await self._request(endpoint, {
                   method: 'POST',
-                  body: { username: usernameOrEmail, email: usernameOrEmail, password },
+                  body: { username: usernameOrEmail, email: usernameOrEmail, password, gt: utf8ToBase64(JSON.stringify(result)) },
                 });
                 resolve(retryRes); // 成功返回
 

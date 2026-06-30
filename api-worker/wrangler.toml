@@ -18,7 +18,7 @@ namespace_id = "1001"
 
 [assets]
 binding = "assets"
-directory = "./dist"
+directory = "../api-assetss"
 not_found_handling = "single-page-application"
 run_worker_first = true
 
@@ -47,6 +47,3 @@ WORKFLOW_ID = "scheduled-publish.yml"
 OWNER = "AeYunDian"
 REPO = "aeyundian.github.io"
 BRANCH = "main"
-
-[build]
-command = "npm --prefix ../api-vue install && npm --prefix ../api-vue run build-only"
