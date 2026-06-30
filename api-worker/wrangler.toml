@@ -19,7 +19,6 @@ namespace_id = "1001"
 [assets]
 binding = "assets"
 directory = "../api-assets"
-not_found_handling = "single-page-application"
 run_worker_first = true
 
 [[d1_databases]]
