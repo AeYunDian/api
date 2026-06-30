@@ -406,19 +406,34 @@ export default {
                         console.debug(gt)
                         const url = new URL('http://gcaptcha4.geetest.com/validate');
                         url.search = new URLSearchParams(query).toString();
-                        await fetch(url).then(async (res) => {
-                            if (res.result === 'success') {
+                        try {
+                            const geetestRes = await fetch(validateUrl);
+                            const geetestData = await geetestRes.json();
+                            if (geetestData.result === 'success') {
                                 const result = await registerUser(env.db, body.username, body.email, body.password);
                                 if (!result.success) {
                                     return jsonResponse({ error: result.message, error_code: result.error_code }, result.code, cors);
                                 }
                                 return jsonResponse({ success: true, message: result.message, code: 200 }, 201, cors);
                             } else {
-                                return jsonResponse({ error_code: 1022, message: 'Verification code check failed again' }, 500, cors);
+                                return jsonResponse({ error_code: 1022, message: 'Verification failed' }, 400, cors);
                             }
-                        }).catch(() => {
+                        } catch {
                             return jsonResponse({ error_code: 1020, message: 'GeeTest Server Error' }, 500, cors);
-                        })
+                        }
+                        // await fetch(url).then(async (res) => {
+                        //     if (res.result === 'success') {
+                        //         const result = await registerUser(env.db, body.username, body.email, body.password);
+                        //         if (!result.success) {
+                        //             return jsonResponse({ error: result.message, error_code: result.error_code }, result.code, cors);
+                        //         }
+                        //         return jsonResponse({ success: true, message: result.message, code: 200 }, 201, cors);
+                        //     } else {
+                        //         return jsonResponse({ error_code: 1022, message: 'Verification code check failed again' }, 500, cors);
+                        //     }
+                        // }).catch(() => {
+                        //     return jsonResponse({ error_code: 1020, message: 'GeeTest Server Error' }, 500, cors);
+                        // })
 
                     } else {
                         return jsonResponse({ success: true, gt_code: JSON.parse(env.GTCODE)[0], message: '请求频繁，请稍后再试', error_code: 1023 }, 429, cors);
@@ -629,6 +644,7 @@ export default {
                         }
                     );
                 }
+                return jsonResponse({ error: 'API not found', error_code: 404 }, 404, cors);
             }
 
             return env.assets.fetch(request);
