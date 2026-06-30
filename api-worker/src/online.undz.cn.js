@@ -378,7 +378,7 @@ export default {
                     return jsonResponse({ success: false, code: 403, error_code: 1019, message: 'appId is invalid' }, 403, cors);
                 }
                 if (path === '/api/ayonline/test') {
-                    return jsonResponse({ success: true, message: 'Server is ready', code: 200 }, 201, cors);
+                    return jsonResponse({ success: true, message: 'Server is ready', code: 200 }, 200, cors);
                 }
                 // ---------- 用户注册 ----------
                 if (path === '/api/ayonline/register' && method === 'POST') {
@@ -404,8 +404,8 @@ export default {
                         const sign_token = await hmacSha256(prikey, gt.lot_number);
                         const query = Object.assign(gt, { sign_token });
                         console.debug(gt)
-                        const url = new URL('http://gcaptcha4.geetest.com/validate');
-                        url.search = new URLSearchParams(query).toString();
+                        const validateUrl = new URL('https://gcaptcha4.geetest.com/validate');
+                        validateUrl.search = new URLSearchParams(query).toString();
                         try {
                             const geetestRes = await fetch(validateUrl);
                             const geetestData = await geetestRes.json();
@@ -473,24 +473,36 @@ export default {
                         sameSite: 'Lax',
                         maxAge: REFRESH_TOKEN_TTL,
                     };
-
-                    const setCookieHeaders = [
-                        serialize('access_token', accessToken, cookieOptions),
-                        serialize('refresh_token', refreshToken, cookieOptions),
-                    ];
-
-                    return jsonResponse(
-                        {
-                            success: true,
-                            code: 200,
-                            user: { id: user.id, username: user.username, email: user.email },
-                        },
-                        200,
-                        {
-                            ...cors,
-                            'Set-Cookie': setCookieHeaders, // 会生成多个 Set-Cookie 头
-                        }
-                    );
+                    const responseBody = {
+                        success: true,
+                        code: 200,
+                        user: { id: user.id, username: user.username, email: user.email },
+                    };
+                    // const setCookieHeaders = [
+                    //     serialize('access_token', accessToken, cookieOptions),
+                    //     serialize('refresh_token', refreshToken, cookieOptions),
+                    // ];
+                    const headers = new Headers(corsHeaders(request));
+                    headers.set('Content-Type', 'application/json');
+                    headers.append('Set-Cookie', serialize('access_token', accessToken, cookieOptions));
+                    headers.append('Set-Cookie', serialize('refresh_token', refreshToken, cookieOptions));
+                    return new Response(JSON.stringify(responseBody), {
+                        status: 200,
+                        headers: headers,
+                    });
+                    // return jsonResponse(
+                    //     {
+                    //         success: true,
+                    //         code: 200,
+                    //         user: { id: user.id, username: user.username, email: user.email },
+                    //     },
+                    //     200,
+                    //     {
+                    //         ...cors,
+                    //         'Set-Cookie': setCookieHeaders[0], // 会生成多个 Set-Cookie 头
+                    //         'Set-Cookie': setCookieHeaders[1],
+                    //     }
+                    // );
                 }
                 // ---------- 修改密码 ----------
                 if (path === '/api/ayonline/change-password' && method === 'POST') {
