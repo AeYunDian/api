@@ -394,16 +394,11 @@ class AyAccount {
               }
               result.captcha_id = gt_code;
 
-              // 带上验证结果重新请求注册（这里使用 self 和 endpoint）
+              // 带上验证结果重新请求登录（这里使用 self 和 endpoint）
               try {
                 const retryRes = await self._request(endpoint, {
                   method: 'POST',
-                  body: {
-                    username,
-                    email,
-                    password,
-                    gt: utf8ToBase64(JSON.stringify(result))
-                  },
+                  body: { username: usernameOrEmail, email: usernameOrEmail, password },
                 });
                 resolve(retryRes); // 成功返回
 
@@ -519,12 +514,7 @@ class AyAccount {
               try {
                 const retryRes = await self._request(endpoint, {
                   method: 'POST',
-                  body: {
-                    username,
-                    email,
-                    password,
-                    gt: utf8ToBase64(JSON.stringify(result))
-                  },
+                  body: { oldPassword, newPassword },
                 });
                 resolve(retryRes); // 成功返回
 
