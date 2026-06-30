@@ -400,7 +400,6 @@ export default {
 
                         if (!prikey) {
                             return jsonResponse({ code: 400, 'message': 'id is not in id pools ', error_code: 1021 }, 400, cors);
-
                         }
                         const sign_token = await hmacSha256(prikey, gt.lot_number);
                         const query = Object.assign(gt, { sign_token });
@@ -630,14 +629,6 @@ export default {
                         }
                     );
                 }
-                return jsonResponse(
-                    { success: true, message: 'Token refreshed', code: 200 },
-                    200,
-                    {
-                        ...cors,
-                        'Set-Cookie': setCookie,
-                    }
-                );
             }
 
             return env.assets.fetch(request);
