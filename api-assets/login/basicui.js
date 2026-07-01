@@ -156,16 +156,16 @@
                 case 'registerSuccess': closeToast(); showResult("注册成功"); break;
                 case 'registerFailure':
                     closeToast();
-                    showResult(data.message || "注册失败", "error");
+                    showResult(data.message || "注册失败");
                     break;
                 case 'loginSuccess':
                     closeToast();
-                    showResult("登录成功", 'info', 1300);
-                    setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1300);
+                    showResult("登录成功", 'info', 1000);
+                    setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000);
                     break;
                 case 'loginFailure':
                     closeToast();
-                    showResult(data.message || "登录失败", "error");
+                    showResult(data.message || "登录失败");
                     break;
                 default: console.log("未知消息", data);
             }
@@ -173,9 +173,9 @@
             // 兼容旧版纯字符串消息（如 "registerSuccess"）
             switch (data) {
                 case "registerSuccess": closeToast(); showResult("注册成功"); break;
-                case "registerFailure": closeToast(); showResult("注册失败", "error"); break;
-                case "loginSuccess": closeToast(); showResult("登录成功", 'info', 1300); setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1300); break;
-                case "loginFailure": closeToast(); showResult("登录失败", "error"); break;
+                case "registerFailure": closeToast(); showResult("注册失败"); break;
+                case "loginSuccess": closeToast(); showResult("登录成功", 'info', 1000); setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000); break;
+                case "loginFailure": closeToast(); showResult("登录失败"); break;
                 default: console.log("不能够处理的消息", data);
             }
         }

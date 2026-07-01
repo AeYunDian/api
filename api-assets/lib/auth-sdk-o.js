@@ -1,6 +1,6 @@
-'v1.3.7 AyAccountSDK';
+'v1.3.8 AyAccountSDK';
 
-const VERSION = '1.3.7';
+const VERSION = '1.3.8';
 const BUILTIN_TRANSLATIONS = {
   'zh-cn': {
     'error.1000': '邮箱格式无效',
@@ -25,6 +25,7 @@ const BUILTIN_TRANSLATIONS = {
     'error.1021': '验证ID无效',
     'error.1022': '验证码二次校验失败',
     'error.1023': '需要通过人机验证',
+    'error.1024': '您已取消验证',
     'error.modal_already_open': '登录窗口已打开，请勿重复操作',
     'common.network_error': '网络请求失败，请检查网络',
     'common.unknown_error': '未知错误，请稍后重试',
@@ -59,6 +60,7 @@ const BUILTIN_TRANSLATIONS = {
     'error.1021': 'Invalid verification ID',
     'error.1022': 'Verification code check failed again',
     'error.1023': 'You need to pass a human verification',
+    'error.1024': 'Verification cancelled, please retry',
     'error.modal_already_open': 'Login modal is already open, please do not repeat',
     'common.network_error': 'Network request failed, please check your connection',
     'common.unknown_error': 'Unknown error, please try again later',
@@ -93,6 +95,7 @@ const BUILTIN_TRANSLATIONS = {
     'error.1021': '驗證ID無效',
     'error.1022': '驗證碼第二次驗證失敗',
     'error.1023': '需要通過人機驗證',
+    'error.1024': '驗證已取消，請重試',
     'error.modal_already_open': '登錄視窗已打開，請勿重複操作',
     'common.network_error': '網絡請求失敗，請檢查網絡',
     'common.unknown_error': '未知錯誤，請稍後重試',
@@ -478,7 +481,11 @@ class AyAccount {
               }
             }).onError(function (error) {
               reject(new Error('Geetest Error: ' + JSON.stringify(error)));
-            });
+            })
+          }).onClose(function () {
+            const cancelErr = new Error(self._t('error.1024'));
+            cancelErr.error_code = 1024;
+            reject(cancelErr);
           });
         });
       }
@@ -555,7 +562,12 @@ class AyAccount {
               }
             }).onError(function (error) {
               reject(new Error('Geetest Error: ' + JSON.stringify(error)));
-            });
+            })
+          }).onClose(function () {
+            // 用户主动关闭验证码 → 视为取消
+            const cancelErr = new Error(self._t('error.1024'));
+            cancelErr.error_code = 1024;
+            reject(cancelErr);
           });
         });
       }
@@ -671,7 +683,11 @@ class AyAccount {
               }
             }).onError(function (error) {
               reject(new Error('Geetest Error: ' + JSON.stringify(error)));
-            });
+            })
+          }).onClose(function () {
+            const cancelErr = new Error(self._t('error.1024'));
+            cancelErr.error_code = 1024;
+            reject(cancelErr);
           });
         });
       }

@@ -53,7 +53,7 @@
             msg = '密码至少6位';
         } else if (!agreed) {
             valid = false;
-            msg = '请阅读并同意协议';
+            msg = '请您阅读并同意协议';
         }
 
         return { valid, msg };
@@ -90,7 +90,7 @@
             msg = '密码输入不一致';
         } else if (!agreed) {
             valid = false;
-            msg = '请阅读并同意协议';
+            msg = '请您阅读并同意协议';
         }
 
         return { valid, msg };
