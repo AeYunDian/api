@@ -481,11 +481,11 @@ class AyAccount {
               }
             }).onError(function (error) {
               reject(new Error('Geetest Error: ' + JSON.stringify(error)));
-            })
-          }).onClose(function () {
-            const cancelErr = new Error(self._t('error.1024'));
-            cancelErr.error_code = 1024;
-            reject(cancelErr);
+            }).onClose(function () {
+              const cancelErr = new Error(self._t('error.1024'));
+              cancelErr.error_code = 1024;
+              reject(cancelErr);
+            });
           });
         });
       }
@@ -562,12 +562,12 @@ class AyAccount {
               }
             }).onError(function (error) {
               reject(new Error('Geetest Error: ' + JSON.stringify(error)));
-            })
-          }).onClose(function () {
-            // 用户主动关闭验证码 → 视为取消
-            const cancelErr = new Error(self._t('error.1024'));
-            cancelErr.error_code = 1024;
-            reject(cancelErr);
+            }).onClose(function () {
+              // 用户主动关闭验证码 → 视为取消
+              const cancelErr = new Error(self._t('error.1024'));
+              cancelErr.error_code = 1024;
+              reject(cancelErr);
+            });
           });
         });
       }
@@ -683,11 +683,11 @@ class AyAccount {
               }
             }).onError(function (error) {
               reject(new Error('Geetest Error: ' + JSON.stringify(error)));
-            })
-          }).onClose(function () {
-            const cancelErr = new Error(self._t('error.1024'));
-            cancelErr.error_code = 1024;
-            reject(cancelErr);
+            }).onClose(function () {
+              const cancelErr = new Error(self._t('error.1024'));
+              cancelErr.error_code = 1024;
+              reject(cancelErr);
+            });
           });
         });
       }
