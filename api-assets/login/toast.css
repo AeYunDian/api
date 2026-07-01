@@ -37,7 +37,7 @@ div.ay-toast__text {
   position: fixed;
   transition: none !important;
   padding: 0;
-  width: 120px;
+  width: 130px;
   min-height: 40px;
   -webkit-box-orient: horizontal;
   -webkit-box-direction: normal;
