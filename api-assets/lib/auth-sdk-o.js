@@ -141,7 +141,7 @@ function isPlainObject(obj) {
   }
   console.info(`%c AyAccountSDK %c v${VERSION} `,
     "padding: 2px 6px; border-radius: 3px 0 0 3px; color: #fff; background: #00aaff; font-weight: bold;",
-    "padding: 2px 6px; border-radius: 0 3px 3px 0; color: #fff; background: #00aacc; font-weight: bold;");
+    "padding: 2px 6px; border-radius: 0 3px 3px 0; color: #fff; background: #00ccff; font-weight: bold;");
 })();
 // ---------- AyAccount 类 ----------
 class AyAccount {
@@ -159,7 +159,10 @@ class AyAccount {
       throw new Error('[AyAccountSDK] config is required');
     }
     this.appId = config.appId || 'default';
-
+    this._iframe = null;            // 当前 iframe 元素
+    this._iframeContainer = null;   // 包裹 iframe 的 div
+    this._messageHandler = null;    // 绑定的消息监听函数（用于移除）
+    this._modalPromise = null;      // 用于防止并发调用（可选）
     // 解析 i18n
     let lang = 'zh-cn';
     let customTranslations = {};
@@ -272,6 +275,118 @@ class AyAccount {
   }
 
   // ---------- API 方法 ----------
+  /**
+     * 打开模态框，等待用户操作直至关闭
+     * @param {string} mode 仅用于日志或后续扩展，实际业务由 iframe 内消息决定
+     * @returns {Promise<Object|null>} 返回用户信息或 null
+     */
+  _openModal(mode) {
+    if (this._iframe) {
+      throw new Error(this._t('error.modal_already_open') || 'Modal already open');
+    }
+
+    return new Promise((resolve, reject) => {
+      const iframediv = document.createElement('div');
+      iframediv.className = 'iframe-level-1';
+      const iframe = document.createElement('iframe');
+      iframe.textContent = '';
+
+      // 根据模式设置不同的 URL 参数
+      const baseUrl = '/login/index.html';
+      iframe.src = mode === 'register' ? `${baseUrl}?tab=register` : `${baseUrl}?tab=login`;
+
+      iframe.style.position = "fixed";
+      iframe.style.top = "0";
+      iframe.style.left = "0";
+      iframe.style.width = "100%";
+      iframe.style.height = "100%";
+      iframe.style.border = "none";
+      iframe.style.zIndex = "9999";
+      iframe.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
+      iframe.style.opacity = "1";
+      iframe.style.pointerEvents = "auto";
+      iframe.style.transition = "background-color 200ms linear";
+      iframe.style.display = "block";
+
+
+      this._iframe = iframe;
+      this._iframeContainer = iframediv;
+
+      let userInfo = null;
+
+      const handler = (event) => {
+        if (event.source !== iframe.contentWindow) return;
+        try {
+          const data = JSON.parse(event.data);
+          switch (data.action) {
+            case 'closeWindow':
+              this._closeModal();
+              resolve(userInfo);
+              break;
+            case 'register':
+              this._register(data.username, data.email, data.password)
+                .then((result) => {
+                  userInfo = result;
+                  iframe.contentWindow.postMessage('registerSuccess', '*');
+                })
+                .catch((err) => {
+                  console.error('注册失败:', err);
+                  iframe.contentWindow.postMessage('registerFailure', '*');
+                });
+              break;
+            case 'login':
+              this._login(data.username, data.password)
+                .then((result) => {
+                  userInfo = result;
+                  iframe.contentWindow.postMessage('loginSuccess', '*');
+                })
+                .catch((err) => {
+                  console.error('登录失败:', err);
+                  iframe.contentWindow.postMessage('loginFailure', '*');
+                });
+              break;
+            default:
+              break;
+          }
+        } catch (e) {
+          // 忽略非 JSON 消息
+        }
+      };
+
+      this._messageHandler = handler;
+      window.addEventListener('message', handler);
+
+      document.body.appendChild(iframediv);
+      iframediv.appendChild(iframe);
+    });
+  }
+
+  /**
+   * 关闭模态框，清理资源
+   */
+  _closeModal() {
+    // 移除 DOM
+    if (this._iframeContainer && this._iframeContainer.parentNode) {
+      this._iframeContainer.parentNode.removeChild(this._iframeContainer);
+    }
+    // 移除事件监听
+    if (this._messageHandler) {
+      window.removeEventListener('message', this._messageHandler);
+      this._messageHandler = null;
+    }
+    // 清空引用
+    this._iframe = null;
+    this._iframeContainer = null;
+  }
+
+  /**
+   * 用户注册（弹出模态框）
+   * @returns {Promise<Object|null>} 成功返回用户信息，关闭返回 null
+   */
+  register() {
+    return this._openModal('register');
+  }
+
 
   /**
    * 用户注册
@@ -280,7 +395,7 @@ class AyAccount {
    * @param {string} password
    * @returns {Promise}
    */
-  async register(username, email, password) {
+  async _register(username, email, password) {
     const self = this;                     // 缓存 this 实例
     const endpoint = '/api/ayonline/register'; // 定义常量
 
@@ -350,21 +465,27 @@ class AyAccount {
       throw err;
     }
   }
-
+  /**
+  * 用户登录（弹出模态框）
+  * @returns {Promise<Object|null>} 成功返回用户信息，关闭返回 null
+  */
+  login() {
+    return this._openModal('login');
+  }
   /**
    * 用户登录
    * @param {string} usernameOrEmail
    * @param {string} password
    * @returns {Promise<{ user: {id, username, email}, code: number }>}
    */
-  async login(usernameOrEmail, password) {
+  async _login(usernameOrEmail, password) {
     const self = this;                     // 缓存 this 实例
     const endpoint = '/api/ayonline/login'; // 定义常量
 
     try {
       const res = await this._request(endpoint, {
         method: 'POST',
-        body: { username: usernameOrEmail, email: usernameOrEmail, password, gt: utf8ToBase64(JSON.stringify(result)) },
+        body: { username: usernameOrEmail, email: usernameOrEmail, password },
       });
       return res;
     } catch (err) {
@@ -514,7 +635,7 @@ class AyAccount {
               try {
                 const retryRes = await self._request(endpoint, {
                   method: 'POST',
-                  body: { oldPassword, newPassword },
+                  body: { oldPassword, newPassword, gt: utf8ToBase64(JSON.stringify(result)) },
                 });
                 resolve(retryRes); // 成功返回
 
@@ -539,12 +660,11 @@ class AyAccount {
   }
 }
 
-// ---------- 工厂函数 ----------
-export function createAyAccount(config) {
+function createAyAccount(config) {
   return new AyAccount(config);
 }
 
-// 如果使用 <script> 标签，暴露全局变量
+// 暴露全局变量
 if (typeof window !== 'undefined') {
   window.AyAccount = AyAccount;
   window.createAyAccount = createAyAccount;

@@ -6,8 +6,13 @@
 >
   <head>
     <link rel="icon" href="/favicon.ico" />
-
+    <link rel="stylesheet" type="text/css" href="./login.css" />
     <link rel="stylesheet" type="text/css" href="./toast.css" />
+    <link rel="stylesheet" type="text/css" href="./header-title.css" />
+    <script defer src="./header-title.js"></script>
+    <script async src="./toast.js"></script>
+    <script defer src="./basicui.js"></script>
+    <script defer src="./userinput.js"></script>
     <meta charset="utf-8" />
     <meta name="renderer" content="webkit" />
     <meta name="force-rendering" content="webkit" />
@@ -17,236 +22,139 @@
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
     <title>登录</title>
-    <script src="/lib/nomodule-fix.js" type="module"></script>
-    <script type="importmap">
-      {
-        "imports": {
-          "auth-sdk": "/lib/auth-sdk-o.js"
-        }
-      }
-    </script>
-    <!-- 混淆后的SDK版本低了，而且速度太慢了，等版本上来再用原版： auth-sdk.js -->
-    <script>
-      window.addEventListener("load", function () {
-        var toast = document.querySelector(".ay-popup.ay-toast");
-        if (toast) {
-          toast.style.display = "none";
-        }
-        var ayicon = document.querySelector("i.ay-icon");
-        if (ayicon) {
-          ayicon.style.display = "none";
-        }
-      });
-    </script>
+    <script></script>
   </head>
 
   <body style="background-color: transparent" class="">
-    <div class="login-page"></div>
+    <div class="app">
+      <div class="outcard">
+        <div class="login-page">
+          <div alt="" class="card-close"></div>
+          <div class="card-header">
+            <span class="card-header-title">A</span>
+            <span class="card-header-title">y</span>
+            <span class="card-header-title">A</span>
+            <span class="card-header-title">c</span>
+            <span class="card-header-title">c</span>
+            <span class="card-header-title">o</span>
+            <span class="card-header-title">u</span>
+            <span class="card-header-title">n</span>
+            <span class="card-header-title">t</span>
+          </div>
+          <div class="tabs">
+            <div class="nav-warp">
+              <div class="navlist">
+                <div class="login nav-item active">&nbsp;登录&nbsp;</div>
+                <div class="register nav-item" style="margin-left: 72px">
+                  &nbsp;注册&nbsp;
+                </div>
+                <div
+                  class="active-bar"
+                  style="width: 64px; transform: translateX(94.4px)"
+                ></div>
+              </div>
+            </div>
+          </div>
+          <form class="register-form form">
+            <div class="regUsername input">
+              <input type="text" placeholder="用户名" id="regUsername" />
+            </div>
+            <div class="regEmail input">
+              <input type="email" placeholder="邮箱" id="regEmail" />
+            </div>
+            <div class="regPassword input">
+              <input type="password" placeholder="密码" id="regPassword" />
+            </div>
+            <div class="regPasswordConfirm input">
+              <input
+                type="password"
+                placeholder="请再次输入密码"
+                id="regPasswordConfirm"
+              />
+            </div>
+            <div class="regAgreement">
+              <span class="checkbox"></span>
+              <span class="checkbox-label"
+                >我已阅读并同意
+                <a
+                  href="https://undz.cn/privacy_policy/zh-cn.html"
+                  target="_blank"
+                  >《隐私政策》</a
+                >、<a
+                  href="https://undz.cn/cookie_policy/zh-cn.html"
+                  target="_blank"
+                  >《Cookie 政策》</a
+                ><br />和<a
+                  href="https://undz.cn/terms/zh-cn.html"
+                  target="_blank"
+                  >《服务条款》</a
+                ></span
+              >
+            </div>
+            <div class="reg">
+              <button type="submit" class="regBtn button">
+                <span>注册</span>
+              </button>
+            </div>
+          </form>
+          <form class="login-form form active-form">
+            <div class="loginUsernameOrEmail input">
+              <input
+                type="text"
+                placeholder="用户名/邮箱"
+                id="loginUsernameOrEmail"
+              />
+            </div>
+            <div class="loginPassword input">
+              <input type="password" placeholder="密码" id="loginPassword" />
+            </div>
+            <div class="loginAgreement">
+              <span class="checkbox"></span>
+              <span class="checkbox-label"
+                >我已阅读并同意
+                <a
+                  href="https://undz.cn/privacy_policy/zh-cn.html"
+                  target="_blank"
+                  >《隐私政策》</a
+                >、<a
+                  href="https://undz.cn/cookie_policy/zh-cn.html"
+                  target="_blank"
+                  >《Cookie 政策》</a
+                ><br />和<a
+                  href="https://undz.cn/terms/zh-cn.html"
+                  target="_blank"
+                  >《服务条款》</a
+                ></span
+              >
+            </div>
+            <div class="login">
+              <button type="submit" class="loginBtn button">
+                <span>登录</span>
+              </button>
+            </div>
+          </form>
+          <div class="haveQuestionBox">
+            <a href="javascript:void(0);" class="haveQuestion">遇到问题</a>
+          </div>
+        </div>
+      </div>
+    </div>
     <div role="dialog" tabindex="0" class="ay-popup ay-toast service-loading">
       <i class="ay-icon">
         <img
-          class="ay-icon__image"
+          class="ay-icon__image ay-icon__image--loading"
           src="data:image/png;base64,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"
+        />
+      </i>
+      <i class="ay-icon">
+        <img
+          class="ay-icon__image ay-icon__image--error"
+          style="display: none"
+          src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAABZUlEQVR4nM3S7VHCQBhF4ZsKtAOxAtcOoINQgXRgrECtwFiBWoFrBdCBSwVCB1ABnpeEj4QNCBlmPDNP/sDsDSSJzty/GLhDV5IrWaHk8YXG9g2keEFH+5tIeoDHTgli2cEZjimHDVWKDdgX73FKr8iwrj6Q4hNt6sNjWX3gBx21ayLpGssSrBpIekOsZ2S4gDVHjkfE6sOjMvCu4pWs94wnFa/oSEVdFa/pk+IjHxiIEqz6hkO9GXoIcLACHIa4RL2AW1QGFmhqhh4CLIchLtFUguJStkBTc3RVHRhp80xiLc9eXsoCblBv+3AHK8BhpPjIGPZ5ZeBd8Yfs0YfDEFYPAZ9IUe8DA1GCVQM1v6YeXW3+8xlGih9u2Q15VAasiaQrtGmKjsoSbJfCfnab1ndv1QesHPc4pVdkWBcbsHIcO7JzuNU0YKXIceiZTJHBY6cEh0pLDjewxgjwpcb+MtCqsw/8AhmlSBngmo1XAAAAAElFTkSuQmCC"
         />
       </i>
       <div class="ay-toast__text">加载中...</div>
     </div>
-    <script type="module">
-      // ----- 导入 SDK -----
-      // 如果 SDK 没有部署在线上，可将上面 importmap 中的 URL 改为本地路径，例如 "./auth-sdk.js"
-      import { createAyAccount } from "auth-sdk";
-
-      let auth = null;
-
-      // ----- 工具函数：显示结果 -----
-      function showResult(data, timeout = 1100) {
-        var toastText = document.querySelector("div.ay-toast__text");
-        var toast = document.querySelector(".ay-popup.ay-toast");
-        if (!toastText || !toast) return;
-
-        // 更新文字内容
-        toastText.textContent =
-          typeof data === "string" ? data : JSON.stringify(data);
-
-        // 确保 Toast 可见（如果之前被隐藏）
-        toast.style.display = "flex";
-
-        // 3秒后自动隐藏
-        setTimeout(function () {
-          toast.style.display = "none";
-        }, timeout);
-      }
-
-      //   function initClient(lang = "zh-cn") {
-      //     try {
-      //       auth = createAyAccount({
-      //         appId: "mainwebsite15321",
-      //         i18n: lang,
-      //       });
-      //       window.auth = auth;
-      //       document.getElementById("currentLang").textContent = lang;
-      //     } catch (e) {
-      //       showResult(document.getElementById("loginResult"), e, true);
-      //     }
-      //   }
-
-      //   document
-      //     .getElementById("initBtn")
-      //     .addEventListener("click", () => initClient("zh-cn"));
-      //   document.getElementById("langZhBtn").addEventListener("click", () => {
-      //     if (auth) {
-      //       auth.changeLanguage("zh-cn");
-      //       document.getElementById("currentLang").textContent = "zh-cn";
-      //       showResult(document.getElementById("loginResult"), "已切换到 中文");
-      //     } else {
-      //       initClient("zh-cn");
-      //     }
-      //   });
-      //   document.getElementById("langEnBtn").addEventListener("click", () => {
-      //     if (auth) {
-      //       auth.changeLanguage("en-us");
-      //       document.getElementById("currentLang").textContent = "en-us";
-      //       showResult(
-      //         document.getElementById("loginResult"),
-      //         "Switched to English",
-      //       );
-      //     } else {
-      //       initClient("en-us");
-      //     }
-      //   });
-      //   document.getElementById("langHkBtn").addEventListener("click", () => {
-      //     if (auth) {
-      //       auth.changeLanguage("zh-hk");
-      //       document.getElementById("currentLang").textContent = "zh-hk";
-      //       showResult(document.getElementById("loginResult"), "已切換到 粤語");
-      //     } else {
-      //       initClient("zh-hk");
-      //     }
-      //   });
-
-      //   initClient("zh-cn");
-
-      //   document
-      //     .getElementById("registerBtn")
-      //     .addEventListener("click", async () => {
-      //       const username = document.getElementById("regUsername").value.trim();
-      //       const email = document.getElementById("regEmail").value.trim();
-      //       const password = document.getElementById("regPassword").value.trim();
-      //       if (!username || !email || !password) {
-      //         showResult(
-      //           document.getElementById("registerResult"),
-      //           "请填写用户名、邮箱和密码",
-      //           true,
-      //         );
-      //         return;
-      //       }
-      //       try {
-      //         const data = await auth.register(username, email, password);
-      //         showResult(document.getElementById("registerResult"), {
-      //           success: true,
-      //           message: data.message || "注册成功",
-      //           data,
-      //         });
-      //       } catch (err) {
-      //         showResult(document.getElementById("registerResult"), err, true);
-      //       }
-      //     });
-
-      //   document
-      //     .getElementById("loginBtn")
-      //     .addEventListener("click", async () => {
-      //       const username = document
-      //         .getElementById("loginUsername")
-      //         .value.trim();
-      //       const password = document
-      //         .getElementById("loginPassword")
-      //         .value.trim();
-      //       if (!username || !password) {
-      //         showResult(
-      //           document.getElementById("loginResult"),
-      //           "请填写用户名/邮箱和密码",
-      //           true,
-      //         );
-      //         return;
-      //       }
-      //       try {
-      //         const data = await auth.login(username, password);
-      //         showResult(document.getElementById("loginResult"), {
-      //           success: true,
-      //           user: data.user,
-      //         });
-      //       } catch (err) {
-      //         showResult(document.getElementById("loginResult"), err, true);
-      //       }
-      //     });
-
-      //   document
-      //     .getElementById("verifyBtn")
-      //     .addEventListener("click", async () => {
-      //       try {
-      //         const data = await auth.verify();
-      //         showResult(document.getElementById("verifyResult"), {
-      //           valid: true,
-      //           user: data.user,
-      //         });
-      //       } catch (err) {
-      //         showResult(document.getElementById("verifyResult"), err, true);
-      //       }
-      //     });
-
-      //   document
-      //     .getElementById("refreshBtn")
-      //     .addEventListener("click", async () => {
-      //       try {
-      //         const data = await auth.refresh();
-      //         showResult(document.getElementById("refreshResult"), {
-      //           success: true,
-      //           message: data.message || "令牌已刷新",
-      //         });
-      //       } catch (err) {
-      //         showResult(document.getElementById("refreshResult"), err, true);
-      //       }
-      //     });
-
-      //   document
-      //     .getElementById("changePwdBtn")
-      //     .addEventListener("click", async () => {
-      //       const oldPwd = document.getElementById("oldPwd").value.trim();
-      //       const newPwd = document.getElementById("newPwd").value.trim();
-      //       if (!oldPwd || !newPwd) {
-      //         showResult(
-      //           document.getElementById("changePwdResult"),
-      //           "请填写旧密码和新密码",
-      //           true,
-      //         );
-      //         return;
-      //       }
-      //       try {
-      //         const data = await auth.changePassword(oldPwd, newPwd);
-      //         showResult(document.getElementById("changePwdResult"), {
-      //           success: true,
-      //           message: data.message || "密码已修改，请重新登录",
-      //         });
-      //         document.getElementById("oldPwd").value = "";
-      //         document.getElementById("newPwd").value = "";
-      //       } catch (err) {
-      //         showResult(document.getElementById("changePwdResult"), err, true);
-      //       }
-      //     });
-
-      //   document
-      //     .getElementById("logoutBtn")
-      //     .addEventListener("click", async () => {
-      //       try {
-      //         const data = await auth.logout();
-      //         showResult(document.getElementById("logoutResult"), {
-      //           success: true,
-      //           message: data.message || "已登出",
-      //         });
-      //       } catch (err) {
-      //         showResult(document.getElementById("logoutResult"), err, true);
-      //       }
-      //     });
-    </script>
+    <script></script>
   </body>
 </html>

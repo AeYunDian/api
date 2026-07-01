@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html
+  style="background-color: transparent"
+  lang=""
+  class="is-in-iframe iframe-level-1 theme-passport"
+>
+  <head>
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" type="text/css" href="./toast.css" />
+    <script async src="./toast.js"></script>
+    <script src="/lib/auth-sdk-o.js"></script>
+    <meta charset="utf-8" />
+    <meta name="renderer" content="webkit" />
+    <meta name="force-rendering" content="webkit" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <title>登录</title>
+    <script></script>
+  </head>
+
+  <body style="background-color: transparent" class="">
+    <button onclick="auth.login();">show login</button>
+    <button onclick="auth.register();">show register</button>
+    <script>
+      let auth = null;
+      const iframe = document.querySelector(".iframe-level-1 iframe");
+      function initClient(lang = "zh-cn") {
+        try {
+          auth = window.createAyAccount({
+            appId: "api2026630",
+            i18n: lang,
+          });
+        } catch (e) {
+          console.error("AyAccountSDK 初始化失败:", e);
+        }
+      }
+      initClient("zh-cn");
+    </script>
+  </body>
+</html>

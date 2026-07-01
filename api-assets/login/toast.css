@@ -3,7 +3,7 @@
   border-style: solid;
   border-color: currentColor;
 }
-.ay-toast.service-loading .ay-icon__image {
+.ay-icon__image--loading {
   animation: spin 2s linear infinite;
   width: 20px;
   height: 20px;
@@ -11,6 +11,16 @@
   vertical-align: middle;
   overflow-clip-margin: content-box;
   overflow: clip;
+}
+.ay-icon__image--error {
+  width: 20px;
+  height: 20px;
+  margin-right: 4px;
+  vertical-align: middle;
+  overflow-clip-margin: content-box;
+  overflow: clip;
+  filter: invert(1);
+  /* 图标是黑的，反转成白色 */
 }
 i.ay-icon {
   position: relative;
@@ -27,7 +37,7 @@ div.ay-toast__text {
   position: fixed;
   transition: none !important;
   padding: 0;
-  width: 118px;
+  width: 120px;
   min-height: 40px;
   -webkit-box-orient: horizontal;
   -webkit-box-direction: normal;
