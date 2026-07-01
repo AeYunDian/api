@@ -292,7 +292,7 @@ class AyAccount {
       iframe.textContent = '';
 
       // 根据模式设置不同的 URL 参数
-      const baseUrl = '/login/index.html';
+      const baseUrl = 'https://online.undz.cn/login/index.html';
       iframe.src = mode === 'register' ? `${baseUrl}?tab=register` : `${baseUrl}?tab=login`;
 
       iframe.style.position = "fixed";
