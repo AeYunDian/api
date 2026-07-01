@@ -142,29 +142,42 @@
         document.querySelector(".register.nav-item").click();
     }
     window.addEventListener("message", async (event) => {
+        let data = event.data;
+        // 如果是字符串，保持兼容；如果是 JSON 字符串，解析
+        if (typeof data === 'string' && data.startsWith('{')) {
+            try {
+                data = JSON.parse(data);
+            } catch (e) { /* 忽略 */ }
+        }
 
-        switch (event.data) {
-            case "registerSuccess":
-                closeToast();
-                showResult("注册成功");
-                break;
-            case "registerFailure":
-                closeToast();
-                showResult("注册失败");
-                break;
-            case "loginSuccess":
-                closeToast();
-                showResult("登录成功", 'info', 1300);
-                setTimeout(() => {
-                    window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*");
-                }, 1300);
-                break;
-            case "loginFailure":
-                closeToast();
-                showResult("登录失败");
-                break;
-            default:
-                console.log("不能够处理的消息", event.data);
+        // 处理对象
+        if (typeof data === 'object' && data.action) {
+            switch (data.action) {
+                case 'registerSuccess': closeToast(); showResult("注册成功"); break;
+                case 'registerFailure':
+                    closeToast();
+                    showResult(data.message || "注册失败", "error");
+                    break;
+                case 'loginSuccess':
+                    closeToast();
+                    showResult("登录成功", 'info', 1300);
+                    setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1300);
+                    break;
+                case 'loginFailure':
+                    closeToast();
+                    showResult(data.message || "登录失败", "error");
+                    break;
+                default: console.log("未知消息", data);
+            }
+        } else {
+            // 兼容旧版纯字符串消息（如 "registerSuccess"）
+            switch (data) {
+                case "registerSuccess": closeToast(); showResult("注册成功"); break;
+                case "registerFailure": closeToast(); showResult("注册失败", "error"); break;
+                case "loginSuccess": closeToast(); showResult("登录成功", 'info', 1300); setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1300); break;
+                case "loginFailure": closeToast(); showResult("登录失败", "error"); break;
+                default: console.log("不能够处理的消息", data);
+            }
         }
     });
 })();

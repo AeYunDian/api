@@ -25,6 +25,7 @@ const BUILTIN_TRANSLATIONS = {
     'error.1021': '验证ID无效',
     'error.1022': '验证码二次校验失败',
     'error.1023': '需要通过人机验证',
+    'error.modal_already_open': '登录窗口已打开，请勿重复操作',
     'common.network_error': '网络请求失败，请检查网络',
     'common.unknown_error': '未知错误，请稍后重试',
     'common.success': '操作成功',
@@ -58,6 +59,7 @@ const BUILTIN_TRANSLATIONS = {
     'error.1021': 'Invalid verification ID',
     'error.1022': 'Verification code check failed again',
     'error.1023': 'You need to pass a human verification',
+    'error.modal_already_open': 'Login modal is already open, please do not repeat',
     'common.network_error': 'Network request failed, please check your connection',
     'common.unknown_error': 'Unknown error, please try again later',
     'common.success': 'Operation successful',
@@ -91,6 +93,7 @@ const BUILTIN_TRANSLATIONS = {
     'error.1021': '驗證ID無效',
     'error.1022': '驗證碼第二次驗證失敗',
     'error.1023': '需要通過人機驗證',
+    'error.modal_already_open': '登錄視窗已打開，請勿重複操作',
     'common.network_error': '網絡請求失敗，請檢查網絡',
     'common.unknown_error': '未知錯誤，請稍後重試',
     'common.complete_verification': '麻煩完成驗證',
@@ -331,7 +334,16 @@ class AyAccount {
                 })
                 .catch((err) => {
                   console.error('注册失败:', err);
-                  iframe.contentWindow.postMessage('registerFailure', '*');
+                  const errorMsg = err.message || '注册失败';
+                  const errorCode = err.error_code || 'unknown';
+                  iframe.contentWindow.postMessage(
+                    JSON.stringify({
+                      action: 'registerFailure',
+                      message: errorMsg,
+                      code: errorCode
+                    }),
+                    '*'
+                  );
                 });
               break;
             case 'login':
@@ -342,7 +354,16 @@ class AyAccount {
                 })
                 .catch((err) => {
                   console.error('登录失败:', err);
-                  iframe.contentWindow.postMessage('loginFailure', '*');
+                  const errorMsg = err.message || '登录失败';
+                  const errorCode = err.error_code || 'unknown';
+                  iframe.contentWindow.postMessage(
+                    JSON.stringify({
+                      action: 'loginFailure',
+                      message: errorMsg,
+                      code: errorCode
+                    }),
+                    '*'
+                  );
                 });
               break;
             default:
