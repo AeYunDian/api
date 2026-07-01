@@ -1,6 +1,6 @@
-'v1.3.8 AyAccountSDK';
+'v1.3.9 AyAccountSDK';
 
-const VERSION = '1.3.8';
+const VERSION = '1.3.9';
 const BUILTIN_TRANSLATIONS = {
   'zh-cn': {
     'error.1000': '邮箱格式无效',
