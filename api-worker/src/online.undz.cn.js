@@ -204,16 +204,16 @@ async function initDatabase(db) {
 }
 async function registerUser(db, username, email, password) {
     if (!validateEmail(email)) {
-        return { success: false, code: 400, error_code: 1000, message: 'Invalid email format' };
+        return { success: false, action: 'register', code: 400, error_code: 1000, message: 'Invalid email format' };
     }
     if (!validatePassword(password)) {
-        return { success: false, code: 400, error_code: 1001, message: 'Password must be at least 8 characters and contain only a-z A-Z 0-9 -_=+@#$%' };
+        return { success: false, action: 'register', code: 400, error_code: 1001, message: 'Password must be at least 6 characters and contain only a-z A-Z 0-9 -_=+@#$%' };
     }
     const existing = await db.prepare(
         'SELECT id FROM online_users WHERE username = ? OR email = ?'
     ).bind(username, email).first();
     if (existing) {
-        return { success: false, code: 409, error_code: 1002, message: 'Username or email already exists' };
+        return { success: false, action: 'register', code: 409, error_code: 1002, message: 'Username or email already exists' };
     }
 
     const salt = generateRandomBytes(SALT_LENGTH);
@@ -227,7 +227,7 @@ async function registerUser(db, username, email, password) {
     VALUES (?, ?, ?, ?, ?, ?)
   `).bind(username, email, saltBase64, hashBase64, now, now).run();
 
-    return { success: true, code: 200, message: 'User registered successfully' };
+    return { success: true, action: 'register', code: 200, message: 'User registered successfully' };
 }
 
 async function authenticateUser(db, usernameOrEmail, password) {
@@ -236,7 +236,7 @@ async function authenticateUser(db, usernameOrEmail, password) {
     ).bind(usernameOrEmail, usernameOrEmail).first();
 
     if (!user) {
-        return { success: false, code: 401, error_code: 1003, message: 'Invalid credentials' };
+        return { success: false, action: 'login', code: 401, error_code: 1003, message: 'Invalid credentials' };
     }
 
     const salt = fromBase64(user.password_salt);
@@ -244,11 +244,12 @@ async function authenticateUser(db, usernameOrEmail, password) {
     const hashBase64 = toBase64(hashBytes);
 
     if (hashBase64 !== user.password_hash) {
-        return { success: false, code: 401, error_code: 1003, message: 'Invalid credentials' };
+        return { success: false, action: 'login', code: 401, error_code: 1003, message: 'Invalid credentials' };
     }
 
     return {
         success: true,
+        action: 'login',
         code: 200,
         user: {
             id: user.id,
@@ -320,18 +321,18 @@ async function removeRefreshTokenFromUserList(kv, userId, token) {
 // ---------- 改密码 ----------
 async function changePassword(db, kv, userId, oldPassword, newPassword) {
     if (!validatePassword(newPassword)) {
-        return { success: false, code: 400, error_code: 1005, message: 'New password must be at least 8 characters and contain only a-z A-Z 0-9 -_=+@#$%' };
+        return { success: false, code: 400, action: 'changePassword', error_code: 1005, message: 'New password must be at least 6 characters and contain only a-z A-Z 0-9 -_=+@#$%' };
     }
 
     const user = await db.prepare('SELECT password_salt, password_hash FROM online_users WHERE id = ?').bind(userId).first();
-    if (!user) return { success: false, code: 404, message: 'User not found' };
+    if (!user) return { success: false, code: 404, action: 'changePassword', message: 'User not found' };
 
     const salt = fromBase64(user.password_salt);
     const oldHashBytes = await hashPassword(oldPassword, salt);
     const oldHashBase64 = toBase64(oldHashBytes);
 
     if (oldHashBase64 !== user.password_hash) {
-        return { success: false, code: 401, error_code: 1006, message: 'Old password incorrect' };
+        return { success: false, code: 401, action: 'changePassword', error_code: 1006, message: 'Old password incorrect' };
     }
 
     const newSalt = generateRandomBytes(SALT_LENGTH);
@@ -345,7 +346,7 @@ async function changePassword(db, kv, userId, oldPassword, newPassword) {
 
     await revokeAllUserRefreshTokens(kv, userId);
 
-    return { success: true, code: 200, message: 'Password updated. Please log in again.' };
+    return { success: true, code: 200, action: 'changePassword', message: 'Password updated. Please log in again.' };
 }
 // ---------- 请求处理 ----------
 export default {
@@ -395,11 +396,11 @@ export default {
                         } catch {
                             gt = null;
                         }//客户传来的是base64编码的json文本
-                        if (gt === null) { return jsonResponse({ error: 'Missing required fields', error_code: 1007 }, 400, cors); }
+                        if (gt === null) { return jsonResponse({ action: 'register', error: 'Missing required fields', error_code: 1007 }, 400, cors); }
                         const prikey = JSON.parse(env.GTCODEMAP)[gt.captcha_id];
 
                         if (!prikey) {
-                            return jsonResponse({ code: 400, 'message': 'id is not in id pools ', error_code: 1021 }, 400, cors);
+                            return jsonResponse({ action: 'register', code: 400, 'message': 'id is not in id pools ', error_code: 1021 }, 400, cors);
                         }
                         const sign_token = await hmacSha256(prikey, gt.lot_number);
                         const query = Object.assign(gt, { sign_token });
@@ -412,31 +413,17 @@ export default {
                             if (geetestData.result === 'success') {
                                 const result = await registerUser(env.db, body.username, body.email, body.password);
                                 if (!result.success) {
-                                    return jsonResponse({ error: result.message, error_code: result.error_code }, result.code, cors);
+                                    return jsonResponse({ action: 'register', error: result.message, error_code: result.error_code }, result.code, cors);
                                 }
-                                return jsonResponse({ success: true, message: result.message, code: 200 }, 201, cors);
+                                return jsonResponse({ action: 'register', success: true, message: result.message, code: 200 }, 201, cors);
                             } else {
-                                return jsonResponse({ error_code: 1022, message: 'Verification failed' }, 400, cors);
+                                return jsonResponse({ action: 'register', error_code: 1022, message: 'Verification failed' }, 400, cors);
                             }
                         } catch {
-                            return jsonResponse({ error_code: 1020, message: 'GeeTest Server Error' }, 500, cors);
+                            return jsonResponse({ action: 'register', error_code: 1020, message: 'GeeTest Server Error' }, 500, cors);
                         }
-                        // await fetch(url).then(async (res) => {
-                        //     if (res.result === 'success') {
-                        //         const result = await registerUser(env.db, body.username, body.email, body.password);
-                        //         if (!result.success) {
-                        //             return jsonResponse({ error: result.message, error_code: result.error_code }, result.code, cors);
-                        //         }
-                        //         return jsonResponse({ success: true, message: result.message, code: 200 }, 201, cors);
-                        //     } else {
-                        //         return jsonResponse({ error_code: 1022, message: 'Verification code check failed again' }, 500, cors);
-                        //     }
-                        // }).catch(() => {
-                        //     return jsonResponse({ error_code: 1020, message: 'GeeTest Server Error' }, 500, cors);
-                        // })
-
                     } else {
-                        return jsonResponse({ success: true, gt_code: JSON.parse(env.GTCODE)[0], message: '请求频繁，请稍后再试', error_code: 1023 }, 429, cors);
+                        return jsonResponse({ action: 'register', success: true, gt_code: JSON.parse(env.GTCODE)[0], message: '请求频繁，请稍后再试', error_code: 1023 }, 429, cors);
                     }
 
                 }
@@ -445,7 +432,7 @@ export default {
                 if (path === '/api/ayonline/login' && method === 'POST') {
                     const body = await request.json().catch(() => null);
                     if (!body || (!body.username && !body.email) || !body.password) {
-                        return jsonResponse({ error_code: 1009, error: 'Username/email and password required' }, 400, cors);
+                        return jsonResponse({ action: 'login', error_code: 1009, error: 'Username/email and password required' }, 400, cors);
                     }
                     if (body.gt) {
                         let gt;
@@ -455,11 +442,11 @@ export default {
                         } catch {
                             gt = null;
                         }//客户传来的是base64编码的json文本
-                        if (gt === null) { return jsonResponse({ error: 'Missing required fields', error_code: 1007 }, 400, cors); }
+                        if (gt === null) { return jsonResponse({ action: 'login', error: 'Missing required fields', error_code: 1007 }, 400, cors); }
                         const prikey = JSON.parse(env.GTCODEMAP)[gt.captcha_id];
 
                         if (!prikey) {
-                            return jsonResponse({ code: 400, 'message': 'id is not in id pools ', error_code: 1021 }, 400, cors);
+                            return jsonResponse({ action: 'login', code: 400, 'message': 'id is not in id pools ', error_code: 1021 }, 400, cors);
                         }
                         const sign_token = await hmacSha256(prikey, gt.lot_number);
                         const query = Object.assign(gt, { sign_token });
@@ -497,6 +484,7 @@ export default {
                                     maxAge: REFRESH_TOKEN_TTL,
                                 };
                                 const responseBody = {
+                                    action: 'login',
                                     success: true,
                                     code: 200,
                                     user: { id: user.id, username: user.username, email: user.email },
@@ -512,13 +500,13 @@ export default {
                                 });
 
                             } else {
-                                return jsonResponse({ error_code: 1022, message: 'Verification failed' }, 400, cors);
+                                return jsonResponse({ action: 'login', error_code: 1022, message: 'Verification failed' }, 400, cors);
                             }
                         } catch {
-                            return jsonResponse({ error_code: 1020, message: 'GeeTest Server Error' }, 500, cors);
+                            return jsonResponse({ action: 'login', error_code: 1020, message: 'GeeTest Server Error' }, 500, cors);
                         }
                     } else {
-                        return jsonResponse({ success: true, gt_code: JSON.parse(env.GTCODE)[1], message: '请求频繁，请稍后再试', error_code: 1023 }, 429, cors);
+                        return jsonResponse({ action: 'login', success: true, gt_code: JSON.parse(env.GTCODE)[1], message: '请求频繁，请稍后再试', error_code: 1023 }, 429, cors);
                     }
                 }
                 // ---------- 修改密码 ----------
@@ -527,16 +515,16 @@ export default {
                     const cookies = parse(request.headers.get('Cookie') || '');
                     const accessToken = cookies.access_token;
                     if (!accessToken) {
-                        return jsonResponse({ error_code: 1010, error: 'Unauthorized' }, 401, cors);
+                        return jsonResponse({ action: 'changePassword', error_code: 1010, error: 'Unauthorized' }, 401, cors);
                     }
                     const payload = await verifyAccessToken(accessToken, env.JWT_KEY);
                     if (!payload) {
-                        return jsonResponse({ error_code: 1011, error: 'Invalid or expired token' }, 401, cors);
+                        return jsonResponse({ action: 'changePassword', error_code: 1011, error: 'Invalid or expired token' }, 401, cors);
                     }
 
                     const body = await request.json().catch(() => null);
                     if (!body || !body.oldPassword || !body.newPassword) {
-                        return jsonResponse({ error_code: 1012, error: 'Missing oldPassword or newPassword' }, 400, cors);
+                        return jsonResponse({ action: 'changePassword', error_code: 1012, error: 'Missing oldPassword or newPassword' }, 400, cors);
                     }
                     if (body.gt) {
                         let gt;
@@ -546,11 +534,11 @@ export default {
                         } catch {
                             gt = null;
                         }//客户传来的是base64编码的json文本
-                        if (gt === null) { return jsonResponse({ error: 'Missing required fields', error_code: 1007 }, 400, cors); }
+                        if (gt === null) { return jsonResponse({ action: 'changePassword', error: 'Missing required fields', error_code: 1007 }, 400, cors); }
                         const prikey = JSON.parse(env.GTCODEMAP)[gt.captcha_id];
 
                         if (!prikey) {
-                            return jsonResponse({ code: 400, 'message': 'id is not in id pools ', error_code: 1021 }, 400, cors);
+                            return jsonResponse({ action: 'changePassword', code: 400, 'message': 'id is not in id pools ', error_code: 1021 }, 400, cors);
                         }
                         const sign_token = await hmacSha256(prikey, gt.lot_number);
                         const query = Object.assign(gt, { sign_token });
@@ -564,7 +552,7 @@ export default {
                                 const userId = parseInt(payload.sub, 10);
                                 const result = await changePassword(env.db, env.kv, userId, body.oldPassword, body.newPassword);
                                 if (!result.success) {
-                                    return jsonResponse({ error_code: result.error_code, error: result.message }, result.code, cors);
+                                    return jsonResponse({ action: 'changePassword', error_code: result.error_code, error: result.message }, result.code, cors);
                                 }
 
                                 // 清除当前设备的 Cookie（因为刷新令牌已被删除）
@@ -581,19 +569,19 @@ export default {
                                     serialize('refresh_token', '', clearOptions),
                                 ];
 
-                                return jsonResponse({ success: true, message: result.message, code: 200 }, 200, {
+                                return jsonResponse({ action: 'changePassword', success: true, message: result.message, code: 200 }, 200, {
                                     ...cors,
                                     'Set-Cookie': clearHeaders,
                                 });
 
                             } else {
-                                return jsonResponse({ error_code: 1022, message: 'Verification failed' }, 400, cors);
+                                return jsonResponse({ action: 'changePassword', error_code: 1022, message: 'Verification failed' }, 400, cors);
                             }
                         } catch {
-                            return jsonResponse({ error_code: 1020, message: 'GeeTest Server Error' }, 500, cors);
+                            return jsonResponse({ action: 'changePassword', error_code: 1020, message: 'GeeTest Server Error' }, 500, cors);
                         }
                     } else {
-                        return jsonResponse({ success: true, gt_code: JSON.parse(env.GTCODE)[1], message: '请求频繁，请稍后再试', error_code: 1023 }, 429, cors);
+                        return jsonResponse({ action: 'changePassword', success: true, gt_code: JSON.parse(env.GTCODE)[1], message: '请求频繁，请稍后再试', error_code: 1023 }, 429, cors);
                     }
 
                 }
@@ -620,7 +608,7 @@ export default {
                     ];
 
                     return jsonResponse(
-                        { success: true, message: 'Logged out', code: 200 },
+                        { action: 'logout', success: true, message: 'Logged out', code: 200 },
                         200,
                         {
                             ...cors,
@@ -698,7 +686,7 @@ export default {
                     const setCookie = serialize('access_token', newAccessToken, cookieOptions);
 
                     return jsonResponse(
-                        { success: true, message: 'Token refreshed', code: 200 },
+                        { action: 'refresh', success: true, message: 'Token refreshed', code: 200 },
                         200,
                         {
                             ...cors,
@@ -706,13 +694,13 @@ export default {
                         }
                     );
                 }
-                return jsonResponse({ error: 'API not found', error_code: 404 }, 404, cors);
+                return jsonResponse({ action: 'refresh', error: 'API not found', error_code: 404 }, 404, cors);
             }
 
             return env.assets.fetch(request);
         } catch (error) {
             console.error('Unhandled error:', error);
-            return jsonResponse({ error: 'Internal Server Error', error_code: 1018 }, 500, cors);
+            return jsonResponse({ action: 'refresh', error: 'Internal Server Error', error_code: 1018 }, 500, cors);
         }
     },
 };

@@ -6,7 +6,7 @@
 >
   <head>
     <link rel="icon" href="/favicon.ico" />
-    <script src="https://online.undz.cn/lib/auth-sdk.js"></script>
+    <script src="/lib/auth-sdk-o.js"></script>
     <meta charset="utf-8" />
     <meta name="renderer" content="webkit" />
     <meta name="force-rendering" content="webkit" />
@@ -22,6 +22,7 @@
   <body style="background-color: transparent" class="">
     <button onclick="auth.login();">show login</button>
     <button onclick="auth.register();">show register</button>
+    <div id="ay-sdk-version-info"></div>
     <script>
       let auth = null;
       const iframe = document.querySelector(".iframe-level-1 iframe");

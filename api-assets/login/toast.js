@@ -1,4 +1,4 @@
-function showResult(data, type = "info", timeout = 1100) {
+function AyShowResult(data, type = "info", timeout = 1100) {
     var toast = document.querySelector(".ay-popup.ay-toast");
     var text = document.querySelector(".ay-toast__text");
     var errorIcon = document.querySelector(".ay-icon__image--error");
@@ -42,7 +42,7 @@ function showResult(data, type = "info", timeout = 1100) {
 }
 
 // 手动关闭 Toast 的方法
-function closeToast() {
+function AyCloseToast() {
     var toast = document.querySelector(".ay-popup.ay-toast");
     if (toast) toast.style.display = "none";
     if (window._toastTimer) {

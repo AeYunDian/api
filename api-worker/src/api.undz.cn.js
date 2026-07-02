@@ -230,13 +230,13 @@ button { padding: 8px 16px; background-color: #0073e6; color: white; border: non
             }
             if (path.startsWith('/proxy/')) {
                 if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + env.KEY))) {
-                    return new Response(getMainPage("AyUndz API Service", "<h1>403 Forbidden</h1>", "<p>You are not authorized to access this resource.</p><a href=\"/auth-proxy?redirect-to=" + encodeURIComponent(url.pathname + url.search) + "\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
+                    return new Response(getMainPage("AyUndz API Service", "<h1>403 Forbidden</h1>", "<p>You are not authorized to access this resource.</p><a href=\"/proxy/v1/auth?redirect-to=" + encodeURIComponent(url.pathname + url.search) + "\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
                 }
                 return await net_proxy(url, false, false);
             }
             if (path.startsWith('/proxy_fix/')) {
                 if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + env.KEY))) {
-                    return new Response(getMainPage("AyUndz API Service", "<h1>403 Forbidden</h1>", "<p>You are not authorized to access this resource.</p><a href=\"/auth-proxy?redirect-to=" + encodeURIComponent(url.pathname + url.search) + "\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
+                    return new Response(getMainPage("AyUndz API Service", "<h1>403 Forbidden</h1>", "<p>You are not authorized to access this resource.</p><a href=\"/proxy/v1/auth?redirect-to=" + encodeURIComponent(url.pathname + url.search) + "\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
                 }
                 return await net_proxy(url, true, false);
             }

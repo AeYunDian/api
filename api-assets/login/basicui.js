@@ -95,13 +95,13 @@
                 const result = window._validateLogin();
                 if (!result.valid) {
                     loginBtn.blur();
-                    showResult(result.msg);
+                    AyShowResult(result.msg);
 
                     return;
                 }
             }
 
-            showResult('请稍后...', 'loading', 0);
+            AyShowResult('请稍后...', 'loading', 0);
             window.parent.postMessage(JSON.stringify({
                 action: 'login',
                 username: getVal(loginUsername),
@@ -118,11 +118,11 @@
                 const result = window._validateRegister();
                 if (!result.valid) {
                     regBtn.blur();
-                    showResult(result.msg);
+                    AyShowResult(result.msg);
                     return;
                 }
             }
-            showResult('请稍后...', 'loading', 0);
+            AyShowResult('请稍后...', 'loading', 0);
             window.parent.postMessage(JSON.stringify({
                 action: 'register',
                 username: getVal(regUsername),
@@ -134,7 +134,7 @@
 
     // ---------- 遇到问题 ----------
     document.querySelector(".haveQuestion").addEventListener("click", () => {
-        showResult("无法加载");
+        AyShowResult("无法加载");
     });
 
     // 如果 URL 参数指定 tab=register，则切换到注册
@@ -153,29 +153,29 @@
         // 处理对象
         if (typeof data === 'object' && data.action) {
             switch (data.action) {
-                case 'registerSuccess': closeToast(); showResult("注册成功"); break;
+                case 'registerSuccess': AyCloseToast(); AyShowResult("注册成功"); break;
                 case 'registerFailure':
-                    closeToast();
-                    showResult(data.message || "注册失败");
+                    AyCloseToast();
+                    AyShowResult(data.message || "注册失败");
                     break;
                 case 'loginSuccess':
-                    closeToast();
-                    showResult("登录成功", 'info', 1000);
+                    AyCloseToast();
+                    AyShowResult("登录成功", 'info', 1000);
                     setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000);
                     break;
                 case 'loginFailure':
-                    closeToast();
-                    showResult(data.message || "登录失败");
+                    AyCloseToast();
+                    AyShowResult(data.message || "登录失败");
                     break;
                 default: console.log("未知消息", data);
             }
         } else {
             // 兼容旧版纯字符串消息（如 "registerSuccess"）
             switch (data) {
-                case "registerSuccess": closeToast(); showResult("注册成功"); break;
-                case "registerFailure": closeToast(); showResult("注册失败"); break;
-                case "loginSuccess": closeToast(); showResult("登录成功", 'info', 1000); setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000); break;
-                case "loginFailure": closeToast(); showResult("登录失败"); break;
+                case "registerSuccess": AyCloseToast(); AyShowResult("注册成功"); break;
+                case "registerFailure": AyCloseToast(); AyShowResult("注册失败"); break;
+                case "loginSuccess": AyCloseToast(); AyShowResult("登录成功", 'info', 1000); setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000); break;
+                case "loginFailure": AyCloseToast(); AyShowResult("登录失败"); break;
                 default: console.log("不能够处理的消息", data);
             }
         }

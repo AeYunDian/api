@@ -1,6 +1,7 @@
-'v1.3.9 AyAccountSDK';
+'v1.4.1 AyAccountSDK';
 
-const VERSION = '1.3.9';
+const VERSION = '1.4.1';
+const PRODUCE = false;
 const BUILTIN_TRANSLATIONS = {
   'zh-cn': {
     'error.1000': '邮箱格式无效',
@@ -27,6 +28,7 @@ const BUILTIN_TRANSLATIONS = {
     'error.1023': '需要通过人机验证',
     'error.1024': '您已取消验证',
     'error.modal_already_open': '登录窗口已打开，请勿重复操作',
+    'error.aytoast_not_found': 'AyToast 组件未成功加载，请您重载',
     'common.network_error': '网络请求失败，请检查网络',
     'common.unknown_error': '未知错误，请稍后重试',
     'common.success': '操作成功',
@@ -35,6 +37,7 @@ const BUILTIN_TRANSLATIONS = {
     'logout.success': '已登出',
     'register.success': '注册成功',
     'refresh.success': '令牌已刷新',
+    'loading': '加载中...',
     'password.change.success': '密码已修改，请重新登录',
   },
   'en-us': {
@@ -62,6 +65,7 @@ const BUILTIN_TRANSLATIONS = {
     'error.1023': 'You need to pass a human verification',
     'error.1024': 'Verification cancelled, please retry',
     'error.modal_already_open': 'Login modal is already open, please do not repeat',
+    'error.aytoast_not_found': 'The AyToast component failed to load, please reload.',
     'common.network_error': 'Network request failed, please check your connection',
     'common.unknown_error': 'Unknown error, please try again later',
     'common.success': 'Operation successful',
@@ -70,6 +74,7 @@ const BUILTIN_TRANSLATIONS = {
     'logout.success': 'Logged out',
     'register.success': 'Registration successful',
     'refresh.success': 'Token refreshed',
+    'loading': 'loading...',
     'password.change.success': 'Password changed, please login again',
   },
   'zh-hk': {
@@ -97,6 +102,7 @@ const BUILTIN_TRANSLATIONS = {
     'error.1023': '需要通過人機驗證',
     'error.1024': '驗證已取消，請重試',
     'error.modal_already_open': '登錄視窗已打開，請勿重複操作',
+    'error.aytoast_not_found': 'AyToast 組件未成功加載，請你重載',
     'common.network_error': '網絡請求失敗，請檢查網絡',
     'common.unknown_error': '未知錯誤，請稍後重試',
     'common.complete_verification': '麻煩完成驗證',
@@ -105,10 +111,15 @@ const BUILTIN_TRANSLATIONS = {
     'logout.success': '已登出',
     'register.success': '註冊成功',
     'refresh.success': '令牌已刷新',
+    'loading': '載入中...',
     'password.change.success': '密碼已修改，請重新登錄',
   },
 };
-
+function isMobile() {
+  const userAgentInfo = navigator.userAgent;
+  const mobileAgents = ["Android", "iPhone", "SymbianOS", "Windows Phone", "iPad", "iPod"];
+  return mobileAgents.some(agent => userAgentInfo.includes(agent));
+}
 // ---------- 工具函数 ----------
 function utf8ToBase64(str) {
   // 将字符串编码为 UTF-8 字节数组
@@ -138,13 +149,53 @@ function isPlainObject(obj) {
 (() => {
   // 动态加载 Geetest SDK（仅在浏览器环境中）
   if (typeof window !== 'undefined' && typeof window.initGeetest4 === 'undefined') {
-    const script = document.createElement('script');
-    script.src = 'https://online.undz.cn/lib/gt4.js';
-    script.async = true;        // 异步加载，不阻塞页面
-    script.onload = () => console.log('[AyAccountSDK] Geetest loaded');
-    script.onerror = () => console.warn('[AyAccountSDK] Failed to load Geetest');
-    document.head.appendChild(script);
+    window.addEventListener("load", function () {
+      const script = document.createElement('script');
+      script.src = PRODUCE ? 'https://online.undz.cn/lib/gt4.js' : '/lib/gt4.js';
+      script.async = true;        // 异步加载，不阻塞页面
+      script.onload = () => console.log('[AyAccountSDK] Geetest loaded');
+      script.onerror = () => console.warn('[AyAccountSDK] Failed to load Geetest');
+      document.head.appendChild(script);
+    });
   }
+  if (typeof window !== 'undefined') {
+    window.addEventListener("load", function () {
+      const toastscript = document.createElement('script');
+      toastscript.src = PRODUCE ? 'https://online.undz.cn/login/toast.js' : '/login/toast.js';
+      toastscript.async = true;        // 异步加载，不阻塞页面
+      toastscript.onload = () => console.log('[AyAccountSDK] AyWebToast loaded');
+      toastscript.onerror = () => console.warn('[AyAccountSDK] Failed to load AyWebToast');
+      document.head.appendChild(toastscript);
+      const toastcss = document.createElement('link');
+      toastcss.rel = 'stylesheet';
+      toastcss.href = PRODUCE ? 'https://online.undz.cn/login/toast.css' : '/login/toast.css';
+      document.head.appendChild(toastcss);
+      const toastDiv = document.createElement("div");
+      toastDiv.className = 'ay-popup ay-toast service-loading';
+      toastDiv.innerHTML = `
+      <i class="ay-icon">
+        <img
+          class="ay-icon__image ay-icon__image--loading"
+          src="data:image/png;base64,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"
+        />
+      </i>
+      <i class="ay-icon">
+        <img
+          class="ay-icon__image ay-icon__image--error"
+          style="display: none"
+          src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAABZUlEQVR4nM3S7VHCQBhF4ZsKtAOxAtcOoINQgXRgrECtwFiBWoFrBdCBSwVCB1ABnpeEj4QNCBlmPDNP/sDsDSSJzty/GLhDV5IrWaHk8YXG9g2keEFH+5tIeoDHTgli2cEZjimHDVWKDdgX73FKr8iwrj6Q4hNt6sNjWX3gBx21ayLpGssSrBpIekOsZ2S4gDVHjkfE6sOjMvCu4pWs94wnFa/oSEVdFa/pk+IjHxiIEqz6hkO9GXoIcLACHIa4RL2AW1QGFmhqhh4CLIchLtFUguJStkBTc3RVHRhp80xiLc9eXsoCblBv+3AHK8BhpPjIGPZ5ZeBd8Yfs0YfDEFYPAZ9IUe8DA1GCVQM1v6YeXW3+8xlGih9u2Q15VAasiaQrtGmKjsoSbJfCfnab1ndv1QesHPc4pVdkWBcbsHIcO7JzuNU0YKXIceiZTJHBY6cEh0pLDjewxgjwpcb+MtCqsw/8AhmlSBngmo1XAAAAAElFTkSuQmCC"
+        />
+      </i>
+      <div class="ay-toast__text">加载中...</div>
+      `;
+      toastDiv.style.display = 'none';
+      toastDiv.role = 'dialog';
+      toastDiv.tabIndex = 0;
+      toastDiv.style.zIndex = 20000010;
+      document.body.appendChild(toastDiv);
+    });
+  }
+
   console.info(`%c AyAccountSDK %c v${VERSION} `,
     "padding: 2px 6px; border-radius: 3px 0 0 3px; color: #fff; background: #00aaff; font-weight: bold;",
     "padding: 2px 6px; border-radius: 0 3px 3px 0; color: #fff; background: #00ccff; font-weight: bold;");
@@ -290,15 +341,19 @@ class AyAccount {
     if (this._iframe) {
       throw new Error(this._t('error.modal_already_open') || 'Modal already open');
     }
+    if (!AyShowResult || !AyCloseToast) {
+      throw new Error(this._t('error.aytoast_not_found') || '找不到AyToast组件，请重新加载');
+    }
 
     return new Promise((resolve, reject) => {
+      AyShowResult(this._t('loading'), 'loading', 0)
       const iframediv = document.createElement('div');
       iframediv.className = 'iframe-level-1';
       const iframe = document.createElement('iframe');
       iframe.textContent = '';
 
       // 根据模式设置不同的 URL 参数
-      const baseUrl = 'https://online.undz.cn/login/index.html';
+      const baseUrl = isMobile() ? (PRODUCE ? 'https://online.undz.cn/login/mobile.html' : '/login/mobile.html') : (PRODUCE ? 'https://online.undz.cn/login/index.html' : '/login/index.html');
       iframe.src = mode === 'register' ? `${baseUrl}?tab=register` : `${baseUrl}?tab=login`;
 
       iframe.style.position = "fixed";
@@ -307,7 +362,7 @@ class AyAccount {
       iframe.style.width = "100%";
       iframe.style.height = "100%";
       iframe.style.border = "none";
-      iframe.style.zIndex = "9999";
+      iframe.style.zIndex = "20000000";
       iframe.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
       iframe.style.opacity = "1";
       iframe.style.pointerEvents = "auto";
@@ -325,6 +380,9 @@ class AyAccount {
         try {
           const data = JSON.parse(event.data);
           switch (data.action) {
+            case 'isReady':
+              AyCloseToast();
+              break;
             case 'closeWindow':
               this._closeModal();
               resolve(userInfo);
@@ -469,10 +527,8 @@ class AyAccount {
                   },
                 });
                 resolve(retryRes); // 成功返回
-
               } catch (retryErr) {
                 reject(retryErr);  // 失败抛出
-
               } finally {
                 if (captcha && typeof captcha.destroy === 'function') {
                   captcha.destroy();
