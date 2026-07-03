@@ -54,8 +54,8 @@
             return;
         }
         // 手机模式：执行关闭动画
-        if (drawerOverlay) drawerOverlay.classList.remove('active');
-        if (outcard) outcard.classList.remove('open');
+        if (drawerOverlay) drawerOverlay.style.display = 'none';
+        if (outcard) outcard.style.display = 'none';
         document.body.style.overflow = '';
         // 等待动画结束后通知父页面
         if (notifyParent) {
