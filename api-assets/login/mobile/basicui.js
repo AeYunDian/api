@@ -11,7 +11,7 @@
     'use strict';
     const $ = (sel, ctx = document) => ctx.querySelector(sel);
     const getVal = (el) => el ? el.value.trim() : '';
-
+    let isLogin = true;
     const loginUsername = $('#loginUsernameOrEmail');
     const loginPassword = $('#loginPassword');
     const loginAgreement = $('.loginAgreement .checkbox');
@@ -23,6 +23,7 @@
     const regPasswordConfirm = $('#regPasswordConfirm');
     const regAgreement = $('.regAgreement .checkbox');
     const regBtn = $('.regBtn');
+    const changeMode = $('.cm.nav-item');
     const params = new URLSearchParams(window.location.search);
 
     // ═══ 新增：抽屉相关 DOM 引用 ═══
@@ -111,36 +112,31 @@
     }
 
     // ---------- Tab 切换 ----------
-    document.querySelector('.register.nav-item').addEventListener('click', function () {
-        document.querySelector('.login.nav-item').classList.remove('active');
-        document.querySelector('.register.nav-item').classList.add('active');
-        document.querySelector('.register-form.form').classList.add('active-form');
-        document.querySelector('.login-form.form').classList.remove('active-form');
-        document.querySelector('.active-bar').style.transform = 'translateX(213px)';
+    document.querySelector('.cm').addEventListener('click', function () {
+        if (isLogin) {
+            isLogin = false;
+            document.querySelector('.st.nav-item').innerHTML = '注册';
+            document.querySelector('.register-form.form').classList.add('active-form');
+            document.querySelector('.login-form.form').classList.remove('active-form');
+            this.innerHTML = '已有账号？去登录';
+            if (window._validateRegister) window._validateRegister();
+        } else {
+            isLogin = true;
+            document.querySelector('.st.nav-item').innerHTML = '登录';
+            document.querySelector('.register-form.form').classList.remove('active-form');
+            document.querySelector('.login-form.form').classList.add('active-form');
+            this.innerHTML = '没有账号？去注册';
 
-        if (window._validateRegister) window._validateRegister();
+
+
+            if (window._validateLogin) window._validateLogin();
+        }
 
         // 手机端切换 Tab 后，确保抽屉内容滚动到顶部
         if (isMobile() && outcard) {
             outcard.scrollTop = 0;
         }
     });
-
-    document.querySelector('.login.nav-item').addEventListener('click', function () {
-        document.querySelector('.login.nav-item').classList.add('active');
-        document.querySelector('.register-form.form').classList.remove('active-form');
-        document.querySelector('.login-form.form').classList.add('active-form');
-        document.querySelector('.register.nav-item').classList.remove('active');
-        document.querySelector('.active-bar').style.transform = 'translateX(94.4px)';
-
-        if (window._validateLogin) window._validateLogin();
-
-        // 手机端切换 Tab 后，确保抽屉内容滚动到顶部
-        if (isMobile() && outcard) {
-            outcard.scrollTop = 0;
-        }
-    });
-
     // ---------- 复选框 ----------
     function toggleCheckbox(checkbox) {
         if (!checkbox) return;
@@ -185,12 +181,12 @@
                 const result = window._validateLogin();
                 if (!result.valid) {
                     loginBtn.blur();
-                    showResult(result.msg);
+                    AyShowResult(result.msg);
                     return;
                 }
             }
 
-            showResult('请稍后...', 'loading', 0);
+            AyShowResult('请稍后...', 'loading', 0);
             window.parent.postMessage(
                 JSON.stringify({
                     action: 'login',
@@ -210,11 +206,11 @@
                 const result = window._validateRegister();
                 if (!result.valid) {
                     regBtn.blur();
-                    showResult(result.msg);
+                    AyShowResult(result.msg);
                     return;
                 }
             }
-            showResult('请稍后...', 'loading', 0);
+            AyShowResult('请稍后...', 'loading', 0);
             window.parent.postMessage(
                 JSON.stringify({
                     action: 'register',
@@ -229,7 +225,7 @@
 
     // ---------- 遇到问题 ----------
     document.querySelector('.haveQuestion').addEventListener('click', function () {
-        showResult('无法加载');
+        AyShowResult('无法加载');
     });
 
     // ---------- 消息监听 ----------
@@ -248,24 +244,24 @@
         if (typeof data === 'object' && data.action) {
             switch (data.action) {
                 case 'registerSuccess':
-                    closeToast();
-                    showResult('注册成功');
+                    AyAyAyCloseToast();
+                    AyShowResult('注册成功');
                     break;
                 case 'registerFailure':
-                    closeToast();
-                    showResult(data.message || '注册失败');
+                    AyAyCloseToast();
+                    AyShowResult(data.message || '注册失败');
                     break;
                 case 'loginSuccess':
-                    closeToast();
-                    showResult('登录成功', 'info', 1000);
+                    AyAyCloseToast();
+                    AyShowResult('登录成功', 'info', 1000);
                     setTimeout(
                         () => window.parent.postMessage(JSON.stringify({ action: 'closeWindow' }), '*'),
                         1000
                     );
                     break;
                 case 'loginFailure':
-                    closeToast();
-                    showResult(data.message || '登录失败');
+                    AyAyCloseToast();
+                    AyShowResult(data.message || '登录失败');
                     break;
                 default:
                     console.log('未知消息', data);
@@ -274,24 +270,24 @@
             // 兼容旧版纯字符串消息（如 "registerSuccess"）
             switch (data) {
                 case 'registerSuccess':
-                    closeToast();
-                    showResult('注册成功');
+                    AyAyCloseToast();
+                    AyShowResult('注册成功');
                     break;
                 case 'registerFailure':
-                    closeToast();
-                    showResult('注册失败');
+                    AyAyCloseToast();
+                    AyShowResult('注册失败');
                     break;
                 case 'loginSuccess':
-                    closeToast();
-                    showResult('登录成功', 'info', 1000);
+                    AyAyCloseToast();
+                    AyShowResult('登录成功', 'info', 1000);
                     setTimeout(
                         () => window.parent.postMessage(JSON.stringify({ action: 'closeWindow' }), '*'),
                         1000
                     );
                     break;
                 case 'loginFailure':
-                    closeToast();
-                    showResult('登录失败');
+                    AyAyCloseToast();
+                    AyShowResult('登录失败');
                     break;
                 default:
                     console.log('不能够处理的消息', data);
@@ -303,7 +299,7 @@
     function init() {
         // 如果 URL 参数指定 tab=register，则切换到注册
         if (params.get('tab') === 'register') {
-            document.querySelector('.register.nav-item').click();
+            document.querySelector('.cm').click();
         }
 
         // 手机端：自动打开抽屉
