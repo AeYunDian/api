@@ -244,15 +244,15 @@
         if (typeof data === 'object' && data.action) {
             switch (data.action) {
                 case 'registerSuccess':
-                    AyAyAyCloseToast();
+                    AyAyCloseToast();
                     AyShowResult('注册成功');
                     break;
                 case 'registerFailure':
-                    AyAyCloseToast();
+                    AyCloseToast();
                     AyShowResult(data.message || '注册失败');
                     break;
                 case 'loginSuccess':
-                    AyAyCloseToast();
+                    AyCloseToast();
                     AyShowResult('登录成功', 'info', 1000);
                     setTimeout(
                         () => window.parent.postMessage(JSON.stringify({ action: 'closeWindow' }), '*'),
@@ -260,7 +260,7 @@
                     );
                     break;
                 case 'loginFailure':
-                    AyAyCloseToast();
+                    AyCloseToast();
                     AyShowResult(data.message || '登录失败');
                     break;
                 default:
@@ -270,15 +270,15 @@
             // 兼容旧版纯字符串消息（如 "registerSuccess"）
             switch (data) {
                 case 'registerSuccess':
-                    AyAyCloseToast();
+                    AyCloseToast();
                     AyShowResult('注册成功');
                     break;
                 case 'registerFailure':
-                    AyAyCloseToast();
+                    AyCloseToast();
                     AyShowResult('注册失败');
                     break;
                 case 'loginSuccess':
-                    AyAyCloseToast();
+                    AyCloseToast();
                     AyShowResult('登录成功', 'info', 1000);
                     setTimeout(
                         () => window.parent.postMessage(JSON.stringify({ action: 'closeWindow' }), '*'),
@@ -286,7 +286,7 @@
                     );
                     break;
                 case 'loginFailure':
-                    AyAyCloseToast();
+                    AyCloseToast();
                     AyShowResult('登录失败');
                     break;
                 default:
