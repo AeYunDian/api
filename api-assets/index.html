@@ -22,10 +22,8 @@
   <body style="background-color: transparent" class="">
     <button onclick="auth.login();">show login</button>
     <button onclick="auth.register();">show register</button>
-    <div id="ay-sdk-version-info"></div>
     <script>
       let auth = null;
-      const iframe = document.querySelector(".iframe-level-1 iframe");
       function initClient(lang = "zh-cn") {
         try {
           auth = window.createAyAccount({
@@ -37,6 +35,7 @@
         }
       }
       initClient("zh-cn");
+      window.auth = auth; //便于调试
     </script>
   </body>
 </html>

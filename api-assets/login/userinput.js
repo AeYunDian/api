@@ -44,16 +44,16 @@
 
         if (!isNonEmpty(username)) {
             valid = false;
-            msg = '请输入用户名/邮箱';
+            msg = 'common.enter_username_or_email';
         } else if (!isNonEmpty(password)) {
             valid = false;
-            msg = '请输入密码';
+            msg = 'common.enter_password';
         } else if (password.length < 6) {
             valid = false;
-            msg = '密码至少6位';
+            msg = 'common.password_min_length';
         } else if (!agreed) {
             valid = false;
-            msg = '请您阅读并同意协议';
+            msg = 'common.please_read_and_agree';
         }
 
         return { valid, msg };
@@ -72,25 +72,25 @@
 
         if (!isNonEmpty(username)) {
             valid = false;
-            msg = '请输入用户名';
+            msg = 'common.enter_username';
         } else if (!isNonEmpty(email)) {
             valid = false;
-            msg = '请输入邮箱';
+            msg = 'common.enter_email';
         } else if (!isValidEmail(email)) {
             valid = false;
-            msg = '邮箱格式不正确';
+            msg = 'common.invalid_email_format';
         } else if (!isNonEmpty(password)) {
             valid = false;
-            msg = '请输入密码';
+            msg = 'common.enter_password';
         } else if (password.length < 6) {
             valid = false;
-            msg = '密码至少6位';
+            msg = 'common.password_min_length';
         } else if (password !== confirm) {
             valid = false;
-            msg = '密码输入不一致';
+            msg = 'common.password_mismatch';
         } else if (!agreed) {
             valid = false;
-            msg = '请您阅读并同意协议';
+            msg = 'common.please_read_and_agree';
         }
 
         return { valid, msg };

@@ -1,9 +1,29 @@
-'v1.4.1 AyAccountSDK';
+'v1.4.3 AyAccountSDK';
 
-const VERSION = '1.4.1';
+const VERSION = '1.4.3';
 const PRODUCE = false;
+const privateData = new WeakMap();
 const BUILTIN_TRANSLATIONS = {
   'zh-cn': {
+    'title.login': '登录',
+    'nav.login': '&nbsp;登录&nbsp;',
+    'nav.reg': '&nbsp;注册&nbsp;',
+    'reg.username': '用户名',
+    'reg.email': '邮箱',
+    'reg.password': '密码',
+    'reg.passwordConfirm': '请再次输入密码',
+    'agreement.prefix': '我已阅读并同意',
+    'privacy_policy': '《隐私政策》',
+    'cookie_policy': '《Cookie 政策》',
+    'terms': '《服务条款》',
+    'btn.reg': '注册',
+    'login.usernameoremail': '用户名/邮箱',
+    'login.password': '密码',
+    'btn.login': '登录',
+    'btn.haveQuestion': '遇到问题',
+    'loading': '加载中...',
+    'agreement.and1': '、',
+    'agreement.and2': '和',
     'error.1000': '邮箱格式无效',
     'error.1001': '密码长度至少 6 位，仅允许 a-z A-Z 0-9 -_=+@#$%',
     'error.1002': '用户名或邮箱已存在',
@@ -29,18 +49,51 @@ const BUILTIN_TRANSLATIONS = {
     'error.1024': '您已取消验证',
     'error.modal_already_open': '登录窗口已打开，请勿重复操作',
     'error.aytoast_not_found': 'AyToast 组件未成功加载，请您重载',
+    'common.register_success': '注册成功',
+    'common.login_success': '登录成功',
+    'common.login_failure': '登录失败',
+    'common.register_failure': '注册失败',
     'common.network_error': '网络请求失败，请检查网络',
     'common.unknown_error': '未知错误，请稍后重试',
+    'common.enter_username_or_email': '请输入用户名/邮箱',
+    'common.please_read_and_agree': '请您阅读并同意协议',
+    'common.password_min_length': '密码至少6位',
+    'common.enter_password': '请输入密码',
+    'common.invalid_email_format': '邮箱格式不正确',
+    'common.enter_username': '请输入用户名',
+    'common.enter_email': '请输入邮箱',
+    'common.password_mismatch': '密码输入不一致',
+    'common.no_account_register': '没有账号？去注册',
+    'common.have_account_login': '已有账号？去登录',
     'common.success': '操作成功',
     'common.complete_verification': '请完成验证',
+    'common.please_wait': '请稍后...',
     'login.success': '登录成功',
     'logout.success': '已登出',
     'register.success': '注册成功',
     'refresh.success': '令牌已刷新',
-    'loading': '加载中...',
     'password.change.success': '密码已修改，请重新登录',
   },
   'en-us': {
+    'title.login': 'Login',
+    'nav.login': 'Login',
+    'nav.reg': 'Register',
+    'reg.username': 'Username',
+    'reg.email': 'Email',
+    'reg.password': 'Password',
+    'reg.passwordConfirm': 'Re-enter password',
+    'agreement.prefix': 'I have read and agree to the',
+    'privacy_policy': '“Privacy Policy”',
+    'cookie_policy': '“Cookie Policy”',
+    'terms': '“Terms of Service”',
+    'btn.reg': 'Register',
+    'login.usernameoremail': 'Username/Email',
+    'login.password': 'Password',
+    'btn.login': 'Login',
+    'btn.haveQuestion': 'Help',
+    'loading': 'Loading...',
+    'agreement.and1': ', ',
+    'agreement.and2': 'and',
     'error.1000': 'Invalid email format',
     'error.1001': 'Password must be at least 6 characters and contain only a-z A-Z 0-9 -_=+@#$%',
     'error.1002': 'Username or email already exists',
@@ -70,14 +123,47 @@ const BUILTIN_TRANSLATIONS = {
     'common.unknown_error': 'Unknown error, please try again later',
     'common.success': 'Operation successful',
     'common.complete_verification': 'Please complete the verification',
+    'common.register_success': 'Registration successful',
+    'common.login_success': 'Login successful',
+    'common.login_failure': 'Login failed',
+    'common.register_failure': 'Registration failed',
+    'common.enter_username_or_email': 'Please enter username/email',
+    'common.please_read_and_agree': 'Please read and agree to the terms',
+    'common.password_min_length': 'Password must be at least 6 characters',
+    'common.enter_password': 'Please enter your password',
+    'common.no_account_register': 'No account? Sign up',
+    'common.have_account_login': 'Already have an account? Log in',
+    'common.invalid_email_format': 'Invalid email format',
+    'common.enter_username': 'Please enter username',
+    'common.enter_email': 'Please enter email',
+    'common.password_mismatch': 'Passwords do not match',
+    'common.please_wait': 'Please wait...',
     'login.success': 'Login successful',
     'logout.success': 'Logged out',
     'register.success': 'Registration successful',
     'refresh.success': 'Token refreshed',
-    'loading': 'loading...',
     'password.change.success': 'Password changed, please login again',
   },
   'zh-hk': {
+    'title.login': '登錄',
+    'nav.login': '&nbsp;登錄&nbsp;',
+    'nav.reg': '&nbsp;註冊&nbsp;',
+    'reg.username': '用戶名',
+    'reg.email': '電郵',
+    'reg.password': '密碼',
+    'reg.passwordConfirm': '請再次輸入密碼',
+    'agreement.prefix': '我已閱讀並同意',
+    'privacy_policy': '《隱私政策》',
+    'cookie_policy': '《Cookie 政策》',
+    'terms': '《服務條款》',
+    'btn.reg': '註冊',
+    'login.usernameoremail': '用戶名/電郵',
+    'login.password': '密碼',
+    'btn.login': '登錄',
+    'btn.haveQuestion': '遇到問題',
+    'loading': '載入中...',
+    'agreement.and1': '、',
+    'agreement.and2': '和',
     'error.1000': '電郵格式無效',
     'error.1001': '密碼長度至少 6 位，僅允許 a-z A-Z 0-9 -_=+@#$%',
     'error.1002': '用戶名或電郵已存在',
@@ -106,13 +192,28 @@ const BUILTIN_TRANSLATIONS = {
     'common.network_error': '網絡請求失敗，請檢查網絡',
     'common.unknown_error': '未知錯誤，請稍後重試',
     'common.complete_verification': '麻煩完成驗證',
+    'common.please_wait': '請稍後...',
     'common.success': '操作成功',
+    'common.register_success': '註冊成功',
+    'common.login_success': '登錄成功',
+    'common.enter_username_or_email': '請輸入用戶名/電郵',
+    'common.please_read_and_agree': '請您閱讀並同意協議',
+    'common.password_min_length': '密碼至少6位',
+    'common.enter_password': '請輸入密碼',
+    'common.invalid_email_format': '電郵格式不正確',
+    'common.enter_username': '請輸入用戶名',
+    'common.enter_email': '請輸入電郵',
+    'common.password_mismatch': '密碼輸入不一致',
+    'common.no_account_register': '沒有賬號？去註冊',
+    'common.have_account_login': '已有賬號？去登錄',
+    'common.login_failure': '登錄失敗',
+    'common.register_failure': '註冊失敗',
     'login.success': '登錄成功',
     'logout.success': '已登出',
     'register.success': '註冊成功',
     'refresh.success': '令牌已刷新',
-    'loading': '載入中...',
     'password.change.success': '密碼已修改，請重新登錄',
+
   },
 };
 function isMobile() {
@@ -145,6 +246,93 @@ function removeUselessTestLogo() {
 }
 function isPlainObject(obj) {
   return Object.prototype.toString.call(obj) === '[object Object]';
+}
+function getGeeTestLang() {
+  // 归一化：去除首尾空格，转小写，将下划线替换为连字符（兼容旧格式）
+  const normalized = this.lang.trim().toLowerCase().replace(/_/g, '-');
+  // 精确映射表（键为小写标签，值为 GeeTest 代码）
+  const map = {
+    // 简体中文
+    'zh-cn': 'zho',
+    'zh-hans': 'zho',
+    'zh-sg': 'zho',
+    'zh': 'zho', // 无区域时默认简体
+
+    // 繁体中文（台湾）
+    'zh-tw': 'zho-tw',
+    'zh-hant': 'zho-tw', // 通常表示繁体，默认为台湾
+    'zh-hant-tw': 'zho-tw',
+
+    // 繁体中文（香港）
+    'zh-hk': 'zho-hk',
+    'zh-mo': 'zho-hk', // 澳门也可使用香港代码
+    'zh-hant-hk': 'zho-hk',
+
+    // 英文
+    'en': 'eng',
+    'en-us': 'eng',
+    'en-gb': 'eng',
+    'en-au': 'eng',
+    'en-ca': 'eng',
+
+    // 日文
+    'ja': 'jpn',
+    'ja-jp': 'jpn',
+
+    // 印尼语
+    'id': 'ind',
+    'id-id': 'ind',
+
+    // 韩语
+    'ko': 'kor',
+    'ko-kr': 'kor',
+
+    // 俄语
+    'ru': 'rus',
+    'ru-ru': 'rus',
+
+    // 阿拉伯语
+    'ar': 'ara',
+    'ar-sa': 'ara',
+    'ar-eg': 'ara',
+
+    // 西班牙语
+    'es': 'spa',
+    'es-es': 'spa',
+    'es-mx': 'spa',
+
+    // 巴西葡萄牙语
+    'pt-br': 'pon',
+
+    // 欧洲葡萄牙语（默认葡萄牙语）
+    'pt': 'por',
+    'pt-pt': 'por',
+
+    // 法语
+    'fr': 'fra',
+    'fr-fr': 'fra',
+    'fr-ca': 'fra',
+
+    // 德语
+    'de': 'deu',
+    'de-de': 'deu',
+
+    // 维吾尔语（输入通常为 'ug'，映射到 GeeTest 的 'udm'）
+    'ug': 'udm',
+    'ug-cn': 'udm',
+  };
+
+  // 1. 精确匹配
+  if (map[normalized]) {
+    return map[normalized];
+  }
+
+  const mainLang = normalized.split('-')[0];
+  if (map[mainLang]) {
+    return map[mainLang];
+  }
+
+  return 'eng';
 }
 (() => {
   // 动态加载 Geetest SDK（仅在浏览器环境中）
@@ -215,7 +403,10 @@ class AyAccount {
     if (!config) {
       throw new Error('[AyAccountSDK] config is required');
     }
-    this.appId = config.appId || 'default';
+    const priv = {
+      appId: config.appId || 'default',
+    };
+    privateData.set(this, priv);
     this._iframe = null;            // 当前 iframe 元素
     this._iframeContainer = null;   // 包裹 iframe 的 div
     this._messageHandler = null;    // 绑定的消息监听函数（用于移除）
@@ -239,6 +430,8 @@ class AyAccount {
     this.lang = lang;
     // 自定义翻译（全局覆盖）
     this.customTranslations = customTranslations;
+    window.__ayt = this._t.bind(this);
+
   }
 
   // ---------- 翻译方法 ----------
@@ -253,6 +446,7 @@ class AyAccount {
     const fallbackDict = BUILTIN_TRANSLATIONS['en-us'];
     if (fallbackDict && fallbackDict[key] !== undefined) return fallbackDict[key];
 
+
     return key; // 未找到返回键名，这是想要的效果
   }
 
@@ -266,6 +460,7 @@ class AyAccount {
       return;
     }
     this.lang = lang;
+    if (this._iframe) this._iframe.contentWindow.postMessage(JSON.stringify({ action: 'changeLanguage' }), '*');
   }
 
   // ---------- 统一请求方法 ----------
@@ -275,7 +470,7 @@ class AyAccount {
       credentials: 'include', // 自动携带 Cookie
       headers: {
         'Content-Type': 'application/json',
-        'X-App-Id': this.appId,
+        'X-App-Id': privateData.get(this).appId,
         'X-SDK-VER': VERSION,
         ...options.headers,
       },
@@ -337,7 +532,7 @@ class AyAccount {
      * @param {string} mode 仅用于日志或后续扩展，实际业务由 iframe 内消息决定
      * @returns {Promise<Object|null>} 返回用户信息或 null
      */
-  _openModal(mode) {
+  #_openModal(mode) {
     if (this._iframe) {
       throw new Error(this._t('error.modal_already_open') || 'Modal already open');
     }
@@ -346,6 +541,7 @@ class AyAccount {
     }
 
     return new Promise((resolve, reject) => {
+      if (document.body) document.body.style.overflow = 'hidden';
       AyShowResult(this._t('loading'), 'loading', 0)
       const iframediv = document.createElement('div');
       iframediv.className = 'iframe-level-1';
@@ -366,7 +562,6 @@ class AyAccount {
       iframe.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
       iframe.style.opacity = "1";
       iframe.style.pointerEvents = "auto";
-      iframe.style.transition = "background-color 200ms linear";
       iframe.style.display = "block";
 
 
@@ -378,17 +573,21 @@ class AyAccount {
       const handler = (event) => {
         if (event.source !== iframe.contentWindow) return;
         try {
-          const data = JSON.parse(event.data);
+          let data = event.data;
+          if (typeof data === 'string' && data.startsWith('{')) {
+            try { data = JSON.parse(data); } catch (e) { return; }
+          }
+          if (typeof data !== 'object' || !data.action) return;
           switch (data.action) {
             case 'isReady':
               AyCloseToast();
               break;
             case 'closeWindow':
-              this._closeModal();
+              this.#_closeModal();
               resolve(userInfo);
               break;
             case 'register':
-              this._register(data.username, data.email, data.password)
+              this.#_register(data.username, data.email, data.password)
                 .then((result) => {
                   userInfo = result;
                   iframe.contentWindow.postMessage('registerSuccess', '*');
@@ -408,7 +607,7 @@ class AyAccount {
                 });
               break;
             case 'login':
-              this._login(data.username, data.password)
+              this.#_login(data.username, data.password)
                 .then((result) => {
                   userInfo = result;
                   iframe.contentWindow.postMessage('loginSuccess', '*');
@@ -426,6 +625,17 @@ class AyAccount {
                     '*'
                   );
                 });
+              break;
+            case 'getTranslation':
+              const key = data.key;
+
+              const translation = this._t(key);   // 使用实例的翻译方法
+              console.log('[SDK] Sending translation:', key, '=>', translation);
+              iframe.contentWindow.postMessage(JSON.stringify({
+                action: 'translationResponse',
+                key: key,
+                value: translation
+              }), '*');
               break;
             default:
               break;
@@ -446,7 +656,8 @@ class AyAccount {
   /**
    * 关闭模态框，清理资源
    */
-  _closeModal() {
+  #_closeModal() {
+    if (document.body) document.body.style.overflow = '';
     // 移除 DOM
     if (this._iframeContainer && this._iframeContainer.parentNode) {
       this._iframeContainer.parentNode.removeChild(this._iframeContainer);
@@ -466,7 +677,7 @@ class AyAccount {
    * @returns {Promise<Object|null>} 成功返回用户信息，关闭返回 null
    */
   register() {
-    return this._openModal('register');
+    return this.#_openModal('register');
   }
 
 
@@ -477,7 +688,7 @@ class AyAccount {
    * @param {string} password
    * @returns {Promise}
    */
-  async _register(username, email, password) {
+  async #_register(username, email, password) {
     const self = this;                     // 缓存 this 实例
     const endpoint = '/api/ayonline/register'; // 定义常量
 
@@ -498,9 +709,11 @@ class AyAccount {
         }
         // 4. 返回一个新的 Promise，让外部可以 await 等待验证结果
         return new Promise((resolve, reject) => {
+
           initGeetest4({
             captchaId: gt_code,
-            product: 'bind'
+            product: 'bind',
+            language: getGeeTestLang()
           }, function (captcha) {
             // 绑定事件
             captcha.onReady(function () {
@@ -554,7 +767,7 @@ class AyAccount {
   * @returns {Promise<Object|null>} 成功返回用户信息，关闭返回 null
   */
   login() {
-    return this._openModal('login');
+    return this.#_openModal('login');
   }
   /**
    * 用户登录
@@ -562,7 +775,7 @@ class AyAccount {
    * @param {string} password
    * @returns {Promise<{ user: {id, username, email}, code: number }>}
    */
-  async _login(usernameOrEmail, password) {
+  async #_login(usernameOrEmail, password) {
     const self = this;                     // 缓存 this 实例
     const endpoint = '/api/ayonline/login'; // 定义常量
 
@@ -584,7 +797,8 @@ class AyAccount {
         return new Promise((resolve, reject) => {
           initGeetest4({
             captchaId: gt_code,
-            product: 'bind'
+            product: 'bind',
+            language: getGeeTestLang()
           }, function (captcha) {
             // 绑定事件
             captcha.onReady(function () {
@@ -705,7 +919,8 @@ class AyAccount {
         return new Promise((resolve, reject) => {
           initGeetest4({
             captchaId: gt_code,
-            product: 'bind'
+            product: 'bind',
+            language: getGeeTestLang()
           }, function (captcha) {
             // 绑定事件
             captcha.onReady(function () {

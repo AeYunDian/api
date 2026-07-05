@@ -21,11 +21,11 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>登录</title>
+    <title data-i18n="title.login">登录</title>
     <script></script>
   </head>
 
-  <body style="background-color: transparent" class="">
+  <body style="background-color: transparent; overflow: hidden" class="">
     <div class="app">
       <div class="outcard">
         <div class="login-page">
@@ -44,8 +44,14 @@
           <div class="tabs">
             <div class="nav-warp">
               <div class="navlist">
-                <div class="login nav-item active">&nbsp;登录&nbsp;</div>
-                <div class="register nav-item" style="margin-left: 72px">
+                <div class="login nav-item active" data-i18n="nav.login">
+                  &nbsp;登录&nbsp;
+                </div>
+                <div
+                  class="register nav-item"
+                  style="margin-left: 72px"
+                  data-i18n="nav.reg"
+                >
                   &nbsp;注册&nbsp;
                 </div>
                 <div
@@ -60,6 +66,7 @@
               <input
                 type="text"
                 placeholder="用户名"
+                data-i18n-placeholder="reg.username"
                 id="regUsername"
                 autocomplete="name"
               />
@@ -68,6 +75,7 @@
               <input
                 type="email"
                 placeholder="邮箱"
+                data-i18n-placeholder="reg.email"
                 id="regEmail"
                 autocomplete="email"
               />
@@ -77,6 +85,7 @@
                 type="password"
                 placeholder="密码"
                 id="regPassword"
+                data-i18n-placeholder="reg.password"
                 autocomplete="new-password"
               />
             </div>
@@ -84,6 +93,7 @@
               <input
                 type="password"
                 placeholder="请再次输入密码"
+                data-i18n-placeholder="reg.passwordConfirm"
                 autocomplete="off"
                 id="regPasswordConfirm"
               />
@@ -91,25 +101,30 @@
             <div class="regAgreement">
               <span class="checkbox"></span>
               <span class="checkbox-label"
-                >我已阅读并同意
+                ><span data-i18n="agreement.prefix">我已阅读并同意</span>
                 <a
                   href="https://undz.cn/privacy_policy/zh-cn.html"
                   target="_blank"
+                  data-i18n="privacy_policy"
                   >《隐私政策》</a
-                >、<a
+                ><span data-i18n="agreement.and1">、</span
+                ><a
                   href="https://undz.cn/cookie_policy/zh-cn.html"
                   target="_blank"
+                  data-i18n="cookie_policy"
                   >《Cookie 政策》</a
-                ><br />和<a
+                ><span data-i18n="agreement.and2">和</span
+                ><a
                   href="https://undz.cn/terms/zh-cn.html"
                   target="_blank"
+                  data-i18n="terms"
                   >《服务条款》</a
                 ></span
               >
             </div>
             <div class="reg">
               <button type="submit" class="regBtn button">
-                <span>注册</span>
+                <span data-i18n="btn.reg">注册</span>
               </button>
             </div>
           </form>
@@ -117,6 +132,7 @@
             <div class="loginUsernameOrEmail input">
               <input
                 type="text"
+                data-i18n-placeholder="login.usernameoremail"
                 placeholder="用户名/邮箱"
                 id="loginUsernameOrEmail"
                 autocomplete="username"
@@ -127,41 +143,57 @@
                 type="password"
                 placeholder="密码"
                 id="loginPassword"
+                data-i18n-placeholder="login.password"
                 autocomplete="current-password"
               />
             </div>
             <div class="loginAgreement">
               <span class="checkbox"></span>
               <span class="checkbox-label"
-                >我已阅读并同意
+                ><span data-i18n="agreement.prefix">我已阅读并同意</span>
                 <a
                   href="https://undz.cn/privacy_policy/zh-cn.html"
                   target="_blank"
+                  data-i18n="privacy_policy"
                   >《隐私政策》</a
-                >、<a
+                ><span data-i18n="agreement.and1">、</span
+                ><a
                   href="https://undz.cn/cookie_policy/zh-cn.html"
                   target="_blank"
+                  data-i18n="cookie_policy"
                   >《Cookie 政策》</a
-                ><br />和<a
+                ><span data-i18n="agreement.and2">和</span
+                ><a
                   href="https://undz.cn/terms/zh-cn.html"
                   target="_blank"
+                  data-i18n="terms"
                   >《服务条款》</a
                 ></span
               >
             </div>
             <div class="login">
               <button type="submit" class="loginBtn button">
-                <span>登录</span>
+                <span data-i18n="btn.login">登录</span>
               </button>
             </div>
           </form>
           <div class="haveQuestionBox">
-            <a href="javascript:void(0);" class="haveQuestion">遇到问题</a>
+            <a
+              href="javascript:void(0);"
+              class="haveQuestion"
+              data-i18n="btn.haveQuestion"
+              >遇到问题</a
+            >
           </div>
         </div>
       </div>
     </div>
-    <div role="dialog" tabindex="0" class="ay-popup ay-toast service-loading">
+    <div
+      role="dialog"
+      tabindex="0"
+      class="ay-popup ay-toast service-loading"
+      style="display: none"
+    >
       <i class="ay-icon">
         <img
           class="ay-icon__image ay-icon__image--loading"
@@ -178,8 +210,12 @@
       <div class="ay-toast__text">加载中...</div>
     </div>
     <script>
-      window.addEventListener("load", function () {
+      window.addEventListener("load", async function () {
         window.parent.postMessage(JSON.stringify({ action: "isReady" }), "*");
+        await translatePage().catch((err) =>
+          console.warn("Translation error:", err),
+        );
+        document.querySelector(".app").classList.add("show");
       });
     </script>
   </body>

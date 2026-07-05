@@ -1,11 +1,11 @@
 // ============================================================
-//  basicui.js  -  原有交互逻辑（修改版）
+//  basicui.js 
 //  改动：删除重复的校验代码，改为调用 userinput.js 的校验函数；
 //        为登录/注册表单添加 submit 事件；
 //        在切换 Tab 和勾选复选框后触发校验。
 // ============================================================
 
-// ═══ 修改点 1：使用自执行函数避免污染，但保留原有变量 ═══
+// ═══ 使用自执行函数避免污染，但保留原有变量 ═══
 (function () {
     'use strict';
     const $ = (sel, ctx = document) => ctx.querySelector(sel);
@@ -95,13 +95,13 @@
                 const result = window._validateLogin();
                 if (!result.valid) {
                     loginBtn.blur();
-                    AyShowResult(result.msg);
+                    AyShowResult(_t(result.msg));
 
                     return;
                 }
             }
 
-            AyShowResult('请稍后...', 'loading', 0);
+            AyShowResult(_t('common.please_wait'), 'loading', 0);
             window.parent.postMessage(JSON.stringify({
                 action: 'login',
                 username: getVal(loginUsername),
@@ -118,11 +118,11 @@
                 const result = window._validateRegister();
                 if (!result.valid) {
                     regBtn.blur();
-                    AyShowResult(result.msg);
+                    AyShowResult(_t(result.msg));
                     return;
                 }
             }
-            AyShowResult('请稍后...', 'loading', 0);
+            AyShowResult(_t('common.please_wait'), 'loading', 0);
             window.parent.postMessage(JSON.stringify({
                 action: 'register',
                 username: getVal(regUsername),
@@ -142,42 +142,97 @@
         document.querySelector(".register.nav-item").click();
     }
     window.addEventListener("message", async (event) => {
+        if (event.source !== window.parent) return;
         let data = event.data;
         // 如果是字符串，保持兼容；如果是 JSON 字符串，解析
         if (typeof data === 'string' && data.startsWith('{')) {
             try {
                 data = JSON.parse(data);
-            } catch (e) { /* 忽略 */ }
+            } catch { /* 忽略 */ }
         }
 
         // 处理对象
         if (typeof data === 'object' && data.action) {
             switch (data.action) {
-                case 'registerSuccess': AyCloseToast(); AyShowResult("注册成功"); break;
+                case 'registerSuccess': AyCloseToast(); AyShowResult(_t('common.register_success')); break;
                 case 'registerFailure':
                     AyCloseToast();
-                    AyShowResult(data.message || "注册失败");
+                    AyShowResult(data.message || _t('common.register_failure'));
                     break;
                 case 'loginSuccess':
                     AyCloseToast();
-                    AyShowResult("登录成功", 'info', 1000);
+                    AyShowResult(_t('common.login_success'), 'info', 1000);
                     setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000);
                     break;
                 case 'loginFailure':
                     AyCloseToast();
-                    AyShowResult(data.message || "登录失败");
+                    AyShowResult(data.message || _t('common.login_failure'));
                     break;
-                default: console.log("未知消息", data);
+                case 'changeLanguage':
+                    await translatePage().catch((err) => console.warn("Translation error:", err),); break;
+                default: break;
             }
         } else {
-            // 兼容旧版纯字符串消息（如 "registerSuccess"）
+            // 兼容旧版纯字符串消息
             switch (data) {
-                case "registerSuccess": AyCloseToast(); AyShowResult("注册成功"); break;
-                case "registerFailure": AyCloseToast(); AyShowResult("注册失败"); break;
-                case "loginSuccess": AyCloseToast(); AyShowResult("登录成功", 'info', 1000); setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000); break;
-                case "loginFailure": AyCloseToast(); AyShowResult("登录失败"); break;
-                default: console.log("不能够处理的消息", data);
+                case "registerSuccess": AyCloseToast(); AyShowResult(_t('common.register_success')); break;
+                case "registerFailure": AyCloseToast(); AyShowResult(_t('common.register_failure')); break;
+                case "loginSuccess": AyCloseToast(); AyShowResult(_t('common.login_success'), 'info', 1000); setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000); break;
+                case "loginFailure": AyCloseToast(); AyShowResult(_t('common.login_failure')); break;
+                case 'changeLanguage': await translatePage().catch((err) => console.warn("Translation error:", err),); break;
+                default: break;
             }
         }
     });
 })();
+
+
+
+function _t(key) {
+    // 尝试从父窗口获取翻译
+    try {
+        const parentAuth = window.parent.__ayt;
+        if (parentAuth && typeof parentAuth === 'function') {
+            return parentAuth(key);
+        }
+    } catch (e) {
+        console.warn('[Translate] Cannot access parent auth:', e);
+    }
+    return key;
+}
+
+async function translatePage(maxRetries = 3) {
+    console.log('[AyLoginTranslate] Starting translatePage');
+    const elements = document.querySelectorAll('[data-i18n], [data-i18n-placeholder]');
+    console.log('[AyLoginTranslate] Found elements count:', elements.length);
+
+    if (elements.length === 0) {
+        if (maxRetries <= 0) {
+            console.warn('[AyLoginTranslate] No translatable elements found, giving up.');
+            return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+        return translatePage(maxRetries - 1);
+    }
+
+    // 直接收集所有 key 并同步获取翻译
+    const translationMap = {};
+    elements.forEach(el => {
+        const key = el.getAttribute('data-i18n') || el.getAttribute('data-i18n-placeholder');
+        if (key && !translationMap[key]) {
+            translationMap[key] = _t(key);
+        }
+    });
+
+    // 更新 DOM
+    elements.forEach(el => {
+        const i18nKey = el.getAttribute('data-i18n');
+        if (i18nKey && translationMap[i18nKey] !== undefined) {
+            el.innerHTML = translationMap[i18nKey];
+        }
+        const placeholderKey = el.getAttribute('data-i18n-placeholder');
+        if (placeholderKey && translationMap[placeholderKey] !== undefined) {
+            el.placeholder = translationMap[placeholderKey];
+        }
+    });
+}

@@ -295,10 +295,10 @@ button { padding: 8px 16px; background-color: #0073e6; color: white; border: non
             if (path === '/go/addlink') {
                 response = await short_link.addLink(request, env);  // 修正方法名
             }
-            if (path === '/gy/v1/verify') {
+            if (path === '/api/v1/verify') {
                 return await graduation_yearbook.handleVerify(request, env);
             }
-            if (path === '/gy/v1/submit') {
+            if (path === '/api/v1/submit') {
                 return await graduation_yearbook.handleSubmit(request, env);
             }
             if (path === '/gy/v1/initdb') {
