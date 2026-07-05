@@ -1,6 +1,6 @@
-'v1.4.3 AyAccountSDK';
+'v1.4.4 AyAccountSDK';
 
-const VERSION = '1.4.3';
+const VERSION = '1.4.4';
 const PRODUCE = false;
 const privateData = new WeakMap();
 const BUILTIN_TRANSLATIONS = {
@@ -247,93 +247,6 @@ function removeUselessTestLogo() {
 function isPlainObject(obj) {
   return Object.prototype.toString.call(obj) === '[object Object]';
 }
-function getGeeTestLang() {
-  // 归一化：去除首尾空格，转小写，将下划线替换为连字符（兼容旧格式）
-  const normalized = this.lang.trim().toLowerCase().replace(/_/g, '-');
-  // 精确映射表（键为小写标签，值为 GeeTest 代码）
-  const map = {
-    // 简体中文
-    'zh-cn': 'zho',
-    'zh-hans': 'zho',
-    'zh-sg': 'zho',
-    'zh': 'zho', // 无区域时默认简体
-
-    // 繁体中文（台湾）
-    'zh-tw': 'zho-tw',
-    'zh-hant': 'zho-tw', // 通常表示繁体，默认为台湾
-    'zh-hant-tw': 'zho-tw',
-
-    // 繁体中文（香港）
-    'zh-hk': 'zho-hk',
-    'zh-mo': 'zho-hk', // 澳门也可使用香港代码
-    'zh-hant-hk': 'zho-hk',
-
-    // 英文
-    'en': 'eng',
-    'en-us': 'eng',
-    'en-gb': 'eng',
-    'en-au': 'eng',
-    'en-ca': 'eng',
-
-    // 日文
-    'ja': 'jpn',
-    'ja-jp': 'jpn',
-
-    // 印尼语
-    'id': 'ind',
-    'id-id': 'ind',
-
-    // 韩语
-    'ko': 'kor',
-    'ko-kr': 'kor',
-
-    // 俄语
-    'ru': 'rus',
-    'ru-ru': 'rus',
-
-    // 阿拉伯语
-    'ar': 'ara',
-    'ar-sa': 'ara',
-    'ar-eg': 'ara',
-
-    // 西班牙语
-    'es': 'spa',
-    'es-es': 'spa',
-    'es-mx': 'spa',
-
-    // 巴西葡萄牙语
-    'pt-br': 'pon',
-
-    // 欧洲葡萄牙语（默认葡萄牙语）
-    'pt': 'por',
-    'pt-pt': 'por',
-
-    // 法语
-    'fr': 'fra',
-    'fr-fr': 'fra',
-    'fr-ca': 'fra',
-
-    // 德语
-    'de': 'deu',
-    'de-de': 'deu',
-
-    // 维吾尔语（输入通常为 'ug'，映射到 GeeTest 的 'udm'）
-    'ug': 'udm',
-    'ug-cn': 'udm',
-  };
-
-  // 1. 精确匹配
-  if (map[normalized]) {
-    return map[normalized];
-  }
-
-  const mainLang = normalized.split('-')[0];
-  if (map[mainLang]) {
-    return map[mainLang];
-  }
-
-  return 'eng';
-}
 (() => {
   // 动态加载 Geetest SDK（仅在浏览器环境中）
   if (typeof window !== 'undefined' && typeof window.initGeetest4 === 'undefined') {
@@ -449,7 +362,90 @@ class AyAccount {
 
     return key; // 未找到返回键名，这是想要的效果
   }
+  #getGeeTestLang() {
+    const normalized = this.lang.trim().toLowerCase().replace(/_/g, '-');
+    // 精确映射表（键为小写标签，值为 GeeTest 代码）
+    const map = {
+      // 简体中文
+      'zh-cn': 'zho',
+      'zh-hans': 'zho',
+      'zh-sg': 'zho',
+      'zh': 'zho', // 无区域时默认简体
 
+      // 繁体中文（台湾）
+      'zh-tw': 'zho-tw',
+      'zh-hant': 'zho-tw', // 通常表示繁体，默认为台湾
+      'zh-hant-tw': 'zho-tw',
+
+      // 繁体中文（香港）
+      'zh-hk': 'zho-hk',
+      'zh-mo': 'zho-hk', // 澳门也可使用香港代码
+      'zh-hant-hk': 'zho-hk',
+
+      // 英文
+      'en': 'eng',
+      'en-us': 'eng',
+      'en-gb': 'eng',
+      'en-au': 'eng',
+      'en-ca': 'eng',
+
+      // 日文
+      'ja': 'jpn',
+      'ja-jp': 'jpn',
+
+      // 印尼语
+      'id': 'ind',
+      'id-id': 'ind',
+
+      // 韩语
+      'ko': 'kor',
+      'ko-kr': 'kor',
+
+      // 俄语
+      'ru': 'rus',
+      'ru-ru': 'rus',
+
+      // 阿拉伯语
+      'ar': 'ara',
+      'ar-sa': 'ara',
+      'ar-eg': 'ara',
+
+      // 西班牙语
+      'es': 'spa',
+      'es-es': 'spa',
+      'es-mx': 'spa',
+
+      // 巴西葡萄牙语
+      'pt-br': 'pon',
+
+      // 欧洲葡萄牙语（默认葡萄牙语）
+      'pt': 'por',
+      'pt-pt': 'por',
+
+      // 法语
+      'fr': 'fra',
+      'fr-fr': 'fra',
+      'fr-ca': 'fra',
+
+      // 德语
+      'de': 'deu',
+      'de-de': 'deu',
+
+      // 维吾尔语（输入通常为 'ug'，映射到 GeeTest 的 'udm'）
+      'ug': 'udm',
+      'ug-cn': 'udm',
+    };
+    if (map[normalized]) {
+      return map[normalized];
+    }
+
+    const mainLang = normalized.split('-')[0];
+    if (map[mainLang]) {
+      return map[mainLang];
+    }
+
+    return 'eng';
+  }
   /**
    * 切换当前语言
    * @param {string} lang - 'zh-cn' | 'en-us' | 'zh-hk'
@@ -713,7 +709,7 @@ class AyAccount {
           initGeetest4({
             captchaId: gt_code,
             product: 'bind',
-            language: getGeeTestLang()
+            language: this.#getGeeTestLang()
           }, function (captcha) {
             // 绑定事件
             captcha.onReady(function () {
@@ -798,7 +794,7 @@ class AyAccount {
           initGeetest4({
             captchaId: gt_code,
             product: 'bind',
-            language: getGeeTestLang()
+            language: this.#getGeeTestLang()
           }, function (captcha) {
             // 绑定事件
             captcha.onReady(function () {
@@ -920,7 +916,7 @@ class AyAccount {
           initGeetest4({
             captchaId: gt_code,
             product: 'bind',
-            language: getGeeTestLang()
+            language: this.#getGeeTestLang()
           }, function (captcha) {
             // 绑定事件
             captcha.onReady(function () {
