@@ -24,7 +24,6 @@
     const regPasswordConfirm = $('#regPasswordConfirm');
     const regAgreement = $('.regAgreement .checkbox');
     const regBtn = $('.regBtn');
-    const changeMode = $('.cm.nav-item');
     const params = new URLSearchParams(window.location.search);
 
     // ═══ 抽屉相关 DOM 引用 ═══
@@ -111,20 +110,22 @@
     document.querySelector('.cm').addEventListener('click', function () {
         if (isLogin) {
             isLogin = false;
-            document.querySelector('.st.nav-item').innerHTML = _t('nav.reg');
+            document.querySelector('.login.nav-item').style.display = 'none';
+            document.querySelector('.reg.nav-item').style.display = 'block';
             document.querySelector('.register-form.form').classList.add('active-form');
             document.querySelector('.login-form.form').classList.remove('active-form');
-            this.innerHTML = _t('common.have_account_login');
+            document.querySelector('.no_account_register').style.display = 'none';
+            document.querySelector('.have_account_login').style.display = 'block';
             if (window._validateRegister) window._validateRegister();
         } else {
             isLogin = true;
-            document.querySelector('.st.nav-item').innerHTML = _t('nav.login');
+            document.querySelector('.login.nav-item').style.display = 'block';
+            document.querySelector('.reg.nav-item').style.display = 'none';
             document.querySelector('.register-form.form').classList.remove('active-form');
             document.querySelector('.login-form.form').classList.add('active-form');
-            this.innerHTML = _t('common.no_account_register');
 
-
-
+            document.querySelector('.no_account_register').style.display = 'block';
+            document.querySelector('.have_account_login').style.display = 'none';
             if (window._validateLogin) window._validateLogin();
         }
 
@@ -220,8 +221,24 @@
     }
 
     // ---------- 遇到问题 ----------
-    document.querySelector('.haveQuestion').addEventListener('click', function () {
-        AyShowResult('无法加载');
+    document.querySelector(".haveQuestion").addEventListener("click", () => {
+        const featuresHeight = window.screen.height * (7 / 10)
+        const featuresWidth = window.screen.width * (5 / 10)
+        const featuresLeft = (window.screen.width - featuresWidth) / 2;
+        const featuresTop = (window.screen.height - featuresHeight - 35) / 2;
+        // 窗口特性
+        const features = [
+            `width=${featuresWidth}`,
+            `height=${featuresHeight}`,
+            `left=${featuresLeft}`,
+            `top=${featuresTop}`,
+            'resizable=yes',
+            'scrollbars=yes',
+            'status=no',
+            'menubar=no',
+            'toolbar=no'
+        ].join(',');
+        window.open(_t('link.faq'), '_blank', features);
     });
 
     // ---------- 消息监听 ----------
@@ -256,6 +273,19 @@
                     break;
                 case 'changeLanguage':
                     await translatePage().catch((err) => console.warn("Translation error:", err),); break;
+                    if (isLogin) {
+                        document.querySelector('.st.nav-item').innerHTML = _t('nav.login');
+                        document.querySelector('.register-form.form').classList.remove('active-form');
+                        document.querySelector('.login-form.form').classList.add('active-form');
+                        this.innerHTML = _t('common.no_account_register');
+                        if (window._validateLogin) window._validateLogin();
+                    } else {
+                        document.querySelector('.st.nav-item').innerHTML = _t('nav.reg');
+                        document.querySelector('.register-form.form').classList.add('active-form');
+                        document.querySelector('.login-form.form').classList.remove('active-form');
+                        this.innerHTML = _t('common.have_account_login');
+                        if (window._validateRegister) window._validateRegister();
+                    }
                 default: break;
             }
         } else {
@@ -265,7 +295,22 @@
                 case "registerFailure": AyCloseToast(); AyShowResult(_t('common.register_failure')); break;
                 case "loginSuccess": AyCloseToast(); AyShowResult(_t('common.login_success'), 'info', 1000); setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000); break;
                 case "loginFailure": AyCloseToast(); AyShowResult(_t('common.login_failure')); break;
-                case 'changeLanguage': await translatePage().catch((err) => console.warn("Translation error:", err),); break;
+                case 'changeLanguage':
+                    await translatePage().catch((err) => console.warn("Translation error:", err),);
+                    if (isLogin) {
+                        document.querySelector('.st.nav-item').innerHTML = _t('nav.login');
+                        document.querySelector('.register-form.form').classList.remove('active-form');
+                        document.querySelector('.login-form.form').classList.add('active-form');
+                        this.innerHTML = _t('common.no_account_register');
+                        if (window._validateLogin) window._validateLogin();
+                    } else {
+                        document.querySelector('.st.nav-item').innerHTML = _t('nav.reg');
+                        document.querySelector('.register-form.form').classList.add('active-form');
+                        document.querySelector('.login-form.form').classList.remove('active-form');
+                        this.innerHTML = _t('common.have_account_login');
+                        if (window._validateRegister) window._validateRegister();
+                    }
+                    break;
                 default: break;
             }
         }
@@ -308,10 +353,9 @@ function _t(key) {
     }
     return key;
 }
-
 async function translatePage(maxRetries = 3) {
     console.log('[AyLoginTranslate] Starting translatePage');
-    const elements = document.querySelectorAll('[data-i18n], [data-i18n-placeholder]');
+    const elements = document.querySelectorAll('[data-i18n], [data-i18n-placeholder], [data-i18n-href]');
     console.log('[AyLoginTranslate] Found elements count:', elements.length);
 
     if (elements.length === 0) {
@@ -323,13 +367,21 @@ async function translatePage(maxRetries = 3) {
         return translatePage(maxRetries - 1);
     }
 
-    // 直接收集所有 key 并同步获取翻译
-    const translationMap = {};
+    // ---------- 分别收集所有 key，去重 ----------
+    const keys = new Set();
     elements.forEach(el => {
-        const key = el.getAttribute('data-i18n') || el.getAttribute('data-i18n-placeholder');
-        if (key && !translationMap[key]) {
-            translationMap[key] = _t(key);
-        }
+        const i18nKey = el.getAttribute('data-i18n');
+        if (i18nKey) keys.add(i18nKey);
+        const placeholderKey = el.getAttribute('data-i18n-placeholder');
+        if (placeholderKey) keys.add(placeholderKey);
+        const hrefKey = el.getAttribute('data-i18n-href');
+        if (hrefKey) keys.add(hrefKey);
+    });
+
+    // 翻译所有 key
+    const translationMap = {};
+    keys.forEach(key => {
+        translationMap[key] = _t(key);
     });
 
     // 更新 DOM
@@ -338,9 +390,15 @@ async function translatePage(maxRetries = 3) {
         if (i18nKey && translationMap[i18nKey] !== undefined) {
             el.innerHTML = translationMap[i18nKey];
         }
+
         const placeholderKey = el.getAttribute('data-i18n-placeholder');
         if (placeholderKey && translationMap[placeholderKey] !== undefined) {
             el.placeholder = translationMap[placeholderKey];
+        }
+
+        const hrefKey = el.getAttribute('data-i18n-href');
+        if (hrefKey && translationMap[hrefKey] !== undefined) {
+            el.href = translationMap[hrefKey];
         }
     });
 }

@@ -1,6 +1,6 @@
-'v1.4.4 AyAccountSDK';
+'v1.4.5 AyAccountSDK';
 
-const VERSION = '1.4.4';
+const VERSION = '1.4.5';
 const PRODUCE = false;
 const privateData = new WeakMap();
 const BUILTIN_TRANSLATIONS = {
@@ -8,6 +8,9 @@ const BUILTIN_TRANSLATIONS = {
     'title.login': '登录',
     'nav.login': '&nbsp;登录&nbsp;',
     'nav.reg': '&nbsp;注册&nbsp;',
+    'nav.login.bartf': '94.6px',
+    'nav.reg.bartf': '213.5px',
+    'link.faq': 'https://online.undz.cn/login/faq/zh-cn.html',
     'reg.username': '用户名',
     'reg.email': '邮箱',
     'reg.password': '密码',
@@ -16,11 +19,14 @@ const BUILTIN_TRANSLATIONS = {
     'privacy_policy': '《隐私政策》',
     'cookie_policy': '《Cookie 政策》',
     'terms': '《服务条款》',
+    'privacy_policy.link': 'https://undz.cn/privacy_policy/zh-cn.html',
+    'cookie_policy.link': 'https://undz.cn/cookie_policy/zh-cn.html',
+    'terms.link': 'https://undz.cn/terms/zh-cn.html',
     'btn.reg': '注册',
     'login.usernameoremail': '用户名/邮箱',
     'login.password': '密码',
     'btn.login': '登录',
-    'btn.haveQuestion': '遇到问题',
+    'btn.haveQuestion': '常见问题',
     'loading': '加载中...',
     'agreement.and1': '、',
     'agreement.and2': '和',
@@ -78,6 +84,8 @@ const BUILTIN_TRANSLATIONS = {
     'title.login': 'Login',
     'nav.login': 'Login',
     'nav.reg': 'Register',
+    'nav.login.bartf': '85px',
+    'nav.reg.bartf': '215px',
     'reg.username': 'Username',
     'reg.email': 'Email',
     'reg.password': 'Password',
@@ -90,10 +98,14 @@ const BUILTIN_TRANSLATIONS = {
     'login.usernameoremail': 'Username/Email',
     'login.password': 'Password',
     'btn.login': 'Login',
-    'btn.haveQuestion': 'Help',
+    'btn.haveQuestion': 'FAQ',
     'loading': 'Loading...',
     'agreement.and1': ', ',
     'agreement.and2': 'and',
+    'link.faq': 'https://online.undz.cn/login/faq/en-us.html',
+    'privacy_policy.link': 'https://undz.cn/privacy_policy/en-us.html',
+    'cookie_policy.link': 'https://undz.cn/cookie_policy/en-us.html',
+    'terms.link': 'https://undz.cn/terms/en-us.html',
     'error.1000': 'Invalid email format',
     'error.1001': 'Password must be at least 6 characters and contain only a-z A-Z 0-9 -_=+@#$%',
     'error.1002': 'Username or email already exists',
@@ -148,6 +160,8 @@ const BUILTIN_TRANSLATIONS = {
     'title.login': '登錄',
     'nav.login': '&nbsp;登錄&nbsp;',
     'nav.reg': '&nbsp;註冊&nbsp;',
+    'nav.login.bartf': '94.6px',
+    'nav.reg.bartf': '213.5px',
     'reg.username': '用戶名',
     'reg.email': '電郵',
     'reg.password': '密碼',
@@ -156,11 +170,15 @@ const BUILTIN_TRANSLATIONS = {
     'privacy_policy': '《隱私政策》',
     'cookie_policy': '《Cookie 政策》',
     'terms': '《服務條款》',
+    'link.faq': 'https://online.undz.cn/login/faq/zh-hk.html',
+    'privacy_policy.link': 'https://undz.cn/privacy_policy/zh-hk.html',
+    'cookie_policy.link': 'https://undz.cn/cookie_policy/zh-hk.html',
+    'terms.link': 'https://undz.cn/terms/zh-hk.html',
     'btn.reg': '註冊',
     'login.usernameoremail': '用戶名/電郵',
     'login.password': '密碼',
     'btn.login': '登錄',
-    'btn.haveQuestion': '遇到問題',
+    'btn.haveQuestion': '常見問題',
     'loading': '載入中...',
     'agreement.and1': '、',
     'agreement.and2': '和',
@@ -305,62 +323,115 @@ function isPlainObject(obj) {
 class AyAccount {
   /**
    * @param {Object} config
-   * @param {string} config.appId - 应用标识（目前仅用于日志/统计）
-   * @param {string|Object} config.i18n - 语言配置
-   *   - 字符串：'zh-cn' | 'en-us' | 'zh-hk'
-   *   - 对象：{ lang?: string, translations?: Record<string, string> }
-   *     translations 中的键会覆盖内置翻译（所有语言共享）
+   * @param {string} config.appId - 应用标识（用于请求头与统计）
+   * @param {string|Object} config.i18n - 国际化配置
+   *   - 字符串：内置支持的语言代码（'zh-cn' | 'en-us' | 'zh-hk'）
+   *   - 对象：{
+   *       lang?: string,               // 当前使用语言的标识（任意字符串，例如 'ja', 'zh-tw'）
+   *       fallbackLang?: string,       // 回退语言，当 lang 的翻译缺失时使用（默认为 'zh-cn'）
+   *       translations?: {             // 自定义多语言翻译包
+   *         [languageCode: string]: {  // 语言代码（须与 lang / fallbackLang 对应）
+   *           [key: string]: string    // 翻译键值对
+   *         }
+   *       }
+   *     }
+   *     - 翻译查找优先级：custom(lang) → builtin(lang) → custom(fallback) → builtin(fallback) → key 本身
+   *     - fallbackLang 必须为内置支持的语言，否则会警告并回退到 'zh-cn'
+   * 
+   * @example
+   * // 使用内置语言
+   * new AyAccount({ appId: 'xxx', i18n: 'zh-cn' });
+   * 
+   * // 使用自定义日语，回退到简体中文
+   * new AyAccount({
+   *   appId: 'xxx',
+   *   i18n: {
+   *     lang: 'ja',
+   *     fallbackLang: 'zh-cn',
+   *     translations: {
+   *       ja: { 'title.login': 'ログイン', 'btn.login': 'ログイン' }
+   *     }
+   *   }
+   * });
+   * 
+   * // 支持繁体中文，回退英文
+   * new AyAccount({
+   *   appId: 'xxx',
+   *   i18n: {
+   *     lang: 'zh-tw',
+   *     fallbackLang: 'en-us',
+   *     translations: {
+   *       'zh-tw': { 'title.login': '登入' }
+   *     }
+   *   }
+   * });
+   * 
+   * // 初始化后动态更新语言（使用 changeLanguage 或 updateI18n）
+   * const account = new AyAccount({ appId: 'xxx', i18n: 'zh-cn' });
+   * account.changeLanguage('ja'); // 需事先在 translations 中提供日语翻译
+   * // 或直接更新配置：
+   * account.updateI18n({ lang: 'ja', translations: { ja: { ... } } });
    */
   constructor(config) {
+    if (!config) throw new Error('[AyAccountSDK] config is required');
 
-    if (!config) {
-      throw new Error('[AyAccountSDK] config is required');
-    }
-    const priv = {
-      appId: config.appId || 'default',
-    };
+    const priv = { appId: config.appId || 'default' };
     privateData.set(this, priv);
-    this._iframe = null;            // 当前 iframe 元素
-    this._iframeContainer = null;   // 包裹 iframe 的 div
-    this._messageHandler = null;    // 绑定的消息监听函数（用于移除）
-    this._modalPromise = null;      // 用于防止并发调用（可选）
-    // 解析 i18n
+
+    this._iframe = null;
+    this._iframeContainer = null;
+    this._messageHandler = null;
+    this._modalPromise = null;
+
+    // 默认值
     let lang = 'zh-cn';
-    let customTranslations = {};
+    let fallbackLang = 'zh-cn';
+    let translations = {};
+
     const i18n = config.i18n;
     if (typeof i18n === 'string') {
       lang = i18n;
     } else if (isPlainObject(i18n)) {
       lang = i18n.lang || 'zh-cn';
-      customTranslations = i18n.translations || {};
+      fallbackLang = i18n.fallbackLang || 'zh-cn';
+      translations = i18n.translations || {};
     }
 
-    // 校验语言是否支持
-    if (!BUILTIN_TRANSLATIONS[lang]) {
-      console.warn(`[AyAccountSDK] Unsupported language "${lang}", fallback to "zh-cn"`);
-      lang = 'zh-cn';
+    // 确保 fallbackLang 是内置支持的语言（否则警告并修正）
+    if (!BUILTIN_TRANSLATIONS[fallbackLang]) {
+      console.warn(`[AyAccountSDK] Unsupported fallback language "${fallbackLang}", fallback to "zh-cn"`);
+      fallbackLang = 'zh-cn';
     }
+
     this.lang = lang;
-    // 自定义翻译（全局覆盖）
-    this.customTranslations = customTranslations;
-    window.__ayt = this._t.bind(this);
+    this.fallbackLang = fallbackLang;
+    this.translations = translations;     // 多语言翻译包
 
+    window.__ayt = this._t.bind(this);
   }
 
-  // ---------- 翻译方法 ----------
   _t(key) {
-    // 优先级：自定义 > 当前语言内置 > 英文内置（作为最终fallback）
-    const custom = this.customTranslations[key];
-    if (custom !== undefined) return custom;
+    const currentCustom = this.translations[this.lang];
+    if (currentCustom && currentCustom[key] !== undefined) {
+      return currentCustom[key];
+    }
 
-    const langDict = BUILTIN_TRANSLATIONS[this.lang];
-    if (langDict && langDict[key] !== undefined) return langDict[key];
+    const currentBuiltin = BUILTIN_TRANSLATIONS[this.lang];
+    if (currentBuiltin && currentBuiltin[key] !== undefined) {
+      return currentBuiltin[key];
+    }
 
-    const fallbackDict = BUILTIN_TRANSLATIONS['en-us'];
-    if (fallbackDict && fallbackDict[key] !== undefined) return fallbackDict[key];
+    const fallbackCustom = this.translations[this.fallbackLang];
+    if (fallbackCustom && fallbackCustom[key] !== undefined) {
+      return fallbackCustom[key];
+    }
 
+    const fallbackBuiltin = BUILTIN_TRANSLATIONS[this.fallbackLang];
+    if (fallbackBuiltin && fallbackBuiltin[key] !== undefined) {
+      return fallbackBuiltin[key];
+    }
 
-    return key; // 未找到返回键名，这是想要的效果
+    return key;
   }
   #getGeeTestLang() {
     const normalized = this.lang.trim().toLowerCase().replace(/_/g, '-');
@@ -371,66 +442,52 @@ class AyAccount {
       'zh-hans': 'zho',
       'zh-sg': 'zho',
       'zh': 'zho', // 无区域时默认简体
-
       // 繁体中文（台湾）
       'zh-tw': 'zho-tw',
       'zh-hant': 'zho-tw', // 通常表示繁体，默认为台湾
       'zh-hant-tw': 'zho-tw',
-
       // 繁体中文（香港）
       'zh-hk': 'zho-hk',
       'zh-mo': 'zho-hk', // 澳门也可使用香港代码
       'zh-hant-hk': 'zho-hk',
-
       // 英文
       'en': 'eng',
       'en-us': 'eng',
       'en-gb': 'eng',
       'en-au': 'eng',
       'en-ca': 'eng',
-
       // 日文
       'ja': 'jpn',
       'ja-jp': 'jpn',
-
       // 印尼语
       'id': 'ind',
       'id-id': 'ind',
-
       // 韩语
       'ko': 'kor',
       'ko-kr': 'kor',
-
       // 俄语
       'ru': 'rus',
       'ru-ru': 'rus',
-
       // 阿拉伯语
       'ar': 'ara',
       'ar-sa': 'ara',
       'ar-eg': 'ara',
-
       // 西班牙语
       'es': 'spa',
       'es-es': 'spa',
       'es-mx': 'spa',
-
       // 巴西葡萄牙语
       'pt-br': 'pon',
-
       // 欧洲葡萄牙语（默认葡萄牙语）
       'pt': 'por',
       'pt-pt': 'por',
-
       // 法语
       'fr': 'fra',
       'fr-fr': 'fra',
       'fr-ca': 'fra',
-
       // 德语
       'de': 'deu',
       'de-de': 'deu',
-
       // 维吾尔语（输入通常为 'ug'，映射到 GeeTest 的 'udm'）
       'ug': 'udm',
       'ug-cn': 'udm',
@@ -447,16 +504,49 @@ class AyAccount {
     return 'eng';
   }
   /**
-   * 切换当前语言
-   * @param {string} lang - 'zh-cn' | 'en-us' | 'zh-hk'
+   * 批量更新国际化配置
+   * @param {Object} options
+   * @param {string} [options.lang] - 新语言
+   * @param {string} [options.fallbackLang] - 新回退语言（需内置支持）
+   * @param {Object} [options.translations] - 新翻译包（会与现有合并）
+   */
+  updateI18n(options) {
+    if (!options) return;
+
+    if (options.lang !== undefined) {
+      // 可以设置任意语言，不强制校验
+      this.lang = options.lang;
+    }
+
+    if (options.fallbackLang !== undefined) {
+      if (!BUILTIN_TRANSLATIONS[options.fallbackLang]) {
+        console.warn(`[AyAccountSDK] Unsupported fallback language "${options.fallbackLang}", ignoring.`);
+      } else {
+        this.fallbackLang = options.fallbackLang;
+      }
+    }
+
+    if (options.translations !== undefined) {
+      // 合并翻译（浅合并，也可以考虑深合并但通常不必要）
+      this.translations = { ...this.translations, ...options.translations };
+    }
+
+    // 如果 iframe 已打开，通知 iframe 刷新翻译
+    if (this._iframe) {
+      try {
+        this._iframe.contentWindow.postMessage(
+          JSON.stringify({ action: 'changeLanguage' }),
+          '*'
+        );
+      } catch { }
+    }
+  }
+  /**
+   * 切换当前界面语言
+   * @param {string} lang - 目标语言代码（任意字符串，但需要确保有相应的翻译）
    */
   changeLanguage(lang) {
-    if (!BUILTIN_TRANSLATIONS[lang]) {
-      console.warn(`[AyAccountSDK] Unsupported language "${lang}", ignoring`);
-      return;
-    }
-    this.lang = lang;
-    if (this._iframe) this._iframe.contentWindow.postMessage(JSON.stringify({ action: 'changeLanguage' }), '*');
+    this.updateI18n({ lang });
   }
 
   // ---------- 统一请求方法 ----------
@@ -624,7 +714,6 @@ class AyAccount {
               break;
             case 'getTranslation':
               const key = data.key;
-
               const translation = this._t(key);   // 使用实例的翻译方法
               console.log('[SDK] Sending translation:', key, '=>', translation);
               iframe.contentWindow.postMessage(JSON.stringify({

@@ -32,8 +32,17 @@
           <div class="tabs">
             <div class="nav-warp">
               <div class="navlist">
-                <div class="st nav-item active" data-i18n="nav.login">
-                  &nbsp;登录&nbsp;
+                <div class="st nav-item active">
+                  <div class="login nav-item" data-i18n="nav.login">
+                    &nbsp;登录&nbsp;
+                  </div>
+                  <div
+                    class="reg nav-item"
+                    style="display: none"
+                    data-i18n="nav.reg"
+                  >
+                    &nbsp;注册&nbsp;
+                  </div>
                 </div>
                 <div alt="" class="card-close"></div>
               </div>
@@ -96,18 +105,21 @@
                 <a
                   href="https://undz.cn/privacy_policy/zh-cn.html"
                   target="_blank"
+                  data-i18n-href="privacy_policy.link"
                   data-i18n="privacy_policy"
                   >《隐私政策》</a
                 ><span data-i18n="agreement.and1">、</span
                 ><a
                   href="https://undz.cn/cookie_policy/zh-cn.html"
                   target="_blank"
+                  data-i18n-href="cookie_policy.link"
                   data-i18n="cookie_policy"
                   >《Cookie 政策》</a
                 ><span data-i18n="agreement.and2">和</span
                 ><a
                   href="https://undz.cn/terms/zh-cn.html"
                   target="_blank"
+                  data-i18n-href="terms.link"
                   data-i18n="terms"
                   >《服务条款》</a
                 ></span
@@ -145,6 +157,7 @@
                 <a
                   href="https://undz.cn/privacy_policy/zh-cn.html"
                   target="_blank"
+                  data-i18n-href="privacy_policy.link"
                   data-i18n="privacy_policy"
                   >《隐私政策》</a
                 ><span data-i18n="agreement.and1">、</span
@@ -152,11 +165,13 @@
                   href="https://undz.cn/cookie_policy/zh-cn.html"
                   target="_blank"
                   data-i18n="cookie_policy"
+                  data-i18n-href="cookie_policy.link"
                   >《Cookie 政策》</a
                 ><span data-i18n="agreement.and2">和</span
                 ><a
                   href="https://undz.cn/terms/zh-cn.html"
                   data-i18n="terms"
+                  data-i18n-href="terms.link"
                   target="_blank"
                   >《服务条款》</a
                 ></span
@@ -169,19 +184,37 @@
             </div>
           </form>
           <div class="boxh">
-            <div
-              class="cm"
-              style="
-                height: 32px;
-                line-height: 32px;
-                cursor: pointer;
-                padding: 0;
-                color: #5c5d61;
-                font-size: 14px;
-              "
-              data-i18n="common.no_account_register"
-            >
-              没有账号？去注册
+            <div class="cm">
+              <div
+                class="no_account_register"
+                style="
+                  height: 32px;
+                  line-height: 32px;
+                  cursor: pointer;
+                  padding: 0;
+                  color: #5c5d61;
+                  font-size: 14px;
+                  display: block;
+                "
+                data-i18n="common.no_account_register"
+              >
+                没有账号？去注册
+              </div>
+              <div
+                class="have_account_login"
+                style="
+                  height: 32px;
+                  line-height: 32px;
+                  cursor: pointer;
+                  padding: 0;
+                  color: #5c5d61;
+                  display: none;
+                  font-size: 14px;
+                "
+                data-i18n="common.have_account_login"
+              >
+                已有账号？去登录
+              </div>
             </div>
             <a
               href="javascript:void(0);"

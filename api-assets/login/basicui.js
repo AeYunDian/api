@@ -28,14 +28,14 @@
     document.querySelector(".card-close").addEventListener("click", () => {
         window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*");
     });
-
+    document.querySelector(".active-bar").style.transform = `translateX(${_t('nav.login.bartf')})`;
     // ---------- Tab 切换 ----------
     document.querySelector(".register.nav-item").addEventListener("click", () => {
         document.querySelector(".login.nav-item").classList.remove("active");
         document.querySelector(".register.nav-item").classList.add("active");
         document.querySelector(".register-form.form").classList.add("active-form");
         document.querySelector(".login-form.form").classList.remove("active-form");
-        document.querySelector(".active-bar").style.transform = "translateX(213px)";
+        document.querySelector(".active-bar").style.transform = `translateX(${_t('nav.reg.bartf')})`;
 
         if (window._validateRegister) window._validateRegister();
     });
@@ -45,7 +45,7 @@
         document.querySelector(".register-form.form").classList.remove("active-form");
         document.querySelector(".login-form.form").classList.add("active-form");
         document.querySelector(".register.nav-item").classList.remove("active");
-        document.querySelector(".active-bar").style.transform = "translateX(94.4px)";
+        document.querySelector(".active-bar").style.transform = `translateX(${_t('nav.login.bartf')})`;
 
         if (window._validateLogin) window._validateLogin();
     });
@@ -69,7 +69,7 @@
         }
     }
 
-    // 注册协议复选框（原代码不变，但调用改为了 toggleCheckbox）
+    // 注册协议复选框
     document.querySelector(".regAgreement").addEventListener("click", (e) => {
         if (e.target.tagName === 'A') return; // 忽略链接点击
         const checkbox = document.querySelector(".regAgreement .checkbox");
@@ -134,7 +134,23 @@
 
     // ---------- 遇到问题 ----------
     document.querySelector(".haveQuestion").addEventListener("click", () => {
-        AyShowResult("无法加载");
+        const featuresHeight = window.screen.height * (7 / 10)
+        const featuresWidth = window.screen.width * (5 / 10)
+        const featuresLeft = (window.screen.width - featuresWidth) / 2;
+        const featuresTop = (window.screen.height - featuresHeight - 35) / 2;
+        // 窗口特性
+        const features = [
+            `width=${featuresWidth}`,
+            `height=${featuresHeight}`,
+            `left=${featuresLeft}`,
+            `top=${featuresTop}`,
+            'resizable=yes',
+            'scrollbars=yes',
+            'status=no',
+            'menubar=no',
+            'toolbar=no'
+        ].join(',');
+        window.open(_t('link.faq'), '_blank', features);
     });
 
     // 如果 URL 参数指定 tab=register，则切换到注册
@@ -169,6 +185,11 @@
                     AyShowResult(data.message || _t('common.login_failure'));
                     break;
                 case 'changeLanguage':
+                    if (document.querySelector("form.login-form")?.classList.contains('active-form')) {
+                        document.querySelector(".active-bar").style.transform = `translateX(${_t('nav.login.bartf')})`;
+                    } else {
+                        document.querySelector(".active-bar").style.transform = `translateX(${_t('nav.reg.bartf')})`;
+                    }
                     await translatePage().catch((err) => console.warn("Translation error:", err),); break;
                 default: break;
             }
@@ -203,7 +224,7 @@ function _t(key) {
 
 async function translatePage(maxRetries = 3) {
     console.log('[AyLoginTranslate] Starting translatePage');
-    const elements = document.querySelectorAll('[data-i18n], [data-i18n-placeholder]');
+    const elements = document.querySelectorAll('[data-i18n], [data-i18n-placeholder], [data-i18n-href]');
     console.log('[AyLoginTranslate] Found elements count:', elements.length);
 
     if (elements.length === 0) {
@@ -215,13 +236,21 @@ async function translatePage(maxRetries = 3) {
         return translatePage(maxRetries - 1);
     }
 
-    // 直接收集所有 key 并同步获取翻译
-    const translationMap = {};
+    // ---------- 分别收集所有 key，去重 ----------
+    const keys = new Set();
     elements.forEach(el => {
-        const key = el.getAttribute('data-i18n') || el.getAttribute('data-i18n-placeholder');
-        if (key && !translationMap[key]) {
-            translationMap[key] = _t(key);
-        }
+        const i18nKey = el.getAttribute('data-i18n');
+        if (i18nKey) keys.add(i18nKey);
+        const placeholderKey = el.getAttribute('data-i18n-placeholder');
+        if (placeholderKey) keys.add(placeholderKey);
+        const hrefKey = el.getAttribute('data-i18n-href');
+        if (hrefKey) keys.add(hrefKey);
+    });
+
+    // 翻译所有 key
+    const translationMap = {};
+    keys.forEach(key => {
+        translationMap[key] = _t(key);
     });
 
     // 更新 DOM
@@ -230,9 +259,15 @@ async function translatePage(maxRetries = 3) {
         if (i18nKey && translationMap[i18nKey] !== undefined) {
             el.innerHTML = translationMap[i18nKey];
         }
+
         const placeholderKey = el.getAttribute('data-i18n-placeholder');
         if (placeholderKey && translationMap[placeholderKey] !== undefined) {
             el.placeholder = translationMap[placeholderKey];
+        }
+
+        const hrefKey = el.getAttribute('data-i18n-href');
+        if (hrefKey && translationMap[hrefKey] !== undefined) {
+            el.href = translationMap[hrefKey];
         }
     });
 }

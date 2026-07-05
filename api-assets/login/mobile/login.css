@@ -181,6 +181,7 @@ input:focus {
 }
 .boxh {
   display: flex;
+  margin-top: 5px;
   justify-content: space-between;
 }
 .checkbox:hover {
