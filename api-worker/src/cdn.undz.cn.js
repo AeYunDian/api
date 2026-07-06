@@ -7,7 +7,7 @@ export default {
         if (url.pathname === '/') {
             if (env.assets) {
                 const newUrl = new URL(request.url);
-                newUrl.pathname = '/cdn/index.html';
+                newUrl.pathname = '/cdn/';
                 const newRequest = new Request(newUrl, request);
                 return env.assets.fetch(newRequest);
             } else {
@@ -34,7 +34,7 @@ export default {
 <!-- a padding to disable MSIE and Chrome friendly error page -->
 <!-- a padding to disable MSIE and Chrome friendly error page -->
 <!-- a padding to disable MSIE and Chrome friendly error page -->
-`, { status: 403 });
+`, { status: 403, headers: { 'Content-Type': 'text/html' } });
         }
         const headers = new Headers(request.headers)
         headers.set('User-Agent', USER_AGENT)
