@@ -22,6 +22,8 @@
     const regPasswordConfirm = $('#regPasswordConfirm');
     const regAgreement = $('.regAgreement .checkbox');
     const regBtn = $('.regBtn');
+
+    let i18nData = null;          // 存储父窗口发来的翻译对象
     const params = new URLSearchParams(window.location.search);
 
     // ---------- 关闭按钮 ----------
@@ -191,6 +193,13 @@
                         document.querySelector(".active-bar").style.transform = `translateX(${_t('nav.reg.bartf')})`;
                     }
                     await translatePage().catch((err) => console.warn("Translation error:", err),); break;
+                case 'updateTranslations':
+                    if (data.payload && typeof data.payload === 'object') {
+                        i18nData = data.payload;
+                        // 重新翻译页面（可选）
+                        translatePage().catch(console.warn);
+                    }
+                    break;
                 default: break;
             }
         } else {
@@ -210,16 +219,10 @@
 
 
 function _t(key) {
-    // 尝试从父窗口获取翻译
-    try {
-        const parentAuth = window.parent.__ayt;
-        if (parentAuth && typeof parentAuth === 'function') {
-            return parentAuth(key);
-        }
-    } catch (e) {
-        console.warn('[Translate] Cannot access parent auth:', e);
+    if (i18nData && typeof i18nData === 'object' && key in i18nData) {
+        return i18nData[key];
     }
-    return key;
+    return key; // 未找到则返回原 key
 }
 
 async function translatePage(maxRetries = 3) {

@@ -31,6 +31,7 @@
     const outcard = document.getElementById('outcard');
     const closeBtn = document.querySelector('.card-close');
 
+    let i18nData = null;          // 存储父窗口发来的翻译对象
     // ═══ 工具函数 - 检测是否为手机 ═══
     function isMobile() {
         return window.innerWidth < 768;
@@ -293,6 +294,32 @@
                         if (window._validateRegister) window._validateRegister();
                     }
                     break;
+                case 'updateTranslations':
+                    if (data.payload && typeof data.payload === 'object') {
+                        i18nData = data.payload;
+                        // 重新翻译页面（可选）
+                        translatePage().catch(console.warn);
+                        if (isLogin) {
+                            document.querySelector('.login.nav-item').style.display = 'block';
+                            document.querySelector('.reg.nav-item').style.display = 'none';
+                            document.querySelector('.register-form.form').classList.remove('active-form');
+                            document.querySelector('.login-form.form').classList.add('active-form');
+
+                            document.querySelector('.no_account_register').style.display = 'block';
+                            document.querySelector('.have_account_login').style.display = 'none';
+                            if (window._validateLogin) window._validateLogin();
+
+                        } else {
+                            document.querySelector('.login.nav-item').style.display = 'none';
+                            document.querySelector('.reg.nav-item').style.display = 'block';
+                            document.querySelector('.register-form.form').classList.add('active-form');
+                            document.querySelector('.login-form.form').classList.remove('active-form');
+                            document.querySelector('.no_account_register').style.display = 'none';
+                            document.querySelector('.have_account_login').style.display = 'block';
+                            if (window._validateRegister) window._validateRegister();
+                        }
+                    }
+                    break;
                 default: break;
             }
         } else {
@@ -353,19 +380,13 @@
     }
 
 })();
-
 function _t(key) {
-    // 尝试从父窗口获取翻译
-    try {
-        const parentAuth = window.parent.__ayt;
-        if (parentAuth && typeof parentAuth === 'function') {
-            return parentAuth(key);
-        }
-    } catch (e) {
-        console.warn('[AyLoginTranslate] Cannot access parent auth:', e);
+    if (i18nData && typeof i18nData === 'object' && key in i18nData) {
+        return i18nData[key];
     }
-    return key;
+    return key; // 未找到则返回原 key
 }
+
 async function translatePage(maxRetries = 3) {
     console.log('[AyLoginTranslate] Starting translatePage');
     const elements = document.querySelectorAll('[data-i18n], [data-i18n-placeholder], [data-i18n-href]');

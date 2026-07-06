@@ -530,7 +530,13 @@ class AyAccount {
       // 合并翻译（浅合并，也可以考虑深合并但通常不必要）
       this.translations = { ...this.translations, ...options.translations };
     }
-
+    if (this._iframe) {
+      const translationMap = this._getFullTranslationMap();
+      this._iframe.contentWindow.postMessage(JSON.stringify({
+        action: 'updateTranslations',
+        payload: translationMap
+      }), '*');
+    }
     // 如果 iframe 已打开，通知 iframe 刷新翻译
     if (this._iframe) {
       try {
@@ -540,6 +546,30 @@ class AyAccount {
         );
       } catch { }
     }
+  }
+  // 在 AyAccount 类中添加
+  _getFullTranslationMap() {
+    // 收集所有可能的键（内置语言的所有键 + 自定义翻译的所有键）
+    const allKeys = new Set();
+
+    // 内置翻译的键（从当前语言和 fallback 语言中收集）
+    const builtinLang = BUILTIN_TRANSLATIONS[this.lang] || {};
+    const builtinFallback = BUILTIN_TRANSLATIONS[this.fallbackLang] || {};
+    Object.keys(builtinLang).forEach(k => allKeys.add(k));
+    Object.keys(builtinFallback).forEach(k => allKeys.add(k));
+
+    // 自定义翻译的键
+    const customLang = this.translations[this.lang] || {};
+    const customFallback = this.translations[this.fallbackLang] || {};
+    Object.keys(customLang).forEach(k => allKeys.add(k));
+    Object.keys(customFallback).forEach(k => allKeys.add(k));
+
+    // 构建最终映射表
+    const map = {};
+    allKeys.forEach(key => {
+      map[key] = this._t(key); // 利用现有 _t 方法获取最终值
+    });
+    return map;
   }
   /**
    * 切换当前界面语言
@@ -667,6 +697,11 @@ class AyAccount {
           switch (data.action) {
             case 'isReady':
               AyCloseToast();
+              const translationMap = this._getFullTranslationMap();
+              iframe.contentWindow.postMessage(JSON.stringify({
+                action: 'updateTranslations',
+                payload: translationMap
+              }), '*');
               break;
             case 'closeWindow':
               this.#_closeModal();
@@ -737,7 +772,29 @@ class AyAccount {
       iframediv.appendChild(iframe);
     });
   }
-
+  _sendTranslationsToIframe() {
+    if (!this._iframe) return;
+    // 构建完整翻译对象（内置 + 自定义）
+    const allTranslations = {
+      ...BUILTIN_TRANSLATIONS[this.lang] || {},
+      ...BUILTIN_TRANSLATIONS[this.fallbackLang] || {},
+      ...this.translations[this.lang] || {},
+      ...this.translations[this.fallbackLang] || {}
+    };
+    // 由于子窗口只关注当前语言，我们只发送当前语言 + fallback 的合并
+    // 但更好的做法是发送完整的翻译包，让子窗口自行按优先级查找
+    // 这里我们发送全部自定义 + 内置（以当前语言为主）
+    const fullTranslation = {
+      ...BUILTIN_TRANSLATIONS[this.fallbackLang] || {},
+      ...this.translations[this.fallbackLang] || {},
+      ...BUILTIN_TRANSLATIONS[this.lang] || {},
+      ...this.translations[this.lang] || {}
+    };
+    this._iframe.contentWindow.postMessage(JSON.stringify({
+      action: 'updateTranslations',
+      payload: fullTranslation
+    }), '*');
+  }
   /**
    * 关闭模态框，清理资源
    */
