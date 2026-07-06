@@ -5,7 +5,7 @@
 //        在切换 Tab 和勾选复选框后触发校验。
 //  新增：手机端抽屉控制（打开/关闭/遮罩点击）
 // ============================================================
-
+let i18nData = null;          // 存储父窗口发来的翻译对象
 // ═══ 使用自执行函数避免污染，但保留原有变量 ═══
 (function () {
     'use strict';
@@ -30,8 +30,6 @@
     const drawerOverlay = document.getElementById('drawerOverlay');
     const outcard = document.getElementById('outcard');
     const closeBtn = document.querySelector('.card-close');
-
-    let i18nData = null;          // 存储父窗口发来的翻译对象
     // ═══ 工具函数 - 检测是否为手机 ═══
     function isMobile() {
         return window.innerWidth < 768;

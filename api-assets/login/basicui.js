@@ -4,7 +4,7 @@
 //        为登录/注册表单添加 submit 事件；
 //        在切换 Tab 和勾选复选框后触发校验。
 // ============================================================
-
+let i18nData = null;          // 存储父窗口发来的翻译对象
 // ═══ 使用自执行函数避免污染，但保留原有变量 ═══
 (function () {
     'use strict';
@@ -23,7 +23,7 @@
     const regAgreement = $('.regAgreement .checkbox');
     const regBtn = $('.regBtn');
 
-    let i18nData = null;          // 存储父窗口发来的翻译对象
+
     const params = new URLSearchParams(window.location.search);
 
     // ---------- 关闭按钮 ----------
