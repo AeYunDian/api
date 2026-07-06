@@ -3,7 +3,39 @@ export default {
     async fetch(request, env) {
         const url = new URL(request.url)
         const target = `${url.protocol}//cdn.jsdelivr.net${url.pathname}${url.search || ''}`
+        const allowed = ['/npm/', '/gh/', '/file/', '/files/', '/wordpress/', '/combine/'];
+        if (url.pathname === '/') {
+            if (env.assets) {
+                const newUrl = new URL(request.url);
+                newUrl.pathname = '/cdn/index.html';
+                const newRequest = new Request(newUrl, request);
+                return env.assets.fetch(newRequest);
+            } else {
+                // 如果没有绑定 assets，可以返回一个默认响应或继续代理
+                return new Response('Welcome to cdn.undz.cn', {
+                    status: 200,
+                    headers: { 'Content-Type': 'text/plain' }
+                });
+            }
+        }
 
+        if (!allowed.some(p => url.pathname.startsWith(p))) {
+            return new Response(`
+<html>
+<head><title>403 Forbidden</title></head>
+<body>
+<center><h1>403 Forbidden</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+`, { status: 403 });
+        }
         const headers = new Headers(request.headers)
         headers.set('User-Agent', USER_AGENT)
 

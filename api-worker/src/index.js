@@ -49,7 +49,7 @@ export default {
         return await i0undzcn.fetch(request);
       }
       if (hostname === 'cdn.undz.cn') {
-        return await cdnundzcn.fetch(request);
+        return await cdnundzcn.fetch(request, env);
       }
       if (hostname === 'mail.undz.cn' || hostname === 'mail.io.hb.cn') {
         return new Response("邮件服务彻底关闭，很抱歉给您带来不便体验", { headers: corsHeaders_GPO });
