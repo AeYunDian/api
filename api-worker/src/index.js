@@ -3,6 +3,7 @@ import { triggerWorkflow } from './trigger_workflow.js';
 
 import apiundzcn from './api.undz.cn.js';
 import chatundzcn from './chat.undz.cn.js'
+import cdnundzcn from './cdn.undz.cn.js';
 import i0undzcn from './i0.undz.cn.js';
 import onlineundzcn from './online.undz.cn.js';
 const corsHeaders_GPO = {
@@ -47,7 +48,9 @@ export default {
       if (hostname === 'i0.undz.cn') {
         return await i0undzcn.fetch(request);
       }
-
+      if (hostname === 'cdn.undz.cn') {
+        return await cdnundzcn.fetch(request);
+      }
       if (hostname === 'mail.undz.cn' || hostname === 'mail.io.hb.cn') {
         return new Response("邮件服务彻底关闭，很抱歉给您带来不便体验", { headers: corsHeaders_GPO });
       }
