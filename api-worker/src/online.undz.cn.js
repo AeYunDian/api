@@ -21,6 +21,8 @@ const MIN_PASSWORD_LENGTH = 6;
 const ALLOWED_ORIGINS = [
     'https://api.undz.cn',
     'https://chat.undz.cn',
+    'https://editor.undz.cn',
+    'https://cdn.undz.cn',
     'https://online.undz.cn',
     'https://c.undz.cn',
     'https://i0.undz.cn',
