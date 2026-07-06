@@ -1,6 +1,6 @@
-'v1.4.5 AyAccountSDK';
+'v1.4.6 AyAccountSDK';
 
-const VERSION = '1.4.5';
+const VERSION = '1.4.6';
 const PRODUCE = false;
 const privateData = new WeakMap();
 const BUILTIN_TRANSLATIONS = {
