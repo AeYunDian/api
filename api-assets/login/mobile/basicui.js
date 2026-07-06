@@ -272,20 +272,27 @@
                     AyShowResult(data.message || _t('common.login_failure'));
                     break;
                 case 'changeLanguage':
-                    await translatePage().catch((err) => console.warn("Translation error:", err),); break;
+                    await translatePage().catch((err) => console.warn("Translation error:", err),);
                     if (isLogin) {
-                        document.querySelector('.st.nav-item').innerHTML = _t('nav.login');
+                        document.querySelector('.login.nav-item').style.display = 'block';
+                        document.querySelector('.reg.nav-item').style.display = 'none';
                         document.querySelector('.register-form.form').classList.remove('active-form');
                         document.querySelector('.login-form.form').classList.add('active-form');
-                        this.innerHTML = _t('common.no_account_register');
+
+                        document.querySelector('.no_account_register').style.display = 'block';
+                        document.querySelector('.have_account_login').style.display = 'none';
                         if (window._validateLogin) window._validateLogin();
+
                     } else {
-                        document.querySelector('.st.nav-item').innerHTML = _t('nav.reg');
+                        document.querySelector('.login.nav-item').style.display = 'none';
+                        document.querySelector('.reg.nav-item').style.display = 'block';
                         document.querySelector('.register-form.form').classList.add('active-form');
                         document.querySelector('.login-form.form').classList.remove('active-form');
-                        this.innerHTML = _t('common.have_account_login');
+                        document.querySelector('.no_account_register').style.display = 'none';
+                        document.querySelector('.have_account_login').style.display = 'block';
                         if (window._validateRegister) window._validateRegister();
                     }
+                    break;
                 default: break;
             }
         } else {
@@ -298,16 +305,22 @@
                 case 'changeLanguage':
                     await translatePage().catch((err) => console.warn("Translation error:", err),);
                     if (isLogin) {
-                        document.querySelector('.st.nav-item').innerHTML = _t('nav.login');
+                        document.querySelector('.login.nav-item').style.display = 'block';
+                        document.querySelector('.reg.nav-item').style.display = 'none';
                         document.querySelector('.register-form.form').classList.remove('active-form');
                         document.querySelector('.login-form.form').classList.add('active-form');
-                        this.innerHTML = _t('common.no_account_register');
+
+                        document.querySelector('.no_account_register').style.display = 'block';
+                        document.querySelector('.have_account_login').style.display = 'none';
                         if (window._validateLogin) window._validateLogin();
+
                     } else {
-                        document.querySelector('.st.nav-item').innerHTML = _t('nav.reg');
+                        document.querySelector('.login.nav-item').style.display = 'none';
+                        document.querySelector('.reg.nav-item').style.display = 'block';
                         document.querySelector('.register-form.form').classList.add('active-form');
                         document.querySelector('.login-form.form').classList.remove('active-form');
-                        this.innerHTML = _t('common.have_account_login');
+                        document.querySelector('.no_account_register').style.display = 'none';
+                        document.querySelector('.have_account_login').style.display = 'block';
                         if (window._validateRegister) window._validateRegister();
                     }
                     break;
