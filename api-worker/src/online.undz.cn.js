@@ -138,7 +138,7 @@ function corsHeaders(request) {
     const headers = {
         'Access-Control-Allow-Credentials': 'true',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, x-app-id, x-sdk-ver',
         'Access-Control-Max-Age': '86400',
     };
     if (origin && ALLOWED_ORIGINS.includes(origin)) {
