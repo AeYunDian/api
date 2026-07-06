@@ -40,7 +40,7 @@ export default {
 <!-- a padding to disable MSIE and Chrome friendly error page -->
 <!-- a padding to disable MSIE and Chrome friendly error page -->
 <!-- a padding to disable MSIE and Chrome friendly error page -->
-                `, { status: 502 })
+                `, { status: 502, headers: { 'Content-Type': 'text/html' } })
         }
     }
 }
