@@ -197,7 +197,13 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                     if (data.payload && typeof data.payload === 'object') {
                         i18nData = data.payload;
                         // 重新翻译页面（可选）
+                        if (document.querySelector("form.login-form")?.classList.contains('active-form')) {
+                            document.querySelector(".active-bar").style.transform = `translateX(${_t('nav.login.bartf')})`;
+                        } else {
+                            document.querySelector(".active-bar").style.transform = `translateX(${_t('nav.reg.bartf')})`;
+                        }
                         translatePage().catch(console.warn);
+
                     }
                     break;
                 default: break;
