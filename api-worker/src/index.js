@@ -5,6 +5,8 @@ import apiundzcn from './api.undz.cn.js';
 import chatundzcn from './chat.undz.cn.js'
 import cdnundzcn from './cdn.undz.cn.js';
 import i0undzcn from './i0.undz.cn.js';
+import i1undzcn from './i1.undz.cn.js';
+import i2undzcn from './i2.undz.cn.js';
 import onlineundzcn from './online.undz.cn.js';
 const corsHeaders_GPO = {
   'Access-Control-Allow-Origin': '*',
@@ -42,12 +44,11 @@ export default {
 
     try {
       if (url.pathname.toLowerCase() === "/favicon.ico") {
-        const response = await proxyStaticFile("https://r1.undz.cn/favicon.ico");
-        return response;
+        return env.assets.fetch(request);
       }
-      if (hostname === 'i0.undz.cn') {
-        return await i0undzcn.fetch(request);
-      }
+      if (hostname === 'i0.undz.cn') return await i0undzcn.fetch(request);
+      if (hostname === 'i1.undz.cn') return await i1undzcn.fetch(request);
+      if (hostname === 'i2.undz.cn') return await i2undzcn.fetch(request);
       if (hostname === 'cdn.undz.cn') {
         return await cdnundzcn.fetch(request, env);
       }
