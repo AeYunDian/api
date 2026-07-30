@@ -75,7 +75,7 @@ const ALLOWED_ORIGINS = [
     'https://i0.undz.cn',
     'https://i1.undz.cn',
     'https://i2.undz.cn',
-    'https://dev.undz.cn',
+    'http://dev.undz.cn',
     'https://undz.cn',
     'https://io.hb.cn',
     'https://www.undz.cn',
