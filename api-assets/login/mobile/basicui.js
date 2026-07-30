@@ -34,7 +34,30 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
     function isMobile() {
         return window.innerWidth < 768;
     }
-
+    function disableOperation() {
+        regUsername.disabled = true;
+        regEmail.disabled = true;
+        regPassword.disabled = true;
+        regPasswordConfirm.disabled = true;
+        regAgreement.disabled = true;
+        regBtn.disabled = true;
+        loginUsername.disabled = true;
+        loginPassword.disabled = true;
+        loginAgreement.disabled = true;
+        loginBtn.disabled = true;
+    }
+    function enableOperation() {
+        regUsername.disabled = false;
+        regEmail.disabled = false;
+        regPassword.disabled = false;
+        regPasswordConfirm.disabled = false;
+        regAgreement.disabled = false;
+        regBtn.disabled = false;
+        loginUsername.disabled = false;
+        loginPassword.disabled = false;
+        loginAgreement.disabled = false;
+        loginBtn.disabled = false;
+    }
     // ═══ 抽屉控制函数 ═══
     function openDrawer() {
         if (!isMobile()) return;
@@ -181,7 +204,7 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                     return;
                 }
             }
-
+            disableOperation()
             AyShowResult(_t('common.please_wait'), 'loading', 0);
             window.parent.postMessage(
                 JSON.stringify({
@@ -206,6 +229,7 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                     return;
                 }
             }
+            disableOperation()
             AyShowResult(_t('common.please_wait'), 'loading', 0);
             window.parent.postMessage(
                 JSON.stringify({
@@ -256,17 +280,20 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
         // 处理对象
         if (typeof data === 'object' && data.action) {
             switch (data.action) {
-                case 'registerSuccess': AyCloseToast(); AyShowResult(_t('common.register_success')); break;
+                case 'registerSuccess': enableOperation(); AyCloseToast(); AyShowResult(_t('common.register_success')); break;
                 case 'registerFailure':
+                    enableOperation();
                     AyCloseToast();
                     AyShowResult(data.message || _t('common.register_failure'));
                     break;
                 case 'loginSuccess':
+                    enableOperation();
                     AyCloseToast();
                     AyShowResult(_t('common.login_success'), 'info', 1000);
                     setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000);
                     break;
                 case 'loginFailure':
+                    enableOperation();
                     AyCloseToast();
                     AyShowResult(data.message || _t('common.login_failure'));
                     break;
@@ -323,10 +350,10 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
         } else {
             // 兼容旧版纯字符串消息（如 "registerSuccess"）
             switch (data) {
-                case "registerSuccess": AyCloseToast(); AyShowResult(_t('common.register_success')); break;
-                case "registerFailure": AyCloseToast(); AyShowResult(_t('common.register_failure')); break;
-                case "loginSuccess": AyCloseToast(); AyShowResult(_t('common.login_success'), 'info', 1000); setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000); break;
-                case "loginFailure": AyCloseToast(); AyShowResult(_t('common.login_failure')); break;
+                case "registerSuccess": enableOperation(); AyCloseToast(); AyShowResult(_t('common.register_success')); break;
+                case "registerFailure": enableOperation(); AyCloseToast(); AyShowResult(_t('common.register_failure')); break;
+                case "loginSuccess": enableOperation(); AyCloseToast(); AyShowResult(_t('common.login_success'), 'info', 1000); setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000); break;
+                case "loginFailure": enableOperation(); AyCloseToast(); AyShowResult(_t('common.login_failure')); break;
                 case 'changeLanguage':
                     await translatePage().catch((err) => console.warn("Translation error:", err),);
                     if (isLogin) {

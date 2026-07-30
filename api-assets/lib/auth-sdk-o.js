@@ -1,6 +1,6 @@
 'v1.4.7 AyAccountSDK';
 
-const VERSION = '1.4.6';
+const VERSION = '1.4.7';
 const PRODUCE = false;
 const privateData = new WeakMap();
 const BUILTIN_TRANSLATIONS = {
@@ -610,17 +610,19 @@ class AyAccount {
         let message = rawMessage;
         // 如果服务端返回了 error_code，用翻译替换
         if (errorCode !== undefined) {
-          const key = `error.${errorCode}`;
-          const translated = this._t(key);
-          if (translated !== key) {
-            message = translated;
-          }
-        } else if (errorCode === 1017) {
-          const baseMsg = this._t('error.1017');
-          if (banReason) {
-            message = baseMsg + ': ' + banReason;
+          if (errorCode === 1017) {
+            const baseMsg = this._t('error.1017');
+            if (banReason) {
+              message = baseMsg + ': ' + banReason;
+            } else {
+              message = baseMsg;
+            }
           } else {
-            message = baseMsg;
+            const key = `error.${errorCode}`;
+            const translated = this._t(key);
+            if (translated !== key) {
+              message = translated;
+            }
           }
         } else {
           // 没有错误码，尝试用通用翻译
