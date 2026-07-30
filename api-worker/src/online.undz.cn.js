@@ -42,7 +42,7 @@ export async function checkAuth(request, env) {
             return [TAG_NOT_LOGGEDIN, null];
         }
 
-        if (user.banned === 1) {
+        if (user.banned === "1") {
             return [TAG_BANNED, {
                 id: user.id,
                 username: user.username,
@@ -517,7 +517,7 @@ export default {
                                 }
 
                                 const user = authResult.user;
-                                if (user.banned === 1) {
+                                if (user.banned === "1") {
                                     return jsonResponse({
                                         action: 'login',
                                         error_code: 1017,
@@ -722,7 +722,7 @@ export default {
                     }
 
                     // 检查封禁状态
-                    if (user.banned === 1) {
+                    if (user.banned === "1") {
                         return jsonResponse({
                             error_code: 1017,
                             error: 'Account banned',
