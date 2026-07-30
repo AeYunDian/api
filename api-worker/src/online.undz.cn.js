@@ -16,6 +16,53 @@ const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_HASH = 'SHA-256';
 const SALT_LENGTH = 16;                        // 字节
 const MIN_PASSWORD_LENGTH = 6;
+export const TAG_LOGGEDIN = 'logged_in';
+export const TAG_NOT_LOGGEDIN = 'not_logged_in';
+export const TAG_BANNED = 'banned';
+export async function checkAuth(request, env) {
+    try {
+        const cookies = parse(request.headers.get('Cookie') || '');
+        const accessToken = cookies.access_token;
+
+        if (!accessToken) {
+            return [TAG_NOT_LOGGEDIN, null];
+        }
+
+        const payload = await verifyAccessToken(accessToken, env.JWT_KEY);
+        if (!payload) {
+            return [TAG_NOT_LOGGEDIN, null];
+        }
+
+        const userId = parseInt(payload.sub, 10);
+        const user = await env.db.prepare(
+            'SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?'
+        ).bind(userId).first();
+
+        if (!user) {
+            return [TAG_NOT_LOGGEDIN, null];
+        }
+
+        if (user.banned === 1) {
+            return [TAG_BANNED, {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                ban_reason: user.ban_reason || ''
+            }];
+        }
+
+        return ['logged_in', {
+            id: user.id,
+            username: user.username,
+            email: user.email
+        }];
+
+    } catch (error) {
+        console.error('checkAuth error:', error);
+        // 遇到异常视为未登录
+        return [TAG_LOGGEDIN, null];
+    }
+}
 
 // 允许跨域的子服务域名（白名单）
 const ALLOWED_ORIGINS = [
@@ -26,6 +73,8 @@ const ALLOWED_ORIGINS = [
     'https://online.undz.cn',
     'https://c.undz.cn',
     'https://i0.undz.cn',
+    'https://i1.undz.cn',
+    'https://i2.undz.cn',
     'https://dev.undz.cn',
     'https://undz.cn',
     'https://io.hb.cn',
@@ -257,6 +306,8 @@ async function authenticateUser(db, usernameOrEmail, password) {
             id: user.id,
             username: user.username,
             email: user.email,
+            banned: user.banned,
+            ban_reason: user.ban_reason || "",
         },
     };
 }
@@ -466,7 +517,14 @@ export default {
                                 }
 
                                 const user = authResult.user;
-
+                                if (user.banned === 1) {
+                                    return jsonResponse({
+                                        action: 'login',
+                                        error_code: 1017,
+                                        error: 'Account banned',
+                                        ban_reason: user.ban_reason || ''
+                                    }, 403, cors);
+                                }
                                 // 生成访问令牌
                                 const accessToken = await signAccessToken(
                                     { sub: user.id, username: user.username, email: user.email },
@@ -668,7 +726,7 @@ export default {
                         return jsonResponse({
                             error_code: 1017,
                             error: 'Account banned',
-                            ban_reason: user.ban_reason || 'No reason provided'
+                            ban_reason: user.ban_reason || ''
                         }, 403, cors);
                     }
 

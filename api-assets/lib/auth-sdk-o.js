@@ -604,6 +604,8 @@ class AyAccount {
         // 尝试从响应中提取错误码和消息
         const errorCode = data.error_code || data.code || 'unknown';
         const rawMessage = data.error || data.message || '';
+        const banReason = data.ban_reason || '';
+
         // 优先使用服务端返回的消息，否则翻译
         let message = rawMessage;
         // 如果服务端返回了 error_code，用翻译替换
@@ -612,6 +614,13 @@ class AyAccount {
           const translated = this._t(key);
           if (translated !== key) {
             message = translated;
+          }
+        } else if (errorCode === 1017) {
+          const baseMsg = this._t('error.1017');
+          if (banReason) {
+            message = baseMsg + ': ' + banReason;
+          } else {
+            message = baseMsg;
           }
         } else {
           // 没有错误码，尝试用通用翻译
