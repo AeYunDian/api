@@ -42,7 +42,7 @@ export async function checkAuth(request, env) {
             return [TAG_NOT_LOGGEDIN, null];
         }
 
-        if (user.banned === "1") {
+        if (user.banned == 1) {
             return [TAG_BANNED, {
                 id: user.id,
                 username: user.username,
@@ -283,7 +283,7 @@ async function registerUser(db, username, email, password) {
 
 async function authenticateUser(db, usernameOrEmail, password) {
     const user = await db.prepare(
-        'SELECT id, username, email, password_salt, password_hash FROM online_users WHERE username = ? OR email = ?'
+        'SELECT id, username, email, password_salt, password_hash, banned, ban_reason FROM online_users WHERE username = ? OR email = ?'
     ).bind(usernameOrEmail, usernameOrEmail).first();
 
     if (!user) {
@@ -317,7 +317,16 @@ async function storeRefreshToken(kv, token, userId, ttlSeconds) {
     await kv.put(`refresh:${token}`, String(userId), { expirationTtl: ttlSeconds });
     await addRefreshTokenForUser(kv, userId, token);
 }
-
+function isVersionValid(current, required) {
+    const parts = current.split('.').map(Number);
+    const reqParts = required.split('.').map(Number);
+    for (let i = 0; i < Math.max(parts.length, reqParts.length); i++) {
+        const p = parts[i] || 0;
+        const r = reqParts[i] || 0;
+        if (p !== r) return p >= r;
+    }
+    return true;
+}
 async function getUserIdFromRefreshToken(kv, token) {
     const userId = await kv.get(`refresh:${token}`);
     if (!userId) return null;
@@ -416,20 +425,30 @@ export default {
 
         try {
             // ---------- 初始化数据库（需 Admin Key） ----------
-            if (path === '/api/ayonline/init' && method === 'POST') {
-                const authKey = request.headers.get('X-Admin-Key');
-                if (authKey !== env.KEY) {
-                    return jsonResponse({ error: 'Unauthorized' }, 401, cors);
-                }
-                await initDatabase(env.db);
-                return jsonResponse({ success: true, message: 'Database initialized' }, 200, cors);
-            }
-
 
             if (path.startsWith('/api/')) {
+                if (path === '/api/ayonline/init' && method === 'POST') {
+                    const authKey = request.headers.get('X-Admin-Key');
+                    if (authKey !== env.KEY) {
+                        return jsonResponse({ error: 'Unauthorized' }, 401, cors);
+                    }
+                    await initDatabase(env.db);
+                    return jsonResponse({ success: true, message: 'Database initialized' }, 200, cors);
+                }
+
+
                 const appId = request.headers.get('X-App-Id') || '';
                 if (!env.ALLOWED_APP_IDS.includes(appId)) {
                     return jsonResponse({ success: false, code: 403, error_code: 1019, message: 'appId is invalid' }, 403, cors);
+                }
+                const sdkVer = request.headers.get('X-SDK-VER') || '';
+                if (!sdkVer || !isVersionValid(sdkVer, '1.4.7')) {
+                    return jsonResponse({
+                        success: false,
+                        code: 500,
+                        error_code: 1018,
+                        message: 'SDK version outdated, please upgrade'
+                    }, 500, cors);
                 }
                 if (path === '/api/ayonline/test') {
                     return jsonResponse({ success: true, message: 'Server is ready', code: 200 }, 200, cors);
@@ -517,7 +536,7 @@ export default {
                                 }
 
                                 const user = authResult.user;
-                                if (user.banned === "1") {
+                                if (user.banned == 1) {
                                     return jsonResponse({
                                         action: 'login',
                                         error_code: 1017,
@@ -722,7 +741,7 @@ export default {
                     }
 
                     // 检查封禁状态
-                    if (user.banned === "1") {
+                    if (user.banned == 1) {
                         return jsonResponse({
                             error_code: 1017,
                             error: 'Account banned',

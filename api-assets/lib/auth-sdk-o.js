@@ -1,4 +1,4 @@
-'v1.4.6 AyAccountSDK';
+'v1.4.7 AyAccountSDK';
 
 const VERSION = '1.4.6';
 const PRODUCE = false;
