@@ -1,6 +1,5 @@
-// sh.undz.cn.js
 import { homePage, articlePage, errorPage } from './ayyd_template';
-import { DOMParser } from 'xmldom';
+import { XMLParser } from 'fast-xml-parser';
 
 // ---------- 加密 / 解密辅助 ----------
 async function getKey(env) {
@@ -8,11 +7,11 @@ async function getKey(env) {
     if (!keyStr) return null;
     const encoder = new TextEncoder();
     const keyData = encoder.encode(keyStr);
-    return await crypto.subtle.digest('SHA-256', keyData);
+    return await crypto.subtle.digest('SHA-256', keyData); // 32字节
 }
 
 async function decrypt(encryptedBase64, keyBuffer) {
-    if (!keyBuffer) return encryptedBase64;
+    if (!keyBuffer) return encryptedBase64; // 不加密直接返回
     try {
         const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
         const iv = combined.slice(0, 12);
@@ -37,68 +36,70 @@ async function fetchAndDecrypt(url, env) {
     }
 }
 
-// ---------- XML 解析（使用 xmldom）----------
+// ---------- XML 解析（使用 fast-xml-parser）----------
 function parseXML(xmlText) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(xmlText, 'text/xml');
-    // 检查解析错误
-    const parseError = doc.querySelector('parsererror');
-    if (parseError) {
-        throw new Error('XML parse error: ' + parseError.textContent);
-    }
-    return doc;
+    const parser = new XMLParser({
+        ignoreAttributes: false,
+        parseAttributeValue: false,
+        trimValues: true,
+        parseTagValue: false, // 保持字符串原样
+    });
+    const result = parser.parse(xmlText);
+    return result;
 }
 
-// 从 index.xml 提取文章列表（基于 DOM）
-function extractArticlesFromIndex(doc) {
-    const nodes = doc.querySelectorAll('article');
-    const articles = [];
-    for (const node of nodes) {
-        const getText = (tag) => {
-            const el = node.querySelector(tag);
-            return el ? el.textContent.trim() : '';
-        };
-        const slug = getText('slug');
+// 从 index.xml 提取文章列表
+function extractArticlesFromIndex(parsed) {
+    // 结构: { articles: { article: [ ... ] } }
+    let articles = parsed?.articles?.article;
+    if (!articles) return [];
+    // 确保是数组
+    if (!Array.isArray(articles)) articles = [articles];
+
+    const result = [];
+    for (const item of articles) {
+        const slug = item.slug || '';
         if (!slug) continue;
-        const publicVal = getText('public');
+        const publicVal = (item.public || '').trim();
         const isPublic = publicVal === '' || publicVal.toLowerCase() === 'true';
-        articles.push({
+        result.push({
             slug,
-            title: getText('title'),
-            mainAuthor: getText('mainAuthor'),
-            authors: getText('authors'),
-            created: getText('created'),
-            modified: getText('modified'),
-            tags: getText('tags'),
+            title: item.title || '',
+            mainAuthor: item.mainAuthor || '',
+            authors: item.authors || '',
+            created: item.created || '',
+            modified: item.modified || '',
+            tags: item.tags || '',
             public: isPublic,
-            summary: getText('summary'),
+            summary: item.summary || '',
         });
     }
-    articles.sort((a, b) => new Date(b.created) - new Date(a.created));
-    return articles;
+    result.sort((a, b) => new Date(b.created) - new Date(a.created));
+    return result;
 }
 
-// 从文章 xml 提取完整信息（基于 DOM）
-function extractArticleFromXML(doc) {
-    const root = doc.documentElement;
+// 从文章 xml 提取完整信息
+function extractArticleFromXML(parsed) {
+    const root = parsed.article || parsed; // 防止根节点命名
     const getText = (tag) => {
-        const el = root.querySelector(tag);
-        return el ? el.textContent.trim() : '';
+        const val = root[tag];
+        return val ? String(val).trim() : '';
     };
     const publicVal = getText('public');
     const isPublic = publicVal === '' || publicVal.toLowerCase() === 'true';
-    // 获取 content 内部 HTML
-    const contentEl = root.querySelector('content');
+    // content 可能是对象或字符串
     let content = '';
-    if (contentEl) {
-        // 获取 content 内的子节点序列化为 HTML
-        const serializer = new XMLSerializer();
-        for (const child of contentEl.childNodes) {
-            if (child.nodeType === 1 || child.nodeType === 4) {
-                content += serializer.serializeToString(child);
-            } else if (child.nodeType === 3) {
-                content += child.textContent;
-            }
+    if (root.content) {
+        // 如果 content 是对象（有 #text 或 #cdata）则取其内容
+        if (typeof root.content === 'string') {
+            content = root.content;
+        } else if (root.content['#text']) {
+            content = root.content['#text'];
+        } else if (root.content['#cdata']) {
+            content = root.content['#cdata'];
+        } else {
+            // 复杂情况，尝试转字符串
+            content = JSON.stringify(root.content);
         }
     }
     return {
@@ -121,11 +122,12 @@ export default {
             const url = new URL(request.url);
             const path = url.pathname;
 
+            // 处理 favicon.ico（避免触发 404 错误页）
             if (path === '/favicon.ico') {
                 return new Response(null, { status: 204 });
             }
 
-            // 首页
+            // ---------- 首页 ----------
             if (path === '/') {
                 const tab = parseInt(url.searchParams.get('tab') || '1', 10);
                 const page = Math.max(1, tab);
@@ -141,9 +143,9 @@ export default {
                     });
                 }
 
-                let doc;
+                let parsed;
                 try {
-                    doc = parseXML(xmlText);
+                    parsed = parseXML(xmlText);
                 } catch (e) {
                     return new Response(errorPage(500, 'Failed to parse index XML'), {
                         status: 500,
@@ -151,7 +153,7 @@ export default {
                     });
                 }
 
-                let articles = extractArticlesFromIndex(doc).filter(a => a.public !== false);
+                let articles = extractArticlesFromIndex(parsed).filter(a => a.public !== false);
                 const perPage = 10;
                 const totalPages = Math.ceil(articles.length / perPage);
                 const currentPage = Math.min(page, totalPages || 1);
@@ -166,7 +168,7 @@ export default {
                 });
             }
 
-            // 文章页
+            // ---------- 文章页 /p/xxx.php ----------
             const match = path.match(/^\/p\/(.+)\.php$/);
             if (match) {
                 const slug = match[1];
@@ -182,9 +184,9 @@ export default {
                     });
                 }
 
-                let doc;
+                let parsed;
                 try {
-                    doc = parseXML(xmlText);
+                    parsed = parseXML(xmlText);
                 } catch (e) {
                     return new Response(errorPage(500, 'Failed to parse article XML'), {
                         status: 500,
@@ -194,7 +196,7 @@ export default {
 
                 let article;
                 try {
-                    article = extractArticleFromXML(doc);
+                    article = extractArticleFromXML(parsed);
                 } catch (e) {
                     return new Response(errorPage(500, 'Failed to extract article data'), {
                         status: 500,
@@ -202,6 +204,7 @@ export default {
                     });
                 }
 
+                // 如果文章不公开，依然返回（只对首页隐藏）
                 const html = articlePage(article);
                 return new Response(html, {
                     status: 200,
@@ -209,12 +212,14 @@ export default {
                 });
             }
 
+            // ---------- 其他路径 404 ----------
             return new Response(errorPage(404, 'Page not found'), {
                 status: 404,
                 headers: { 'Content-Type': 'text/html;charset=UTF-8' },
             });
 
         } catch (err) {
+            // 全局捕获
             return new Response(errorPage(500, 'Internal Server Error'), {
                 status: 500,
                 headers: { 'Content-Type': 'text/html;charset=UTF-8' },
