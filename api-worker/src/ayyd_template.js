@@ -429,13 +429,3 @@ export function errorPage(status, message = '') {
 </body>
 </html>`;
 }
-
-// ---------- 辅助函数（服务端安全转义） ----------
-function safeHtml(str) {
-    if (typeof str !== 'string') str = String(str);
-    return str.replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
