@@ -18,6 +18,9 @@
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
 }
+body {
+  font-family: "Noto Sans HK", "Noto Sans SC", "Noto Sans JP", sans-serif;
+}
 .outcard {
   margin-right: 0;
   margin-left: 0;

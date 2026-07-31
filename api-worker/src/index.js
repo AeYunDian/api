@@ -8,6 +8,7 @@ import i0undzcn from './i0.undz.cn.js';
 import i1undzcn from './i1.undz.cn.js';
 import i2undzcn from './i2.undz.cn.js';
 import onlineundzcn from './online.undz.cn.js';
+import shundzcn from './sh.undz.cn.js'
 const corsHeaders_GPO = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -60,6 +61,9 @@ export default {
       }
       if (hostname === 'chat.undz.cn' || hostname === 'c.undz.cn') {
         return await chatundzcn.fetch(request, env);
+      }
+      if (hostname === 'sh.undz.cn') {
+        return await shundzcn.fetch(request, env);
       }
       if (hostname === 'online.undz.cn') {
         return await onlineundzcn.fetch(request, env);

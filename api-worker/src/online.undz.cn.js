@@ -60,7 +60,7 @@ export async function checkAuth(request, env) {
     } catch (error) {
         console.error('checkAuth error:', error);
         // 遇到异常视为未登录
-        return [TAG_LOGGEDIN, null];
+        return [TAG_NOT_LOGGEDIN, null];
     }
 }
 

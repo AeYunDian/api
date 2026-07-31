@@ -7,6 +7,9 @@
 :root.is-in-iframe body {
   height: 95%;
 }
+body {
+  font-family: "Noto Sans HK", "Noto Sans SC", "Noto Sans JP", sans-serif;
+}
 .outcard {
   width: 452px;
   margin-right: auto;
