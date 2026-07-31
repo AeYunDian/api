@@ -42,6 +42,7 @@ export function homePage(articles, currentPage, totalPages, baseUrl = '/') {
         .container { max-width: 900px; margin:0 auto; background: #fff; border: 1px solid #aaa; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; }
         .header .site-name { font-size: 1.5em; font-weight: bold; }
+        .header .site-name a { color: #000; text-decoration: none; }
         .header .aynet { font-style: italic; font-weight: bold; font-size: calc(1em + 3px); }
         .article-item { margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 10px; }
         .article-item h2 { margin: 0 0 5px; font-size: 1.2em; }
@@ -59,7 +60,7 @@ export function homePage(articles, currentPage, totalPages, baseUrl = '/') {
 <body>
     <div class="container">
         <div class="header">
-            <div class="site-name">班级文库</div>
+            <div class="site-name"><a href="/">班级文库</a></div>
             <div class="aynet">AyNET</div>
         </div>
         <div class="content">
@@ -140,7 +141,7 @@ export function errorPage(status, message = '') {
     return `<!DOCTYPE html>
 <html>
 <head><title>${title}</title></head>
-<body bgcolor="white">
+<body>
 <center><h1>${title}</h1></center>
 <center>${body}</center>
 <hr><center>nginx</center>

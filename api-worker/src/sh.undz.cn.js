@@ -1,5 +1,5 @@
-// index.js
-import { homePage, articlePage, errorPage } from './ayyd_template.js';
+import { homePage, articlePage, errorPage } from './ayyd_template';
+import { XMLParser } from 'fast-xml-parser';
 
 // ---------- 加密 / 解密辅助 ----------
 async function getKey(env) {
@@ -36,63 +36,70 @@ async function fetchAndDecrypt(url, env) {
     }
 }
 
-// ---------- XML 解析 ----------
+// ---------- XML 解析（使用 fast-xml-parser）----------
 function parseXML(xmlText) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(xmlText, 'text/xml');
-    const parserError = doc.querySelector('parsererror');
-    if (parserError) throw new Error('XML parse error: ' + parserError.textContent);
-    return doc;
+    const parser = new XMLParser({
+        ignoreAttributes: false,
+        parseAttributeValue: false,
+        trimValues: true,
+        parseTagValue: false, // 保持字符串原样
+    });
+    const result = parser.parse(xmlText);
+    return result;
 }
 
 // 从 index.xml 提取文章列表
-function extractArticlesFromIndex(doc) {
-    const nodes = doc.querySelectorAll('article');
-    const articles = [];
-    for (const node of nodes) {
-        const getText = (tag) => {
-            const el = node.querySelector(tag);
-            return el ? el.textContent.trim() : '';
-        };
-        const slug = getText('slug');
+function extractArticlesFromIndex(parsed) {
+    // 结构: { articles: { article: [ ... ] } }
+    let articles = parsed?.articles?.article;
+    if (!articles) return [];
+    // 确保是数组
+    if (!Array.isArray(articles)) articles = [articles];
+
+    const result = [];
+    for (const item of articles) {
+        const slug = item.slug || '';
         if (!slug) continue;
-        const publicVal = getText('public');
+        const publicVal = (item.public || '').trim();
         const isPublic = publicVal === '' || publicVal.toLowerCase() === 'true';
-        articles.push({
+        result.push({
             slug,
-            title: getText('title'),
-            mainAuthor: getText('mainAuthor'),
-            authors: getText('authors'),
-            created: getText('created'),
-            modified: getText('modified'),
-            tags: getText('tags'),
+            title: item.title || '',
+            mainAuthor: item.mainAuthor || '',
+            authors: item.authors || '',
+            created: item.created || '',
+            modified: item.modified || '',
+            tags: item.tags || '',
             public: isPublic,
-            summary: getText('summary'),
+            summary: item.summary || '',
         });
     }
-    articles.sort((a, b) => new Date(b.created) - new Date(a.created));
-    return articles;
+    result.sort((a, b) => new Date(b.created) - new Date(a.created));
+    return result;
 }
 
 // 从文章 xml 提取完整信息
-function extractArticleFromXML(doc) {
-    const root = doc.documentElement;
+function extractArticleFromXML(parsed) {
+    const root = parsed.article || parsed; // 防止根节点命名
     const getText = (tag) => {
-        const el = root.querySelector(tag);
-        return el ? el.textContent.trim() : '';
+        const val = root[tag];
+        return val ? String(val).trim() : '';
     };
     const publicVal = getText('public');
     const isPublic = publicVal === '' || publicVal.toLowerCase() === 'true';
-    const contentEl = root.querySelector('content');
+    // content 可能是对象或字符串
     let content = '';
-    if (contentEl) {
-        const serializer = new XMLSerializer();
-        for (const child of contentEl.childNodes) {
-            if (child.nodeType === 1 || child.nodeType === 4) {
-                content += serializer.serializeToString(child);
-            } else if (child.nodeType === 3) {
-                content += child.textContent;
-            }
+    if (root.content) {
+        // 如果 content 是对象（有 #text 或 #cdata）则取其内容
+        if (typeof root.content === 'string') {
+            content = root.content;
+        } else if (root.content['#text']) {
+            content = root.content['#text'];
+        } else if (root.content['#cdata']) {
+            content = root.content['#cdata'];
+        } else {
+            // 复杂情况，尝试转字符串
+            content = JSON.stringify(root.content);
         }
     }
     return {
@@ -136,9 +143,9 @@ export default {
                     });
                 }
 
-                let doc;
+                let parsed;
                 try {
-                    doc = parseXML(xmlText);
+                    parsed = parseXML(xmlText);
                 } catch (e) {
                     return new Response(errorPage(500, 'Failed to parse index XML'), {
                         status: 500,
@@ -146,7 +153,7 @@ export default {
                     });
                 }
 
-                let articles = extractArticlesFromIndex(doc).filter(a => a.public !== false);
+                let articles = extractArticlesFromIndex(parsed).filter(a => a.public !== false);
                 const perPage = 10;
                 const totalPages = Math.ceil(articles.length / perPage);
                 const currentPage = Math.min(page, totalPages || 1);
@@ -177,9 +184,9 @@ export default {
                     });
                 }
 
-                let doc;
+                let parsed;
                 try {
-                    doc = parseXML(xmlText);
+                    parsed = parseXML(xmlText);
                 } catch (e) {
                     return new Response(errorPage(500, 'Failed to parse article XML'), {
                         status: 500,
@@ -189,7 +196,7 @@ export default {
 
                 let article;
                 try {
-                    article = extractArticleFromXML(doc);
+                    article = extractArticleFromXML(parsed);
                 } catch (e) {
                     return new Response(errorPage(500, 'Failed to extract article data'), {
                         status: 500,
@@ -197,6 +204,7 @@ export default {
                     });
                 }
 
+                // 如果文章不公开，依然返回（只对首页隐藏）
                 const html = articlePage(article);
                 return new Response(html, {
                     status: 200,
