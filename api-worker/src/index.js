@@ -68,7 +68,7 @@ export default {
       if (hostname === 'online.undz.cn') {
         return await onlineundzcn.fetch(request, env);
       }
-      return new Response(getMainPage("Undz Service Router", "<h1>Undz Service Router</h1>", "<p>Sorry, we can't find the hostname you are trying to access. Please try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html' } });
+      return new Response(getMainPage("Ay Service Router", "<h1>Ay Service Router</h1>", "<p>Sorry, we can't find the hostname you are trying to access. Please try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html' } });
     } catch (err) {
       console.error(err);
       return new Response(`Worker threw exception: ${err.message}\nStack: ${err.stack || "no stack"}`, { status: 500, headers: { "Content-Type": "text/plain" } });
