@@ -26,15 +26,16 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
     const regBtn = $('.regBtn');
     const params = new URLSearchParams(window.location.search);
 
-    // ═══ 抽屉相关 DOM 引用 ═══
-    const drawerOverlay = document.getElementById('drawerOverlay');
+    var IsDisabledOperation = false;
+
     const outcard = document.getElementById('outcard');
     const closeBtn = document.querySelector('.card-close');
-    // ═══ 工具函数 - 检测是否为手机 ═══
+
     function isMobile() {
         return window.innerWidth < 768;
     }
     function disableOperation() {
+        IsDisabledOperation = true;
         regUsername.disabled = true;
         regEmail.disabled = true;
         regPassword.disabled = true;
@@ -47,6 +48,7 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
         loginBtn.disabled = true;
     }
     function enableOperation() {
+        IsDisabledOperation = false;
         regUsername.disabled = false;
         regEmail.disabled = false;
         regPassword.disabled = false;
@@ -58,78 +60,19 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
         loginAgreement.disabled = false;
         loginBtn.disabled = false;
     }
-    // ═══ 抽屉控制函数 ═══
-    function openDrawer() {
-        if (!isMobile()) return;
-        if (drawerOverlay) drawerOverlay.classList.add('active');
-        if (outcard) outcard.classList.add('open');
-        // 防止背景滚动
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeDrawer(notifyParent = true) {
-        if (!isMobile()) {
-            // 非手机模式，直接通知关闭
-            if (notifyParent) {
-                window.parent.postMessage(JSON.stringify({ action: 'closeWindow' }), '*');
-            }
-            return;
-        }
-        // 手机模式：执行关闭动画
-        if (app) {
-            app.classList.remove('app-enter');
-            app.classList.add('app-leave');
-        }
-        if (notifyParent) {
-            setTimeout(() => {
-                window.parent.postMessage(JSON.stringify({ action: 'closeWindow' }), '*');
-            }, 256);
-        }
-    }
-
-    // ═══ 点击遮罩关闭抽屉 ═══
-    if (drawerOverlay) {
-        drawerOverlay.addEventListener('click', function (e) {
-            if (e.target === this) {
-                closeDrawer(true);
-            }
-        });
-    }
-
-    // ═══ 新增：窗口尺寸变化时，自动适配模式 ═══
-    let resizeTimer = null;
-    function handleResize() {
-        if (resizeTimer) {
-            clearTimeout(resizeTimer);
-            resizeTimer = null;
-        }
-        resizeTimer = setTimeout(function () {
-            const mobile = isMobile();
-            if (mobile) {
-                // 切换到手机模式：如果抽屉未打开则打开
-                if (drawerOverlay && !drawerOverlay.classList.contains('active')) {
-                    openDrawer();
-                }
-            } else {
-                if (outcard) {
-                    outcard.classList.remove('open');
-                    outcard.style.transform = '';
-                }
-                document.body.style.overflow = '';
-            }
-        }, 200);
-    }
 
     // ---------- 关闭按钮 ----------
     if (closeBtn) {
         closeBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            closeDrawer(true);
+            if (IsDisabledOperation) return;
+            window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*");
         });
     }
 
     // ---------- Tab 切换 ----------
     document.querySelector('.cm').addEventListener('click', function () {
+        if (IsDisabledOperation) return;
         if (isLogin) {
             isLogin = false;
             document.querySelector('.login.nav-item').style.display = 'none';
@@ -145,19 +88,17 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
             document.querySelector('.reg.nav-item').style.display = 'none';
             document.querySelector('.register-form.form').classList.remove('active-form');
             document.querySelector('.login-form.form').classList.add('active-form');
-
             document.querySelector('.no_account_register').style.display = 'block';
             document.querySelector('.have_account_login').style.display = 'none';
             if (window._validateLogin) window._validateLogin();
         }
-
-        // 手机端切换 Tab 后，确保抽屉内容滚动到顶部
         if (isMobile() && outcard) {
             outcard.scrollTop = 0;
         }
     });
     // ---------- 复选框 ----------
     function toggleCheckbox(checkbox) {
+        if (IsDisabledOperation) return;
         if (!checkbox) return;
         if (checkbox.classList.contains('checked')) {
             checkbox.classList.remove('checked');
@@ -188,14 +129,14 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
         toggleCheckbox(checkbox);
     });
 
-    // ═══ 修改点 5：为登录和注册表单添加 submit 事件处理 ═══
     const loginForm = document.querySelector('.login-form.form');
     const registerForm = document.querySelector('.register-form.form');
 
     if (loginForm) {
         loginForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            // 调用校验（如果校验不通过则不提交）
+            if (IsDisabledOperation) return;
+            // 如果校验不通过，校验处会提示哪里有问题
             if (window._validateLogin) {
                 const result = window._validateLogin();
                 if (!result.valid) {
@@ -220,6 +161,7 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
     if (registerForm) {
         registerForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            if (IsDisabledOperation) return;
             // 调用校验，并获取详细错误信息
             if (window._validateRegister) {
                 const result = window._validateRegister();
@@ -245,57 +187,41 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
 
     // ---------- 遇到问题 ----------
     document.querySelector(".haveQuestion").addEventListener("click", () => {
-        const featuresHeight = window.screen.height * (7 / 10)
-        const featuresWidth = window.screen.width * (5 / 10)
-        const featuresLeft = (window.screen.width - featuresWidth) / 2;
-        const featuresTop = (window.screen.height - featuresHeight - 35) / 2;
-        // 窗口特性
-        const features = [
-            `width=${featuresWidth}`,
-            `height=${featuresHeight}`,
-            `left=${featuresLeft}`,
-            `top=${featuresTop}`,
-            'resizable=yes',
-            'scrollbars=yes',
-            'status=no',
-            'menubar=no',
-            'toolbar=no'
-        ].join(',');
-        window.open(_t('link.faq'), '_blank', features);
+        window.open(_t('link.faq'), '_blank');
     });
 
     // ---------- 消息监听 ----------
     window.addEventListener('message', async function (event) {
         if (event.source !== window.parent) return;
         let data = event.data;
-        // 如果是字符串，保持兼容；如果是 JSON 字符串，解析
         if (typeof data === 'string' && data.startsWith('{')) {
             try {
                 data = JSON.parse(data);
-            } catch {
-                /* 忽略 */
-            }
+            } catch { }
         }
 
         // 处理对象
         if (typeof data === 'object' && data.action) {
             switch (data.action) {
-                case 'registerSuccess': enableOperation(); AyCloseToast(); AyShowResult(_t('common.register_success')); break;
+                case 'registerSuccess':
+                    AyCloseToast();
+                    AyShowResult(_t('common.register_success'));
+                    if (params.get('tab') === 'register') setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000);
+                    break;
                 case 'registerFailure':
                     enableOperation();
                     AyCloseToast();
                     AyShowResult(data.message || _t('common.register_failure'));
                     break;
                 case 'loginSuccess':
-                    enableOperation();
                     AyCloseToast();
                     AyShowResult(_t('common.login_success'), 'info', 1000);
-                    setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000);
+                    if (params.get('tab') === 'login') setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000);
                     break;
                 case 'loginFailure':
                     enableOperation();
                     AyCloseToast();
-                    AyShowResult(data.message || _t('common.login_failure'));
+                    AyShowResult(data.message || _t('common.login_failure'), 'info', 1000);
                     break;
                 case 'changeLanguage':
                     await translatePage().catch((err) => console.warn("Translation error:", err),);
@@ -322,7 +248,6 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                 case 'updateTranslations':
                     if (data.payload && typeof data.payload === 'object') {
                         i18nData = data.payload;
-                        // 重新翻译页面（可选）
                         translatePage().catch(console.warn);
                         if (isLogin) {
                             document.querySelector('.login.nav-item').style.display = 'block';
@@ -345,65 +270,18 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                         }
                     }
                     break;
-                default: break;
-            }
-        } else {
-            // 兼容旧版纯字符串消息（如 "registerSuccess"）
-            switch (data) {
-                case "registerSuccess": enableOperation(); AyCloseToast(); AyShowResult(_t('common.register_success')); break;
-                case "registerFailure": enableOperation(); AyCloseToast(); AyShowResult(_t('common.register_failure')); break;
-                case "loginSuccess": enableOperation(); AyCloseToast(); AyShowResult(_t('common.login_success'), 'info', 1000); setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000); break;
-                case "loginFailure": enableOperation(); AyCloseToast(); AyShowResult(_t('common.login_failure')); break;
-                case 'changeLanguage':
-                    await translatePage().catch((err) => console.warn("Translation error:", err),);
-                    if (isLogin) {
-                        document.querySelector('.login.nav-item').style.display = 'block';
-                        document.querySelector('.reg.nav-item').style.display = 'none';
-                        document.querySelector('.register-form.form').classList.remove('active-form');
-                        document.querySelector('.login-form.form').classList.add('active-form');
-
-                        document.querySelector('.no_account_register').style.display = 'block';
-                        document.querySelector('.have_account_login').style.display = 'none';
-                        if (window._validateLogin) window._validateLogin();
-
-                    } else {
-                        document.querySelector('.login.nav-item').style.display = 'none';
-                        document.querySelector('.reg.nav-item').style.display = 'block';
-                        document.querySelector('.register-form.form').classList.add('active-form');
-                        document.querySelector('.login-form.form').classList.remove('active-form');
-                        document.querySelector('.no_account_register').style.display = 'none';
-                        document.querySelector('.have_account_login').style.display = 'block';
-                        if (window._validateRegister) window._validateRegister();
-                    }
+                case 'beforeClose':
+                    document.querySelector("div.app")?.classList.remove("app-enter");
+                    document.querySelector("div.app")?.classList.add("app-leave");
                     break;
                 default: break;
             }
         }
     });
 
-    // ---------- 初始化 ----------
-    function init() {
-        // 如果 URL 参数指定 tab=register，则切换到注册
-        if (params.get('tab') === 'register') {
-            document.querySelector('.cm').click();
-        }
-
-        // 监听窗口尺寸变化
-        window.addEventListener('resize', handleResize);
-
-        // 监听 orientation change（移动端旋转）
-        window.addEventListener('orientationchange', function () {
-            setTimeout(handleResize, 300);
-        });
+    if (params.get('tab') === 'register') {
+        document.querySelector('.cm').click();
     }
-
-    // DOM 就绪后执行初始化
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-
 })();
 function _t(key) {
     if (i18nData && typeof i18nData === 'object' && key in i18nData) {
@@ -413,9 +291,7 @@ function _t(key) {
 }
 
 async function translatePage(maxRetries = 3) {
-    console.log('[AyLoginTranslate] Starting translatePage');
     const elements = document.querySelectorAll('[data-i18n], [data-i18n-placeholder], [data-i18n-href]');
-    console.log('[AyLoginTranslate] Found elements count:', elements.length);
 
     if (elements.length === 0) {
         if (maxRetries <= 0) {

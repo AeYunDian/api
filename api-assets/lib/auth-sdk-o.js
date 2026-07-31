@@ -2,7 +2,43 @@
 
 const VERSION = '1.4.7';
 const PRODUCE = false;
+
+// ---------- 本地南瓜种植基地 ----------//
+
+//        //     //       //        \\
+//       {{}}   {{}}    {{{}}}     {{}}
+
+//        //     //        //       \\
+//       {{}}  {{{}}}     {{}}    {{{}}}
+
+// ---------- 禁止私自采摘 ----------//
+
 const privateData = new WeakMap();
+const URLPATH = {
+  'BASE': 'https://online.undz.cn',
+  'API': {
+    'REGISTER': '/api/ayonline/register',
+    'LOGIN': '/api/ayonline/login',
+    'LOGOUT': '/api/ayonline/logout',
+    'TEST': '/api/ayonline/test',
+    'VERIFY': '/api/ayonline/verify',
+    'REFRESH': '/api/ayonline/refresh',
+    'CHANGEPASSWORD': '/api/ayonline/change-password'
+  },
+  'MODALPAGE': {
+    'MOBILE': '/login/mobile.html',
+    'DESKTOP': '/login/index.html',
+    'REGISTER': '?tab=register',
+    'LOGIN': '?tab=login'
+  },
+  'LIBRARY': {
+    'GT4': '/lib/gt4.js',
+    'AYTOAST': {
+      'SCRIPT': '/login/toast.js',
+      'CSS': '/login/toast.css'
+    }
+  }
+}
 const BUILTIN_TRANSLATIONS = {
   'zh-cn': {
     'title.login': '登录',
@@ -262,6 +298,9 @@ function removeUselessTestLogo() {
   });
   observer.observe(document.body, { childList: true, subtree: true });
 }
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 function isPlainObject(obj) {
   return Object.prototype.toString.call(obj) === '[object Object]';
 }
@@ -270,9 +309,8 @@ function isPlainObject(obj) {
   if (typeof window !== 'undefined' && typeof window.initGeetest4 === 'undefined') {
     window.addEventListener("load", function () {
       const script = document.createElement('script');
-      script.src = PRODUCE ? 'https://online.undz.cn/lib/gt4.js' : '/lib/gt4.js';
+      script.src = PRODUCE ? `${URLPATH.BASE}${URLPATH.LIBRARY.GT4}` : URLPATH.LIBRARY.GT4;
       script.async = true;        // 异步加载，不阻塞页面
-      script.onload = () => console.log('[AyAccountSDK] Geetest loaded');
       script.onerror = () => console.warn('[AyAccountSDK] Failed to load Geetest');
       document.head.appendChild(script);
     });
@@ -280,14 +318,13 @@ function isPlainObject(obj) {
   if (typeof window !== 'undefined') {
     window.addEventListener("load", function () {
       const toastscript = document.createElement('script');
-      toastscript.src = PRODUCE ? 'https://online.undz.cn/login/toast.js' : '/login/toast.js';
+      toastscript.src = PRODUCE ? `${URLPATH.BASE}${URLPATH.LIBRARY.AYTOAST.SCRIPT}` : URLPATH.LIBRARY.AYTOAST.SCRIPT;
       toastscript.async = true;        // 异步加载，不阻塞页面
-      toastscript.onload = () => console.log('[AyAccountSDK] AyWebToast loaded');
       toastscript.onerror = () => console.warn('[AyAccountSDK] Failed to load AyWebToast');
       document.head.appendChild(toastscript);
       const toastcss = document.createElement('link');
       toastcss.rel = 'stylesheet';
-      toastcss.href = PRODUCE ? 'https://online.undz.cn/login/toast.css' : '/login/toast.css';
+      toastcss.href = PRODUCE ? `${URLPATH.BASE}${URLPATH.LIBRARY.AYTOAST.CSS}` : URLPATH.LIBRARY.AYTOAST.CSS;
       document.head.appendChild(toastcss);
       const toastDiv = document.createElement("div");
       toastDiv.className = 'ay-popup ay-toast service-loading';
@@ -437,60 +474,21 @@ class AyAccount {
     const normalized = this.lang.trim().toLowerCase().replace(/_/g, '-');
     // 精确映射表（键为小写标签，值为 GeeTest 代码）
     const map = {
-      // 简体中文
-      'zh-cn': 'zho',
-      'zh-hans': 'zho',
-      'zh-sg': 'zho',
-      'zh': 'zho', // 无区域时默认简体
-      // 繁体中文（台湾）
-      'zh-tw': 'zho-tw',
-      'zh-hant': 'zho-tw', // 通常表示繁体，默认为台湾
-      'zh-hant-tw': 'zho-tw',
-      // 繁体中文（香港）
-      'zh-hk': 'zho-hk',
-      'zh-mo': 'zho-hk', // 澳门也可使用香港代码
-      'zh-hant-hk': 'zho-hk',
-      // 英文
-      'en': 'eng',
-      'en-us': 'eng',
-      'en-gb': 'eng',
-      'en-au': 'eng',
-      'en-ca': 'eng',
-      // 日文
-      'ja': 'jpn',
-      'ja-jp': 'jpn',
-      // 印尼语
-      'id': 'ind',
-      'id-id': 'ind',
-      // 韩语
-      'ko': 'kor',
-      'ko-kr': 'kor',
-      // 俄语
-      'ru': 'rus',
-      'ru-ru': 'rus',
-      // 阿拉伯语
-      'ar': 'ara',
-      'ar-sa': 'ara',
-      'ar-eg': 'ara',
-      // 西班牙语
-      'es': 'spa',
-      'es-es': 'spa',
-      'es-mx': 'spa',
-      // 巴西葡萄牙语
+      'zh-cn': 'zho', 'zh-hans': 'zho', 'zh-sg': 'zho', 'zh': 'zho',
+      'zh-tw': 'zho-tw', 'zh-hant': 'zho-tw', 'zh-hant-tw': 'zho-tw',
+      'zh-hk': 'zho-hk', 'zh-mo': 'zho-hk', 'zh-hant-hk': 'zho-hk',
+      'en': 'eng', 'en-us': 'eng', 'en-gb': 'eng', 'en-au': 'eng', 'en-ca': 'eng',
+      'ja': 'jpn', 'ja-jp': 'jpn',
+      'id': 'ind', 'id-id': 'ind',
+      'ko': 'kor', 'ko-kr': 'kor',
+      'ru': 'rus', 'ru-ru': 'rus',
+      'ar': 'ara', 'ar-sa': 'ara', 'ar-eg': 'ara',
+      'es': 'spa', 'es-es': 'spa', 'es-mx': 'spa',
       'pt-br': 'pon',
-      // 欧洲葡萄牙语（默认葡萄牙语）
-      'pt': 'por',
-      'pt-pt': 'por',
-      // 法语
-      'fr': 'fra',
-      'fr-fr': 'fra',
-      'fr-ca': 'fra',
-      // 德语
-      'de': 'deu',
-      'de-de': 'deu',
-      // 维吾尔语（输入通常为 'ug'，映射到 GeeTest 的 'udm'）
-      'ug': 'udm',
-      'ug-cn': 'udm',
+      'pt': 'por', 'pt-pt': 'por',
+      'fr': 'fra', 'fr-fr': 'fra', 'fr-ca': 'fra',
+      'de': 'deu', 'de-de': 'deu',
+      'ug': 'udm', 'ug-cn': 'udm',
     };
     if (map[normalized]) {
       return map[normalized];
@@ -581,7 +579,7 @@ class AyAccount {
 
   // ---------- 统一请求方法 ----------
   async _request(path, options = {}) {
-    const url = `https://online.undz.cn${path}`;
+    const url = `${URLPATH.BASE}${path}`;
     const fetchOptions = {
       credentials: 'include', // 自动携带 Cookie
       headers: {
@@ -664,7 +662,7 @@ class AyAccount {
       throw new Error(this._t('error.modal_already_open') || 'Modal already open');
     }
     if (!AyShowResult || !AyCloseToast) {
-      throw new Error(this._t('error.aytoast_not_found') || '找不到AyToast组件，请重新加载');
+      throw new Error(this._t('error.aytoast_not_found') || '找不到AyWebToast组件，请重新加载');
     }
 
     return new Promise((resolve, reject) => {
@@ -676,8 +674,8 @@ class AyAccount {
       iframe.textContent = '';
 
       // 根据模式设置不同的 URL 参数
-      const baseUrl = isMobile() ? (PRODUCE ? 'https://online.undz.cn/login/mobile.html' : '/login/mobile.html') : (PRODUCE ? 'https://online.undz.cn/login/index.html' : '/login/index.html');
-      iframe.src = mode === 'register' ? `${baseUrl}?tab=register` : `${baseUrl}?tab=login`;
+      const baseUrl = isMobile() ? (PRODUCE ? `${URLPATH.BASE}${URLPATH.MODALPAGE.MOBILE}` : URLPATH.MODALPAGE.MOBILE) : (PRODUCE ? `${URLPATH.BASE}${URLPATH.MODALPAGE.DESKTOP}` : URLPATH.MODALPAGE.DESKTOP);
+      iframe.src = mode === 'register' ? `${baseUrl}${URLPATH.MODALPAGE.REGISTER}` : `${baseUrl}${URLPATH.MODALPAGE.LOGIN}`;
 
       iframe.style.position = "fixed";
       iframe.style.top = "0";
@@ -697,7 +695,7 @@ class AyAccount {
 
       let userInfo = null;
 
-      const handler = (event) => {
+      const handler = async (event) => {
         if (event.source !== iframe.contentWindow) return;
         try {
           let data = event.data;
@@ -715,6 +713,10 @@ class AyAccount {
               }), '*');
               break;
             case 'closeWindow':
+              iframe.contentWindow.postMessage(JSON.stringify({
+                action: 'beforeClose'
+              }), '*');
+              await delay(150);
               this.#_closeModal();
               resolve(userInfo);
               break;
@@ -722,10 +724,12 @@ class AyAccount {
               this.#_register(data.username, data.email, data.password)
                 .then((result) => {
                   userInfo = result;
-                  iframe.contentWindow.postMessage('registerSuccess', '*');
+                  iframe.contentWindow.postMessage(JSON.stringify({
+                    action: 'registerSuccess'
+                  }), '*');
                 })
                 .catch((err) => {
-                  console.error('注册失败:', err);
+                  if (!PRODUCE) console.error('注册失败:', err);
                   const errorMsg = err.message || '注册失败';
                   const errorCode = err.error_code || 'unknown';
                   iframe.contentWindow.postMessage(
@@ -742,10 +746,12 @@ class AyAccount {
               this.#_login(data.username, data.password)
                 .then((result) => {
                   userInfo = result;
-                  iframe.contentWindow.postMessage('loginSuccess', '*');
+                  iframe.contentWindow.postMessage(JSON.stringify({
+                    action: 'loginSuccess'
+                  }), '*');
                 })
                 .catch((err) => {
-                  console.error('登录失败:', err);
+                  if (!PRODUCE) console.error('登录失败:', err);
                   const errorMsg = err.message || '登录失败';
                   const errorCode = err.error_code || 'unknown';
                   iframe.contentWindow.postMessage(
@@ -761,7 +767,6 @@ class AyAccount {
             case 'getTranslation':
               const key = data.key;
               const translation = this._t(key);   // 使用实例的翻译方法
-              console.log('[SDK] Sending translation:', key, '=>', translation);
               iframe.contentWindow.postMessage(JSON.stringify({
                 action: 'translationResponse',
                 key: key,
@@ -785,16 +790,12 @@ class AyAccount {
   }
   _sendTranslationsToIframe() {
     if (!this._iframe) return;
-    // 构建完整翻译对象（内置 + 自定义）
     const allTranslations = {
       ...BUILTIN_TRANSLATIONS[this.lang] || {},
       ...BUILTIN_TRANSLATIONS[this.fallbackLang] || {},
       ...this.translations[this.lang] || {},
       ...this.translations[this.fallbackLang] || {}
     };
-    // 由于子窗口只关注当前语言，我们只发送当前语言 + fallback 的合并
-    // 但更好的做法是发送完整的翻译包，让子窗口自行按优先级查找
-    // 这里我们发送全部自定义 + 内置（以当前语言为主）
     const fullTranslation = {
       ...BUILTIN_TRANSLATIONS[this.fallbackLang] || {},
       ...this.translations[this.fallbackLang] || {},
@@ -824,7 +825,14 @@ class AyAccount {
     this._iframe = null;
     this._iframeContainer = null;
   }
-
+  async close() {
+    if (!this._iframe) return;
+    this._iframe.contentWindow.postMessage(JSON.stringify({
+      action: 'beforeClose'
+    }), '*');
+    await delay(150);
+    this.#_closeModal();
+  }
   /**
    * 用户注册（弹出模态框）
    * @returns {Promise<Object|null>} 成功返回用户信息，关闭返回 null
@@ -832,7 +840,6 @@ class AyAccount {
   register() {
     return this.#_openModal('register');
   }
-
 
   /**
    * 用户注册
@@ -843,11 +850,10 @@ class AyAccount {
    */
   async #_register(username, email, password) {
     const self = this;                     // 缓存 this 实例
-    const endpoint = '/api/ayonline/register'; // 定义常量
 
     try {
       // 首次请求，可能返回 1023 触发验证
-      const res = await this._request(endpoint, {
+      const res = await this._request(URLPATH.API.REGISTER, {
         method: 'POST',
         body: { username, email, password },
       });
@@ -881,9 +887,8 @@ class AyAccount {
               }
               result.captcha_id = gt_code;
 
-              // 5. 带上验证结果重新请求注册（这里使用 self 和 endpoint）
               try {
-                const retryRes = await self._request(endpoint, {
+                const retryRes = await self._request(URLPATH.API.REGISTER, {
                   method: 'POST',
                   body: {
                     username,
@@ -930,10 +935,9 @@ class AyAccount {
    */
   async #_login(usernameOrEmail, password) {
     const self = this;                     // 缓存 this 实例
-    const endpoint = '/api/ayonline/login'; // 定义常量
 
     try {
-      const res = await this._request(endpoint, {
+      const res = await this._request(URLPATH.API.LOGIN, {
         method: 'POST',
         body: { username: usernameOrEmail, email: usernameOrEmail, password },
       });
@@ -968,7 +972,7 @@ class AyAccount {
 
               // 带上验证结果重新请求登录（这里使用 self 和 endpoint）
               try {
-                const retryRes = await self._request(endpoint, {
+                const retryRes = await self._request(URLPATH.API.LOGIN, {
                   method: 'POST',
                   body: { username: usernameOrEmail, email: usernameOrEmail, password, gt: utf8ToBase64(JSON.stringify(result)) },
                 });
@@ -1004,7 +1008,7 @@ class AyAccount {
    * @returns {Promise<Object>}
    */
   logout() {
-    return this._request('/api/ayonline/logout', {
+    return this._request(URLPATH.API.LOGOUT, {
       method: 'POST',
     });
   }
@@ -1015,7 +1019,7 @@ class AyAccount {
    */
   async testServer() {
     try {
-      await this._request('/api/ayonline/test', {
+      await this._request(URLPATH.API.TEST, {
         method: 'POST',
       });
       return { success: true };
@@ -1029,7 +1033,7 @@ class AyAccount {
    * @returns {Promise<{ valid: boolean, user?: {id, username, email} }>}
    */
   verify() {
-    return this._request('/api/ayonline/verify', {
+    return this._request(URLPATH.API.VERIFY, {
       method: 'GET',
     });
   }
@@ -1039,7 +1043,7 @@ class AyAccount {
    * @returns {Promise<Object>}
    */
   refresh() {
-    return this._request('/api/ayonline/refresh', {
+    return this._request(URLPATH.API.REFRESH, {
       method: 'POST',
     });
   }
@@ -1052,10 +1056,9 @@ class AyAccount {
    */
   async changePassword(oldPassword, newPassword) {
     const self = this;                     // 缓存 this 实例
-    const endpoint = '/api/ayonline/change-password'; // 定义常量
 
     try {
-      const res = await this._request(endpoint, {
+      const res = await this._request(URLPATH.API.CHANGEPASSWORD, {
         method: 'POST',
         body: { oldPassword, newPassword },
       });
@@ -1090,7 +1093,7 @@ class AyAccount {
 
               // 带上验证结果重新请求注册（这里使用 self 和 endpoint）
               try {
-                const retryRes = await self._request(endpoint, {
+                const retryRes = await self._request(URLPATH.API.CHANGEPASSWORD, {
                   method: 'POST',
                   body: { oldPassword, newPassword, gt: utf8ToBase64(JSON.stringify(result)) },
                 });
