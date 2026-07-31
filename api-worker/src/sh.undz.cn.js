@@ -1,5 +1,5 @@
 // index.js
-import { homePage, articlePage, errorPage } from './template';
+import { homePage, articlePage, errorPage } from './ayyd_template.js';
 
 // ---------- 加密 / 解密辅助 ----------
 async function getKey(env) {
