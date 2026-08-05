@@ -203,6 +203,7 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                 case 'registerSuccess':
                     AyCloseToast();
                     AyShowResult(_t('common.register_success'));
+                    if (params.get('tab') !== 'register') enableOperation();
                     if (params.get('tab') === 'register') setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000);
                     break;
                 case 'registerFailure':
@@ -212,6 +213,7 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                     break;
                 case 'loginSuccess':
                     AyCloseToast();
+                    if (params.get('tab') !== 'login') enableOperation();
                     AyShowResult(_t('common.login_success'), 'info', 1000);
                     if (params.get('tab') === 'login') setTimeout(() => window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*"), 1000);
                     break;

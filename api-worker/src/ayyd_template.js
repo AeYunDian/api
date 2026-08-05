@@ -92,7 +92,7 @@ export function homePage(articles, user, permissions, baseUrl = '/') {
         .meta { font-size: 0.9em; color: #555; }
         .summary { font-size: 0.95em; margin-top: 5px; }
         .article-actions { display: flex; gap: 8px; }
-        .footer { text-align: center; border-top: 1px solid #aaa; padding-top: 10px; margin-top: 20px; font-size: 0.8em; color: #777; }
+        .footer { text-align: center;  padding-top: 10px; margin-top: 20px; font-size: 0.8em; color: #777; }
         .footer .aynet { font-style: italic; font-weight: bold; font-size: calc(1em + 3px); }
         .footer a { color: #0000ff; text-decoration: none; }
         .footer a:hover { text-decoration: underline; }
@@ -376,8 +376,8 @@ export function articlePage(article) {
         .article-title { font-size: 1.8em; margin-bottom: 5px; }
         .article-meta { font-size: 0.9em; color: #555; margin-bottom: 10px; }
         .content-main { margin-top: 10px; }
-        .article-footer { margin-top: 20px; border-top: 1px solid #aaa; padding-top: 10px; font-size: 0.9em; color: #555; }
-        .footer { text-align: center; border-top: 1px solid #aaa; padding-top: 10px; margin-top: 20px; font-size: 0.8em; color: #777; }
+        .article-footer { margin-top: 20px; padding-top: 10px; font-size: 0.9em; color: #555; }
+        .footer { text-align: center; padding-top: 10px; margin-top: 20px; font-size: 0.8em; color: #777; }
         .footer .aynet { font-style: italic; font-weight: bold; font-size: calc(1em + 3px); }
         .footer a { color: #0000ff; text-decoration: none; }
         .footer a:hover { text-decoration: underline; }
@@ -398,7 +398,7 @@ export function articlePage(article) {
                 作者：${author} | 创建：${created} | 标签：${tags}
             </div>
             <hr>
-            <div class="content-main">${content}</div>
+            ${content}
             <hr>
             <div class="article-footer">
                 最近更新：${modified || '无'} | 贡献者：${contributors}
