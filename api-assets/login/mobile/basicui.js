@@ -20,6 +20,8 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
 
     const regUsername = $('#regUsername');
     const regEmail = $('#regEmail');
+    const regEmailCode = $('#regEmailCode');
+    const regGetEmailCode = $('.getEmailCode');
     const regPassword = $('#regPassword');
     const regPasswordConfirm = $('#regPasswordConfirm');
     const regAgreement = $('.regAgreement .checkbox');
@@ -30,7 +32,7 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
 
     const outcard = document.getElementById('outcard');
     const closeBtn = document.querySelector('.card-close');
-
+    var emailCodeToken = null;
     function isMobile() {
         return window.innerWidth < 768;
     }
@@ -131,7 +133,18 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
 
     const loginForm = document.querySelector('.login-form.form');
     const registerForm = document.querySelector('.register-form.form');
+    if (regGetEmailCode) {
+        regGetEmailCode.addEventListener("click", function (e) {
+            e.preventDefault();
+            disableOperation();
+            AyShowResult(_t('common.please_wait'), 'loading', 0);
+            window.parent.postMessage(JSON.stringify({
+                action: 'sendEmailCode',
+                email: regEmail.value,
 
+            }), '*');
+        });
+    }
     if (loginForm) {
         loginForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -179,6 +192,8 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                     username: getVal(regUsername),
                     email: getVal(regEmail),
                     password: getVal(regPassword),
+                    code: getVal(regEmailCode),
+                    token: emailCodeToken,
                 }),
                 '*'
             );
@@ -203,6 +218,22 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
         // 处理对象
         if (typeof data === 'object' && data.action) {
             switch (data.action) {
+                case 'sendEmailCodeSuccess':
+                    emailCodeToken = data.token;
+                    AyCloseToast();
+                    enableOperation();
+                    AyShowResult(_t('common.send_email_code_success'));
+                    regGetEmailCode.disabled = true;
+                    regGetEmailCode.innerText = "重试"
+                    setTimeout(() => { regGetEmailCode.disabled = false; }, 60 * 1000)
+                    break;
+                case 'sendEmailCodeFailure':
+                    AyCloseToast();
+                    enableOperation();
+                    AyShowResult(data.message || _t('common.send_email_code_failure'));
+                    regGetEmailCode.disabled = false;
+                    regGetEmailCode.innerText = "重试"
+                    break;
                 case 'registerSuccess':
                     AyCloseToast();
                     AyShowResult(_t('common.register_success'));
@@ -213,6 +244,7 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                     enableOperation();
                     AyCloseToast();
                     AyShowResult(data.message || _t('common.register_failure'));
+                    regGetEmailCode.disabled = false;
                     break;
                 case 'loginSuccess':
                     AyCloseToast();

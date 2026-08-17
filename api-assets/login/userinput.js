@@ -19,6 +19,7 @@
 
     const regUsername = $('#regUsername');
     const regEmail = $('#regEmail');
+    const regEmailCode = $('#regEmailCode');
     const regPassword = $('#regPassword');
     const regPasswordConfirm = $('#regPasswordConfirm');
     const regAgreement = $('.regAgreement .checkbox');
@@ -79,6 +80,9 @@
         } else if (!isValidEmail(email)) {
             valid = false;
             msg = 'common.invalid_email_format';
+        } else if (getVal(regEmailCode).length != 6) {
+            valid = false;
+            msg = 'common.reg_email_code_length';
         } else if (!isNonEmpty(password)) {
             valid = false;
             msg = 'common.enter_password';

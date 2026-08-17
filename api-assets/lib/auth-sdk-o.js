@@ -1,6 +1,6 @@
-'v1.4.7 AyAccountSDK';
+'v2.0.0 AyAccountSDK';
 
-const VERSION = '1.4.7';
+const VERSION = '2.0.0';
 const PRODUCE = false;
 
 // ---------- 本地南瓜种植基地 ----------//
@@ -23,7 +23,8 @@ const URLPATH = {
     'TEST': '/api/ayonline/test',
     'VERIFY': '/api/ayonline/verify',
     'REFRESH': '/api/ayonline/refresh',
-    'CHANGEPASSWORD': '/api/ayonline/change-password'
+    'CHANGEPASSWORD': '/api/ayonline/change-password',
+    'SENDMAILCODE': '/api/ayonline/send-verification'
   },
   'MODALPAGE': {
     'MOBILE': '/login/mobile.html',
@@ -39,6 +40,45 @@ const URLPATH = {
     }
   }
 }
+const allowedEmailDomains = [
+  'qq.com',
+  '163.com',
+  '126.com',
+  'foxmail.com',
+  'sina.com',
+  'sohu.com',
+  '139.com',
+  '189.cn',
+  '21cn.com',
+  'tom.com',
+  'yeah.net',
+  '263.net',
+  'vip.qq.com',
+  'vip.163.com',
+  'vip.sina.com',
+  'gmail.com',
+  'outlook.com',
+  'hotmail.com',
+  'live.com',
+  'msn.com',
+  'yahoo.com',
+  'yahoo.co.jp',
+  'yahoo.com.hk',
+  'yahoo.com.tw',
+  'icloud.com',
+  'me.com',
+  'mac.com',
+  'aol.com',
+  'protonmail.com',
+  'mail.com',
+  'gmx.com',
+  'zoho.com',
+  'yandex.com',
+  'rambler.ru',
+  'undz.cn',
+  'io.hb.cn',
+  '2x.nz'
+];
 const BUILTIN_TRANSLATIONS = {
   'zh-cn': {
     'title.login': '登录',
@@ -49,6 +89,9 @@ const BUILTIN_TRANSLATIONS = {
     'link.faq': 'https://online.undz.cn/login/faq/zh-cn.html',
     'reg.username': '用户名',
     'reg.email': '邮箱',
+
+    'reg.emailCode': '验证码',
+
     'reg.password': '密码',
     'reg.passwordConfirm': '请再次输入密码',
     'agreement.prefix': '我已阅读并同意',
@@ -89,6 +132,11 @@ const BUILTIN_TRANSLATIONS = {
     'error.1022': '验证码二次校验失败',
     'error.1023': '需要通过人机验证',
     'error.1024': '您已取消验证',
+
+    'error.1025': '验证码错误',
+    'error.1026': '不支持的邮箱域名',
+    'common.send_email_code_success': '发送验证码成功',
+    'common.send_email_code_failure': '发送验证码失败',
     'error.modal_already_open': '登录窗口已打开，请勿重复操作',
     'error.aytoast_not_found': 'AyToast 组件未成功加载，请您重载',
     'common.register_success': '注册成功',
@@ -97,6 +145,7 @@ const BUILTIN_TRANSLATIONS = {
     'common.register_failure': '注册失败',
     'common.network_error': '网络请求失败，请检查网络',
     'common.unknown_error': '未知错误，请稍后重试',
+    'common.reg_email_code_length': '邮箱验证码长度错误',
     'common.enter_username_or_email': '请输入用户名/邮箱',
     'common.please_read_and_agree': '请您阅读并同意协议',
     'common.password_min_length': '密码至少6位',
@@ -191,6 +240,12 @@ const BUILTIN_TRANSLATIONS = {
     'register.success': 'Registration successful',
     'refresh.success': 'Token refreshed',
     'password.change.success': 'Password changed, please login again',
+    'reg.emailCode': 'Verification Code',
+    'common.send_email_code_success': 'Verification code sent successfully',
+    'common.send_email_code_failure': 'Failed to send verification code',
+    'common.reg_email_code_length': 'Verification code length is invalid',
+    'error.1025': 'Invalid verification code',
+    'error.1026': 'Email domain not supported'
   },
   'zh-hk': {
     'title.login': '登錄',
@@ -267,7 +322,12 @@ const BUILTIN_TRANSLATIONS = {
     'register.success': '註冊成功',
     'refresh.success': '令牌已刷新',
     'password.change.success': '密碼已修改，請重新登錄',
-
+    'reg.emailCode': '驗證碼',
+    'common.send_email_code_success': '發送驗證碼成功',
+    'common.send_email_code_failure': '發送驗證碼失敗',
+    'common.reg_email_code_length': '郵箱驗證碼長度錯誤',
+    'error.1025': '驗證碼錯誤',
+    'error.1026': '不支援的電郵域名',
   },
 };
 function isMobile() {
@@ -720,8 +780,30 @@ class AyAccount {
               this.#_closeModal();
               resolve(userInfo);
               break;
+            case 'sendEmailCode':
+              this.#_sendEmailCode(data.email)
+                .then((result) => {
+                  iframe.contentWindow.postMessage(JSON.stringify({
+                    action: 'sendEmailCodeSuccess',
+                    token: result.token
+                  }), '*');
+                })
+                .catch((err) => {
+                  if (!PRODUCE) console.error('发送验证码失败:', err);
+                  const errorMsg = err.message || '发送验证码失败';
+                  const errorCode = err.error_code || 'unknown';
+                  iframe.contentWindow.postMessage(
+                    JSON.stringify({
+                      action: 'sendEmailCodeFailure',
+                      message: errorMsg,
+                      code: errorCode
+                    }),
+                    '*'
+                  );
+                });
+              break;
             case 'register':
-              this.#_register(data.username, data.email, data.password)
+              this.#_register(data.username, data.email, data.password, data.code, data.token)
                 .then((result) => {
                   userInfo = result;
                   iframe.contentWindow.postMessage(JSON.stringify({
@@ -840,6 +922,23 @@ class AyAccount {
   register() {
     return this.#_openModal('register');
   }
+  /**
+   * 发送邮箱验证码
+   * @param {string} email
+   * @returns {Promise}
+   */
+  async #_sendEmailCode(email) {
+    // 校验邮箱域名
+    const allowed = allowedEmailDomains.some(domain => email.endsWith('@' + domain));
+    if (!allowed) {
+      throw new Error(this._t('error.1026'));
+    }
+    const res = await this._request(URLPATH.API.SENDMAILCODE, {
+      method: 'POST',
+      body: { email },
+    });
+    return res; // 返回 { token }
+  }
 
   /**
    * 用户注册
@@ -848,25 +947,24 @@ class AyAccount {
    * @param {string} password
    * @returns {Promise}
    */
-  async #_register(username, email, password) {
+  async #_register(username, email, password, code, token) {
     const self = this;                     // 缓存 this 实例
 
     try {
-      // 首次请求，可能返回 1023 触发验证
       const res = await this._request(URLPATH.API.REGISTER, {
         method: 'POST',
-        body: { username, email, password },
+        body: {
+          username, email, password, emailToken: token,
+          emailCode: code,
+        },
       });
-      return res; // 无需验证，直接返回
+      return res;
     } catch (err) {
-      // 3. 判断是否需要人机验证（检查错误码和返回的 gt_code）
       if (err.error_code === 1023 && err.data?.gt_code) {
         const gt_code = err.data.gt_code;
-        // 检查极验脚本是否加载
         if (typeof initGeetest4 === 'undefined') {
           throw new Error(this._t('common.unknown_error') + ': Geetest4 not loaded');
         }
-        // 4. 返回一个新的 Promise，让外部可以 await 等待验证结果
         return new Promise((resolve, reject) => {
 
           initGeetest4({
@@ -874,10 +972,9 @@ class AyAccount {
             product: 'bind',
             language: this.#getGeeTestLang()
           }, function (captcha) {
-            // 绑定事件
             captcha.onReady(function () {
               removeUselessTestLogo();
-              captcha.showBox(); // 显示验证码
+              captcha.showBox();
             }).onSuccess(async function () {
               const result = captcha.getValidate();
               if (!result) {
@@ -894,6 +991,8 @@ class AyAccount {
                     username,
                     email,
                     password,
+                    emailToken: token,
+                    emailCode: code,
                     gt: utf8ToBase64(JSON.stringify(result))
                   },
                 });
@@ -1002,6 +1101,8 @@ class AyAccount {
       throw err;
     }
   }
+
+
 
   /**
    * 用户登出

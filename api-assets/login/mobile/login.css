@@ -1,3 +1,33 @@
+.regEmailCode {
+  display: inline-block !important;
+  input {
+    width: 75% !important;
+  }
+  button {
+    width: 13% !important;
+    margin-left: 7px !important;
+    margin-right: 0 !important;
+    height: 35px !important;
+    border-radius: 8px;
+    background-color: #fff;
+    font-size: 13px;
+    color: #fff;
+    &:not(:focus):not(:hover):not(:active):not(:disabled) {
+      color: #00b2fe;
+    }
+
+    &:hover:not(:disabled) {
+      color: #3dc5ff;
+    }
+
+    &:disabled {
+      color: #f0f1f5 !important;
+    }
+    &:focus:not(:disabled) {
+      color: #0490e0;
+    }
+  }
+}
 :root.is-in-iframe,
 :root.is-in-iframe body {
   height: 100%;

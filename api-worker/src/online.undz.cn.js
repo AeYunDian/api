@@ -556,7 +556,7 @@ export default {
                     );
                 }
                 const sdkVer = request.headers.get("X-SDK-VER") || "";
-                if (!sdkVer || !isVersionValid(sdkVer, "1.4.7")) {
+                if (!sdkVer || !isVersionValid(sdkVer, "2.0.0")) {
                     return jsonResponse(
                         {
                             success: false,
