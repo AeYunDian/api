@@ -1,411 +1,477 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>认证 SDK 全功能演示</title>
-    <style>
-      * {
-        box-sizing: border-box;
-      }
 
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          sans-serif;
-        max-width: 700px;
-        margin: 2rem auto;
-        padding: 1rem;
-        background: #f7f9fc;
-      }
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AyAccount SDK 功能测试</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
-      h1 {
-        color: #1a202c;
-      }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      max-width: 820px;
+      margin: 30px auto;
+      padding: 0 20px;
+      background: #f9fafc;
+    }
 
-      .section {
-        background: #fff;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      }
+    h1 {
+      font-weight: 600;
+      font-size: 1.8rem;
+      color: #0b1e33;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 12px;
+    }
 
-      .section h2 {
-        margin-top: 0;
-        font-size: 1.2rem;
-        border-bottom: 1px solid #e2e8f0;
-        padding-bottom: 0.5rem;
-      }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 20px 0 10px;
+    }
 
-      input,
-      button {
-        padding: 0.5rem 0.75rem;
-        border: 1px solid #cbd5e0;
-        border-radius: 6px;
-        font-size: 0.95rem;
-      }
+    .toolbar button {
+      padding: 8px 16px;
+      background: #ffffff;
+      border: 1px solid #cdd9e6;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
 
-      input {
-        width: 100%;
-        max-width: 280px;
-        margin-right: 0.5rem;
-        margin-bottom: 0.5rem;
-      }
+    .toolbar button:hover {
+      background: #f0f4fa;
+      border-color: #8ba0b8;
+    }
 
-      button {
-        background: #3182ce;
-        color: #fff;
-        border: none;
-        cursor: pointer;
-        transition: background 0.15s;
-      }
+    .toolbar button:active {
+      background: #e2e8f0;
+      transform: scale(0.97);
+    }
 
-      button:hover {
-        background: #2b6cb0;
-      }
+    .toolbar button.primary {
+      background: #1a6dff;
+      color: white;
+      border-color: #1a6dff;
+    }
 
-      button:active {
-        background: #2c5282;
-      }
+    .toolbar button.primary:hover {
+      background: #0055e0;
+      border-color: #0055e0;
+    }
 
-      .btn-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        align-items: center;
-      }
+    .toolbar button.danger {
+      background: #e53e3e;
+      color: white;
+      border-color: #e53e3e;
+    }
 
-      .result {
-        background: #edf2f7;
-        padding: 1rem;
-        border-radius: 6px;
-        margin-top: 0.75rem;
-        white-space: pre-wrap;
-        word-break: break-all;
-        font-family: "Courier New", monospace;
-        font-size: 0.9rem;
-        max-height: 200px;
-        overflow-y: auto;
-      }
+    .toolbar button.danger:hover {
+      background: #c53030;
+      border-color: #c53030;
+    }
 
-      .success {
-        border-left: 4px solid #38a169;
-      }
+    .section {
+      margin-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 18px;
+    }
 
-      .error {
-        border-left: 4px solid #e53e3e;
-      }
+    .section h3 {
+      margin-top: 0;
+      font-weight: 500;
+      font-size: 1.1rem;
+      color: #1a2c42;
+    }
 
-      .info {
-        font-size: 0.9rem;
-        color: #4a5568;
-        margin-top: 0.5rem;
-      }
+    .field-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin: 8px 0;
+    }
 
-      .flex-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-      }
+    .field-group input,
+    .field-group select {
+      padding: 8px 12px;
+      border: 1px solid #cdd9e6;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      background: white;
+      min-width: 160px;
+    }
 
-      label {
-        font-weight: 500;
-        display: inline-block;
-        width: 80px;
-      }
+    .field-group input:focus,
+    .field-group select:focus {
+      outline: none;
+      border-color: #1a6dff;
+      box-shadow: 0 0 0 3px rgba(26, 109, 255, 0.15);
+    }
 
-      .inline-group {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.5rem;
-      }
+    .result-box {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-top: 20px;
+      min-height: 70px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03);
+      color: #1e293b;
+      line-height: 1.6;
+    }
 
-      .inline-group input {
-        flex: 1 1 180px;
-      }
-    </style>
-  </head>
+    .result-box .empty {
+      color: #94a3b8;
+      font-style: italic;
+    }
 
-  <body>
-    <h1>🔐 认证 SDK · 全功能演示</h1>
+    .badge {
+      display: inline-block;
+      background: #e2e8f0;
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #1e293b;
+      margin-left: 6px;
+    }
 
-    <!-- ======================== 初始化 & 语言切换 ======================== -->
-    <div class="section">
-      <h2>📌 初始化 & 语言切换</h2>
-      <div class="flex-row">
-        <button id="initBtn">初始化客户端（默认 zh-cn）</button>
-        <button id="langZhBtn">切换到 中文</button>
-        <button id="langEnBtn">切换到 English</button>
-        <button id="langHkBtn">切换到 粤语</button>
-      </div>
-      <div class="info">当前语言：<span id="currentLang">未初始化</span></div>
+    .badge.success {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+
+    .badge.error {
+      background: #fed7d7;
+      color: #9b2c2c;
+    }
+
+    .badge.info {
+      background: #bee3f8;
+      color: #2a4365;
+    }
+
+    .flex {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .flex .label {
+      font-weight: 500;
+      color: #334155;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>此页面由DeepSeek编写，主要测试我开发的SDK</h1>
+  <h1>AyAccount SDK · 全功能测试</h1>
+  <p style="color: #475569; margin: -6px 0 18px;">appId: <strong>chat630</strong> ｜ 所有公开方法均通过按钮触发，结果展示在下方区域。</p>
+
+  <div class="toolbar">
+    <button id="btnInit" class="primary">⚡ 初始化 SDK</button>
+    <button id="btnLogin">🚪 打开登录</button>
+    <button id="btnRegister">📝 打开注册</button>
+    <button id="btnClose">✖ 关闭模态框</button>
+    <button id="btnTest">📡 测试服务器</button>
+    <button id="btnVerify">✅ 验证令牌</button>
+    <button id="btnRefresh">🔄 刷新令牌</button>
+    <button id="btnLogout" class="danger">🚪 登出</button>
+  </div>
+
+  <div class="section">
+    <h3>🔑 修改密码 <span class="badge">需先登录</span></h3>
+    <div class="field-group">
+      <input type="password" id="oldPwd" placeholder="旧密码" autocomplete="off">
+      <input type="password" id="newPwd" placeholder="新密码（至少6位）" autocomplete="off">
+      <button id="btnChangePwd" class="primary">确认修改</button>
     </div>
+  </div>
 
-    <!-- ======================== 注册 ======================== -->
-    <div class="section">
-      <h2>📝 注册</h2>
-      <div class="inline-group">
-        <input id="regUsername" placeholder="用户名" />
-        <input id="regEmail" placeholder="邮箱" />
-        <input id="regPassword" type="password" placeholder="密码" />
-        <button id="registerBtn">注册</button>
-      </div>
-      <div id="registerResult" class="result">等待操作…</div>
+  <div class="section">
+    <h3>🌐 多语言切换</h3>
+    <div class="field-group">
+      <select id="langSelect">
+        <option value="zh-cn">简体中文 (zh-cn)</option>
+        <option value="en-us">English (en-us)</option>
+        <option value="zh-hk">繁體中文 (zh-hk)</option>
+      </select>
+      <button id="btnChangeLang">切换语言</button>
+      <button id="btnTestTranslation">🧪 测试翻译 (获取 'title.login')</button>
     </div>
+  </div>
 
-    <!-- ======================== 登录 ======================== -->
-    <div class="section">
-      <h2>🔑 登录</h2>
-      <div class="inline-group">
-        <input id="loginUsername" placeholder="用户名或邮箱" />
-        <input id="loginPassword" type="password" placeholder="密码" />
-        <button id="loginBtn">登录</button>
-      </div>
-      <div id="loginResult" class="result">等待操作…</div>
-    </div>
+  <div class="result-box" id="result">
+    <span class="empty">点击按钮，结果将显示在这里…</span>
+  </div>
 
-    <!-- ======================== 验证 ======================== -->
-    <div class="section">
-      <h2>✅ 验证令牌</h2>
-      <button id="verifyBtn">验证当前 access_token</button>
-      <div id="verifyResult" class="result">等待操作…</div>
-    </div>
+  <!-- 引入 SDK (开源版) -->
+  <script src="https://online.undz.cn/lib/auth-sdk-o.js"></script>
 
-    <!-- ======================== 刷新 ======================== -->
-    <div class="section">
-      <h2>🔄 刷新令牌</h2>
-      <button id="refreshBtn">刷新 access_token</button>
-      <div id="refreshResult" class="result">等待操作…</div>
-    </div>
+  <script>
+    (function () {
+      'use strict';
 
-    <!-- ======================== 修改密码 ======================== -->
-    <div class="section">
-      <h2>🔒 修改密码</h2>
-      <div class="inline-group">
-        <input id="oldPwd" type="password" placeholder="旧密码" />
-        <input id="newPwd" type="password" placeholder="新密码" />
-        <button id="changePwdBtn">修改密码</button>
-      </div>
-      <div class="info">⚠️ 修改成功后所有刷新令牌将被撤销，需要重新登录</div>
-      <div id="changePwdResult" class="result">等待操作…</div>
-    </div>
+      // ---------- DOM 引用 ----------
+      const resultEl = document.getElementById('result');
 
-    <!-- ======================== 登出 ======================== -->
-    <div class="section">
-      <h2>🚪 登出</h2>
-      <button id="logoutBtn">登出</button>
-      <div id="logoutResult" class="result">等待操作…</div>
-    </div>
+      const btnInit = document.getElementById('btnInit');
+      const btnLogin = document.getElementById('btnLogin');
+      const btnRegister = document.getElementById('btnRegister');
+      const btnClose = document.getElementById('btnClose');
+      const btnTest = document.getElementById('btnTest');
+      const btnVerify = document.getElementById('btnVerify');
+      const btnRefresh = document.getElementById('btnRefresh');
+      const btnLogout = document.getElementById('btnLogout');
+      const btnChangePwd = document.getElementById('btnChangePwd');
+      const btnChangeLang = document.getElementById('btnChangeLang');
+      const btnTestTranslation = document.getElementById('btnTestTranslation');
 
-    <!-- ============================================================= -->
-    <script src="https://online.undz.cn/lib/auth-sdk.js"></script>
+      const oldPwd = document.getElementById('oldPwd');
+      const newPwd = document.getElementById('newPwd');
+      const langSelect = document.getElementById('langSelect');
 
-    <script>
-      // ----- 全局变量 -----
-      let auth = null;
+      // ---------- 全局账户实例 ----------
+      let account = null;
 
-      // ----- 工具函数：显示结果 -----
-      function showResult(element, data, isError = false) {
-        let text;
-        if (data instanceof Error) {
-          text = `❌ ${data.message}`;
-          if (data.error_code) text += ` (code: ${data.error_code})`;
-        } else if (typeof data === "string") {
+      // ---------- 辅助函数：显示结果 ----------
+      function showResult(data, type = 'info') {
+        let text = '';
+        if (data === undefined || data === null) {
+          text = '无返回数据';
+        } else if (typeof data === 'string') {
           text = data;
+        } else if (data instanceof Error) {
+          text = `❌ 错误: ${data.message}`;
+          if (data.error_code) text += ` (code: ${data.error_code})`;
+          if (data.response) text += `\nHTTP ${data.response.status}`;
+          if (data.originalError) text += `\n原始错误: ${data.originalError.message}`;
         } else {
-          text = JSON.stringify(data, null, 2);
+          try {
+            text = JSON.stringify(data, null, 2);
+          } catch {
+            text = String(data);
+          }
         }
-        element.textContent = text;
-        element.className = `result ${isError ? "error" : "success"}`;
+        resultEl.textContent = text;
+        // 可以加一些样式颜色标识，但保持简洁
       }
 
-      // ----- 1. 初始化客户端 -----
-      function initClient(lang = "zh-cn") {
+      function showError(err) {
+        showResult(err, 'error');
+      }
+
+      function showSuccess(msg) {
+        showResult(msg, 'success');
+      }
+
+      // ---------- 检查是否已初始化 ----------
+      function ensureAccount() {
+        if (!account) {
+          showResult('⚠️ 请先点击 “初始化 SDK” 按钮创建实例。', 'error');
+          return false;
+        }
+        return true;
+      }
+
+      // ---------- 按钮事件绑定 ----------
+      // 1. 初始化
+      btnInit.addEventListener('click', function () {
+        if (typeof window.createAyAccount !== 'function') {
+          showResult('❌ SDK 未加载，请确认网络或刷新重试。', 'error');
+          return;
+        }
         try {
-          auth = createAyAccount({
-            appId: "api2026630",
-            i18n: lang,
+          // 使用 appId: 'chat630'，可以传递自定义 i18n（这里用默认）
+          account = window.createAyAccount({
+            appId: 'chat630',
+            // 可选：自定义语言
+            i18n: {
+              lang: 'zh-cn',
+              fallbackLang: 'zh-cn'
+            }
           });
-          window.auth = auth; //方便测试
-          document.getElementById("currentLang").textContent = lang;
-          showResult(
-            document.getElementById("loginResult"),
-            "客户端已初始化，语言：" + lang,
-          );
+          showResult('✅ SDK 初始化成功！\nappId: chat630\n当前语言: ' + account.lang);
+          // 更新下拉框显示当前语言
+          langSelect.value = account.lang || 'zh-cn';
         } catch (e) {
-          showResult(document.getElementById("loginResult"), e, true);
-        }
-      }
-
-      document
-        .getElementById("initBtn")
-        .addEventListener("click", () => initClient("zh-cn"));
-      document.getElementById("langZhBtn").addEventListener("click", () => {
-        if (auth) {
-          auth.changeLanguage("zh-cn");
-          document.getElementById("currentLang").textContent = "zh-cn";
-          showResult(document.getElementById("loginResult"), "已切换到 中文");
-        } else {
-          initClient("zh-cn");
-        }
-      });
-      document.getElementById("langEnBtn").addEventListener("click", () => {
-        if (auth) {
-          auth.changeLanguage("en-us");
-          document.getElementById("currentLang").textContent = "en-us";
-          showResult(
-            document.getElementById("loginResult"),
-            "Switched to English",
-          );
-        } else {
-          initClient("en-us");
-        }
-      });
-      document.getElementById("langHkBtn").addEventListener("click", () => {
-        if (auth) {
-          auth.changeLanguage("zh-hk");
-          document.getElementById("currentLang").textContent = "zh-hk";
-          showResult(document.getElementById("loginResult"), "已切換到 粤語");
-        } else {
-          initClient("zh-hk");
+          showError(e);
         }
       });
 
-      // 自动初始化（默认中文）
-      initClient("zh-cn");
+      // 2. 登录
+      btnLogin.addEventListener('click', function () {
+        if (!ensureAccount()) return;
+        account.login()
+          .then(userInfo => {
+            if (userInfo) {
+              showResult(`✅ 登录成功，用户信息：\n${JSON.stringify(userInfo, null, 2)}`, 'success');
+            } else {
+              showResult('ℹ️ 用户关闭了登录窗口（未完成登录）', 'info');
+            }
+          })
+          .catch(err => {
+            // 如果用户关闭窗口可能触发 reject？实际上在 closeWindow 时 resolve(null)，但可能其他错误
+            showError(err);
+          });
+      });
 
-      // ----- 2. 注册 -----
-      document
-        .getElementById("registerBtn")
-        .addEventListener("click", async () => {
-          const username = document.getElementById("regUsername").value.trim();
-          const email = document.getElementById("regEmail").value.trim();
-          const password = document.getElementById("regPassword").value.trim();
-          if (!username || !email || !password) {
-            showResult(
-              document.getElementById("registerResult"),
-              "请填写用户名、邮箱和密码",
-              true,
-            );
-            return;
-          }
-          try {
-            const data = await auth.register(username, email, password);
-            showResult(document.getElementById("registerResult"), {
-              success: true,
-              message: data.message || "注册成功",
-              data,
-            });
-          } catch (err) {
-            showResult(document.getElementById("registerResult"), err, true);
-          }
-        });
+      // 3. 注册
+      btnRegister.addEventListener('click', function () {
+        if (!ensureAccount()) return;
+        account.register()
+          .then(userInfo => {
+            if (userInfo) {
+              showResult(`✅ 注册成功，用户信息：\n${JSON.stringify(userInfo, null, 2)}`, 'success');
+            } else {
+              showResult('ℹ️ 用户关闭了注册窗口（未完成注册）', 'info');
+            }
+          })
+          .catch(err => {
+            showError(err);
+          });
+      });
 
-      // ----- 3. 登录 -----
-      document
-        .getElementById("loginBtn")
-        .addEventListener("click", async () => {
-          const username = document
-            .getElementById("loginUsername")
-            .value.trim();
-          const password = document
-            .getElementById("loginPassword")
-            .value.trim();
-          if (!username || !password) {
-            showResult(
-              document.getElementById("loginResult"),
-              "请填写用户名/邮箱和密码",
-              true,
-            );
-            return;
-          }
-          try {
-            const data = await auth.login(username, password);
-            showResult(document.getElementById("loginResult"), {
-              success: true,
-              user: data.user,
-            });
-          } catch (err) {
-            showResult(document.getElementById("loginResult"), err, true);
-          }
-        });
+      // 4. 关闭模态框
+      btnClose.addEventListener('click', function () {
+        if (!ensureAccount()) return;
+        account.close()
+          .then(() => {
+            showResult('✅ 模态框已关闭');
+          })
+          .catch(err => {
+            showError(err);
+          });
+      });
 
-      // ----- 4. 验证 -----
-      document
-        .getElementById("verifyBtn")
-        .addEventListener("click", async () => {
-          try {
-            const data = await auth.verify();
-            showResult(document.getElementById("verifyResult"), {
-              valid: true,
-              user: data.user,
-            });
-          } catch (err) {
-            showResult(document.getElementById("verifyResult"), err, true);
-          }
-        });
+      // 5. 测试服务器
+      btnTest.addEventListener('click', async function () {
+        if (!ensureAccount()) return;
+        try {
+          const result = await account.testServer();
+          showResult(`📡 服务器测试结果：\n${JSON.stringify(result, null, 2)}`, 'info');
+        } catch (err) {
+          showError(err);
+        }
+      });
 
-      // ----- 5. 刷新令牌 -----
-      document
-        .getElementById("refreshBtn")
-        .addEventListener("click", async () => {
-          try {
-            const data = await auth.refresh();
-            showResult(document.getElementById("refreshResult"), {
-              success: true,
-              message: data.message || "令牌已刷新",
-            });
-          } catch (err) {
-            showResult(document.getElementById("refreshResult"), err, true);
-          }
-        });
+      // 6. 验证令牌
+      btnVerify.addEventListener('click', function () {
+        if (!ensureAccount()) return;
+        account.verify()
+          .then(data => {
+            showResult(`✅ 令牌验证结果：\n${JSON.stringify(data, null, 2)}`, 'success');
+          })
+          .catch(err => {
+            showError(err);
+          });
+      });
 
-      // ----- 6. 修改密码 -----
-      document
-        .getElementById("changePwdBtn")
-        .addEventListener("click", async () => {
-          const oldPwd = document.getElementById("oldPwd").value.trim();
-          const newPwd = document.getElementById("newPwd").value.trim();
-          if (!oldPwd || !newPwd) {
-            showResult(
-              document.getElementById("changePwdResult"),
-              "请填写旧密码和新密码",
-              true,
-            );
-            return;
-          }
-          try {
-            const data = await auth.changePassword(oldPwd, newPwd);
-            showResult(document.getElementById("changePwdResult"), {
-              success: true,
-              message: data.message || "密码已修改，请重新登录",
-            });
-            // 修改成功后，客户端可能退出登录，建议清空密码框
-            document.getElementById("oldPwd").value = "";
-            document.getElementById("newPwd").value = "";
-          } catch (err) {
-            showResult(document.getElementById("changePwdResult"), err, true);
-          }
-        });
+      // 7. 刷新令牌
+      btnRefresh.addEventListener('click', function () {
+        if (!ensureAccount()) return;
+        account.refresh()
+          .then(data => {
+            showResult(`🔄 刷新令牌结果：\n${JSON.stringify(data, null, 2)}`, 'success');
+          })
+          .catch(err => {
+            showError(err);
+          });
+      });
 
-      // ----- 7. 登出 -----
-      document
-        .getElementById("logoutBtn")
-        .addEventListener("click", async () => {
-          try {
-            const data = await auth.logout();
-            showResult(document.getElementById("logoutResult"), {
-              success: true,
-              message: data.message || "已登出",
-            });
-          } catch (err) {
-            showResult(document.getElementById("logoutResult"), err, true);
-          }
-        });
+      // 8. 登出
+      btnLogout.addEventListener('click', function () {
+        if (!ensureAccount()) return;
+        account.logout()
+          .then(data => {
+            showResult(`🚪 登出结果：\n${JSON.stringify(data, null, 2)}`, 'success');
+          })
+          .catch(err => {
+            showError(err);
+          });
+      });
 
-      // 额外：如果登录失败，可提示刷新令牌
-      console.log("✅ SDK 示例已加载，所有函数均可调用");
-    </script>
-  </body>
+      // 9. 修改密码
+      btnChangePwd.addEventListener('click', function () {
+        if (!ensureAccount()) return;
+        const old = oldPwd.value.trim();
+        const newPwdVal = newPwd.value.trim();
+        if (!old || !newPwdVal) {
+          showResult('⚠️ 请填写旧密码和新密码。', 'error');
+          return;
+        }
+        if (newPwdVal.length < 6) {
+          showResult('⚠️ 新密码长度至少 6 位。', 'error');
+          return;
+        }
+        account.changePassword(old, newPwdVal)
+          .then(data => {
+            showResult(`✅ 密码修改结果：\n${JSON.stringify(data, null, 2)}`, 'success');
+            // 清空输入
+            oldPwd.value = '';
+            newPwd.value = '';
+          })
+          .catch(err => {
+            showError(err);
+          });
+      });
+
+      // 10. 切换语言
+      btnChangeLang.addEventListener('click', function () {
+        if (!ensureAccount()) return;
+        const lang = langSelect.value;
+        account.changeLanguage(lang);
+        showResult(`🌐 语言已切换为: ${lang}`, 'info');
+        // 测试翻译
+        const title = account._t('title.login');
+        const regBtn = account._t('btn.reg');
+        showResult(`🌐 语言已切换为: ${lang}\n翻译测试: title.login = "${title}", btn.reg = "${regBtn}"`, 'info');
+      });
+
+      // 11. 测试翻译（单独）
+      btnTestTranslation.addEventListener('click', function () {
+        if (!ensureAccount()) {
+          showResult('⚠️ 请先初始化 SDK', 'error');
+          return;
+        }
+        const keys = ['title.login', 'nav.login', 'btn.reg', 'common.login_success', 'error.1000'];
+        const map = {};
+        keys.forEach(k => { map[k] = account._t(k); });
+        showResult(`🧪 当前翻译（${account.lang}）：\n${JSON.stringify(map, null, 2)}`, 'info');
+      });
+
+      // 可选：初始化时自动尝试加载 SDK，但不自动初始化实例
+      // 页面加载后检测 SDK 是否已就绪
+      window.addEventListener('load', function () {
+        if (typeof window.createAyAccount === 'function') {
+          // SDK 已加载，可以提示
+          resultEl.textContent = '✅ SDK 已加载，请点击“初始化 SDK”开始测试。';
+        } else {
+          resultEl.textContent = '⏳ 正在加载 SDK，请稍候…';
+          // 兜底：如果 SDK 未加载，给用户提示
+          setTimeout(() => {
+            if (typeof window.createAyAccount !== 'function') {
+              resultEl.textContent = '⚠️ SDK 加载超时，请检查网络或手动刷新。';
+            }
+          }, 5000);
+        }
+      });
+
+    })();
+  </script>
+
+</body>
+
 </html>

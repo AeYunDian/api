@@ -74,7 +74,45 @@ export async function checkAuth(request, env) {
         return [TAG_NOT_LOGGEDIN, null];
     }
 }
-
+const allowedEmailDomains = [
+    'qq.com',
+    '163.com',
+    '126.com',
+    'foxmail.com',
+    'sina.com',
+    'sohu.com',
+    '139.com',
+    '189.cn',
+    '21cn.com',
+    'tom.com',
+    'yeah.net',
+    '263.net',
+    'vip.qq.com',
+    'vip.163.com',
+    'vip.sina.com',
+    'gmail.com',
+    'outlook.com',
+    'hotmail.com',
+    'live.com',
+    'msn.com',
+    'yahoo.com',
+    'yahoo.co.jp',
+    'yahoo.com.hk',
+    'yahoo.com.tw',
+    'icloud.com',
+    'me.com',
+    'mac.com',
+    'aol.com',
+    'protonmail.com',
+    'mail.com',
+    'gmx.com',
+    'zoho.com',
+    'yandex.com',
+    'rambler.ru',
+    'undz.cn',
+    'io.hb.cn',
+    '2x.nz'
+];
 // 允许跨域的子服务域名（白名单）
 const ALLOWED_ORIGINS = [
     "https://api.undz.cn",
@@ -621,6 +659,11 @@ export default {
                             cors,
                         );
                     }
+                    if (!allowedEmailDomains.some(domain => body.email.endsWith('@' + domain))) return jsonResponse({
+                        action: 'register',
+                        error: 'Invalid email',
+                        error_code: 1000
+                    }, 400, cors);
                     if (body.gt) {
                         const verifyResult = await handleVerifyCode(body.emailCode, body.emailToken, env);
                         if (!verifyResult.valid) {
