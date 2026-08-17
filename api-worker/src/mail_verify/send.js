@@ -4,107 +4,72 @@ function generateToken() {
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
 }
+export const LOGIN_TEMPLATE = `Your verification code is %CODE%.
+You are trying to 'Login', and it is valid for %EXPDATA% minutes.
+Please do not share it with anyone. If this wasn't done by you, please ignore this email.`
+export const REG_TEMPLATE = `Your verification code is %CODE%.
+You are trying to 'Registered', and it is valid for %EXPDATA% minutes.
+Please do not share it with anyone. If this wasn't done by you, please ignore this email.`
 
-export async function handleSendVerification(request, env) {
+export async function handleSendVerification(env, email, expirationTtl = 300, serviceName = 'AyService' ,  template = LOGIN_TEMPLATE) {
   
   try {
-    // 解析请求体
-    let email;
-    try {
-      const body = await request.json();
-      email = body.email;
-    } catch (e) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid JSON' }), 
-        { 
-          status: 400, 
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          } 
-        }
-      );
-    }
-    
     if (!email) {
-      return new Response(
-        JSON.stringify({ error: 'Email is required' }), 
-        { 
-          status: 400, 
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          } 
-        }
-      );
+      return {msg : 'EMAIL_REQUIRED' };
     }
 
-    // 生成随机验证码和 token
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     const token = generateToken();
     
-    // 存储到 KV，有效期 5 分钟
     await env.kv.put(
       `token:${token}`, 
       JSON.stringify({ email, code: verificationCode }),
-      { expirationTtl: 300 } // 5 分钟
+      { expirationTtl: expirationTtl }
     );
 
-    // 使用 Resend 发送邮件
-    const resendResponse = await fetch('https://api.resend.com/emails', {
+    const mailDomain = env.MAIL_SEND_DOMAIN;
+    const mailApiKey = env.MAIL_API_KEY;
+    const port = 80;
+
+    if (!mailDomain || !mailApiKey) {
+      console.error('Missing MAIL_SEND_DOMAIN or MAIL_API_KEY in env');
+      return  {msg : 'CONFIG_ERROR' };
+    }
+
+    const mailUrl = `http://${mailDomain}:${port}/send`;
+
+    const mailResponse = await fetch(mailUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.RESEND_API_KEY}`
+        'Authorization': `Bearer ${mailApiKey}`
       },
       body: JSON.stringify({
-        from: 'noreply@undz.cn',
         to: email,
-        subject: '[Ys Post] Your Verification Code',
-        html: `<p>Your verification code is: <strong>${verificationCode}</strong></p><p>This code will expire in 5 minutes.</p>`
+        subject: `[${serviceName}] Your Verification Code`,
+        body: template.replace('%CODE%', verificationCode).replace('%EXPDATA%', expirationTtl / 60),
+        html: template.replace('%CODE%', verificationCode).replace('%EXPDATA%', expirationTtl / 60)
       })
     });
 
-    if (!resendResponse.ok) {
-      const error = await resendResponse.text();
-      console.error('Resend API error:', error);
-      return new Response(
-        JSON.stringify({ error: 'Failed to send email' }), 
-        { 
-          status: 500, 
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          } 
-        }
-      );
+    if (!mailResponse.ok) {
+      return  {msg : 'FAILED_SEND_EMAIL' };
     }
 
-    // 返回 token
-    return new Response(
-      JSON.stringify({ token }), 
-      { 
-        status: 200, 
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        } 
-      }
-    );
+    let mailResult;
+    try {
+      mailResult = await mailResponse.json();
+    } catch (e) {
+      return {msg : 'INVALID_RESPONSE' };
+    }
+
+    if (mailResult.status !== 'ok') {
+      return {msg : 'FAILED_SEND_EMAIL' };
+    }
+
+    return {msg : "OK", token };
   } catch (error) {
     console.error('Error in send verification:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }), 
-      { 
-        status: 500, 
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        } 
-      }
-    );
+    return {msg :  'FAILED_SEND_EMAIL'  };
   }
-
 }
-
-

@@ -4,24 +4,27 @@
 // 技术栈：Cloudflare Workers + D1 + KV + JWT (jose) + cookie
 // ============================================================
 
-import { SignJWT, jwtVerify } from 'jose';
-import { serialize, parse } from 'cookie';
-import { base64ToUtf8 } from './utils.js'
+import { SignJWT, jwtVerify } from "jose";
+import { serialize, parse } from "cookie";
+import { base64ToUtf8 } from "./utils.js";
+import { handleVerifyCode } from "./mail_verify/verify.js";
+import { REG_TEMPLATE, handleSendVerification } from "./mail_verify/send.js";
 
 // ---------- 常量与配置 ----------
-const JWT_ALG = 'HS256';
-const ACCESS_TOKEN_EXPIRES_IN = '15m';          // 访问令牌有效期
-const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 30;    // 刷新令牌有效期（秒），30天
+const JWT_ALG = "HS256";
+const ACCESS_TOKEN_EXPIRES_IN = "15m"; // 访问令牌有效期
+const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 30; // 刷新令牌有效期（秒），30天
 const PBKDF2_ITERATIONS = 100000;
-const PBKDF2_HASH = 'SHA-256';
-const SALT_LENGTH = 16;                        // 字节
+const PBKDF2_HASH = "SHA-256";
+const SALT_LENGTH = 16; // 字节
 const MIN_PASSWORD_LENGTH = 6;
-export const TAG_LOGGEDIN = 'logged_in';
-export const TAG_NOT_LOGGEDIN = 'not_logged_in';
-export const TAG_BANNED = 'banned';
+const VERIFY_CODE_EXPDATA = 300;
+export const TAG_LOGGEDIN = "logged_in";
+export const TAG_NOT_LOGGEDIN = "not_logged_in";
+export const TAG_BANNED = "banned";
 export async function checkAuth(request, env) {
     try {
-        const cookies = parse(request.headers.get('Cookie') || '');
+        const cookies = parse(request.headers.get("Cookie") || "");
         const accessToken = cookies.access_token;
 
         if (!accessToken) {
@@ -34,31 +37,39 @@ export async function checkAuth(request, env) {
         }
 
         const userId = parseInt(payload.sub, 10);
-        const user = await env.db.prepare(
-            'SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?'
-        ).bind(userId).first();
+        const user = await env.db
+            .prepare(
+                "SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?",
+            )
+            .bind(userId)
+            .first();
 
         if (!user) {
             return [TAG_NOT_LOGGEDIN, null];
         }
 
         if (user.banned == 1) {
-            return [TAG_BANNED, {
+            return [
+                TAG_BANNED,
+                {
+                    id: user.id,
+                    username: user.username,
+                    email: user.email,
+                    ban_reason: user.ban_reason || "",
+                },
+            ];
+        }
+
+        return [
+            "logged_in",
+            {
                 id: user.id,
                 username: user.username,
                 email: user.email,
-                ban_reason: user.ban_reason || ''
-            }];
-        }
-
-        return ['logged_in', {
-            id: user.id,
-            username: user.username,
-            email: user.email
-        }];
-
+            },
+        ];
     } catch (error) {
-        console.error('checkAuth error:', error);
+        console.error("checkAuth error:", error);
         // 遇到异常视为未登录
         return [TAG_NOT_LOGGEDIN, null];
     }
@@ -66,37 +77,36 @@ export async function checkAuth(request, env) {
 
 // 允许跨域的子服务域名（白名单）
 const ALLOWED_ORIGINS = [
-    'https://api.undz.cn',
-    'https://chat.undz.cn',
-    'https://editor.undz.cn',
-    'https://cdn.undz.cn',
-    'https://online.undz.cn',
-    'https://c.undz.cn',
-    'https://i0.undz.cn',
-    'https://i1.undz.cn',
-    'https://i2.undz.cn',
-    'http://test.undz.cn:8080',
-    'https://undz.cn',
-    'https://io.hb.cn',
-    'https://www.undz.cn',
-    'https://ayd2.eu.cc',
-    'https://main.net2.eu.cc',
-    'https://www.io.hb.cn',
-    'https://main.net3.eu.cc',
-    'https://main.exm2.eu.cc',
-    'https://main.zyy2.eu.cc',
-    'https://test.undz.cn',
-    'https://zyy.undz.cn',
-    'https://zyy.io.hb.cn',
-    'https://zyyos.io.hb.cn',
-    'https://z.net2.eu.cc',
-    'https://zyyos.undz.cn',
-    'https://z.ayd2.eu.cc',
-    'https://z.net3.eu.cc',
-    'https://zyy2.eu.cc',
-    'https://zyy.exm2.eu.cc',
-    'https://zyyos.exm2.eu.cc',
-
+    "https://api.undz.cn",
+    "https://chat.undz.cn",
+    "https://editor.undz.cn",
+    "https://cdn.undz.cn",
+    "https://online.undz.cn",
+    "https://c.undz.cn",
+    "https://i0.undz.cn",
+    "https://i1.undz.cn",
+    "https://i2.undz.cn",
+    "http://test.undz.cn:8080",
+    "https://undz.cn",
+    "https://io.hb.cn",
+    "https://www.undz.cn",
+    "https://ayd2.eu.cc",
+    "https://main.net2.eu.cc",
+    "https://www.io.hb.cn",
+    "https://main.net3.eu.cc",
+    "https://main.exm2.eu.cc",
+    "https://main.zyy2.eu.cc",
+    "https://test.undz.cn",
+    "https://zyy.undz.cn",
+    "https://zyy.io.hb.cn",
+    "https://zyyos.io.hb.cn",
+    "https://z.net2.eu.cc",
+    "https://zyyos.undz.cn",
+    "https://z.ayd2.eu.cc",
+    "https://z.net3.eu.cc",
+    "https://zyy2.eu.cc",
+    "https://zyy.exm2.eu.cc",
+    "https://zyyos.exm2.eu.cc",
 ];
 
 // ---------- 工具函数 ----------
@@ -110,16 +120,16 @@ async function hmacSha256(key, message) {
     const keyData = encoder.encode(key);
     const messageData = encoder.encode(message);
     const cryptoKey = await crypto.subtle.importKey(
-        'raw',
+        "raw",
         keyData,
-        { name: 'HMAC', hash: 'SHA-256' },
+        { name: "HMAC", hash: "SHA-256" },
         false,
-        ['sign']
+        ["sign"],
     );
-    const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+    const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
     return Array.from(new Uint8Array(signature))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
 }
 function toBase64(buffer) {
     return btoa(String.fromCharCode(...buffer));
@@ -137,28 +147,30 @@ function fromBase64(str) {
 async function hashPassword(password, salt) {
     const encoder = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey(
-        'raw',
+        "raw",
         encoder.encode(password),
-        { name: 'PBKDF2' },
+        { name: "PBKDF2" },
         false,
-        ['deriveBits']
+        ["deriveBits"],
     );
     const derived = await crypto.subtle.deriveBits(
         {
-            name: 'PBKDF2',
+            name: "PBKDF2",
             salt: salt,
             iterations: PBKDF2_ITERATIONS,
             hash: PBKDF2_HASH,
         },
         keyMaterial,
-        256
+        256,
     );
     return new Uint8Array(derived);
 }
 
 function generateRefreshToken() {
     const bytes = generateRandomBytes(32);
-    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return Array.from(bytes)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
 }
 // ---------- 输入校验函数 ----------
 function validateEmail(email) {
@@ -176,24 +188,24 @@ function jsonResponse(data, status = 200, extraHeaders = {}) {
     return new Response(JSON.stringify(data), {
         status,
         headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             ...extraHeaders,
         },
     });
 }
 
 function corsHeaders(request) {
-    const origin = request.headers.get('Origin');
+    const origin = request.headers.get("Origin");
     const headers = {
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, x-app-id, x-sdk-ver',
-        'Access-Control-Max-Age': '86400',
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, x-app-id, x-sdk-ver",
+        "Access-Control-Max-Age": "86400",
     };
     if (origin && ALLOWED_ORIGINS.includes(origin)) {
-        headers['Access-Control-Allow-Origin'] = origin;
+        headers["Access-Control-Allow-Origin"] = origin;
     } else {
-        headers['Access-Control-Allow-Origin'] = 'null';
+        headers["Access-Control-Allow-Origin"] = "null";
     }
     return headers;
 }
@@ -231,7 +243,9 @@ async function verifyAccessToken(token, secret) {
 // ---------- 数据库操作 ----------
 async function initDatabase(db) {
     // 分别执行每条 DDL
-    await db.prepare(`
+    await db
+        .prepare(
+            `
         CREATE TABLE IF NOT EXISTS online_users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
@@ -243,28 +257,52 @@ async function initDatabase(db) {
             banned INTEGER DEFAULT 0,
             ban_reason TEXT DEFAULT ''
         )
-    `).run();
+    `,
+        )
+        .run();
 
-    await db.prepare(
-        `CREATE INDEX IF NOT EXISTS idx_username ON online_users(username)`
-    ).run();
+    await db
+        .prepare(
+            `CREATE INDEX IF NOT EXISTS idx_username ON online_users(username)`,
+        )
+        .run();
 
-    await db.prepare(
-        `CREATE INDEX IF NOT EXISTS idx_email ON online_users(email)`
-    ).run();
+    await db
+        .prepare(`CREATE INDEX IF NOT EXISTS idx_email ON online_users(email)`)
+        .run();
 }
 async function registerUser(db, username, email, password) {
     if (!validateEmail(email)) {
-        return { success: false, action: 'register', code: 400, error_code: 1000, message: 'Invalid email format' };
+        return {
+            success: false,
+            action: "register",
+            code: 400,
+            error_code: 1000,
+            message: "Invalid email format",
+        };
     }
     if (!validatePassword(password)) {
-        return { success: false, action: 'register', code: 400, error_code: 1001, message: 'Password must be at least 6 characters and contain only a-z A-Z 0-9 -_=+@#$%' };
+        return {
+            success: false,
+            action: "register",
+            code: 400,
+            error_code: 1001,
+            message:
+                "Password must be at least 6 characters and contain only a-z A-Z 0-9 -_=+@#$%",
+        };
     }
-    const existing = await db.prepare(
-        'SELECT id FROM online_users WHERE username = ? OR email = ?'
-    ).bind(username, email).first();
+    const existing = await db
+        .prepare("SELECT id FROM online_users WHERE username = ? OR email = ?")
+        .bind(username, email)
+        .first();
     if (existing) {
-        return { success: false, action: 'register', code: 409, error_code: 1002, message: 'Username or email already exists' };
+        return {
+            success: false,
+            action: "register",
+            code: 409,
+            error_code: 1002,
+            message: "Username or email already exists",
+        };
     }
 
     const salt = generateRandomBytes(SALT_LENGTH);
@@ -273,21 +311,40 @@ async function registerUser(db, username, email, password) {
     const hashBase64 = toBase64(hashBytes);
 
     const now = Date.now();
-    await db.prepare(`
+    await db
+        .prepare(
+            `
     INSERT INTO online_users (username, email, password_salt, password_hash, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).bind(username, email, saltBase64, hashBase64, now, now).run();
+  `,
+        )
+        .bind(username, email, saltBase64, hashBase64, now, now)
+        .run();
 
-    return { success: true, action: 'register', code: 200, message: 'User registered successfully' };
+    return {
+        success: true,
+        action: "register",
+        code: 200,
+        message: "User registered successfully",
+    };
 }
 
 async function authenticateUser(db, usernameOrEmail, password) {
-    const user = await db.prepare(
-        'SELECT id, username, email, password_salt, password_hash, banned, ban_reason FROM online_users WHERE username = ? OR email = ?'
-    ).bind(usernameOrEmail, usernameOrEmail).first();
+    const user = await db
+        .prepare(
+            "SELECT id, username, email, password_salt, password_hash, banned, ban_reason FROM online_users WHERE username = ? OR email = ?",
+        )
+        .bind(usernameOrEmail, usernameOrEmail)
+        .first();
 
     if (!user) {
-        return { success: false, action: 'login', code: 401, error_code: 1003, message: 'Invalid credentials' };
+        return {
+            success: false,
+            action: "login",
+            code: 401,
+            error_code: 1003,
+            message: "Invalid credentials",
+        };
     }
 
     const salt = fromBase64(user.password_salt);
@@ -295,12 +352,18 @@ async function authenticateUser(db, usernameOrEmail, password) {
     const hashBase64 = toBase64(hashBytes);
 
     if (hashBase64 !== user.password_hash) {
-        return { success: false, action: 'login', code: 401, error_code: 1003, message: 'Invalid credentials' };
+        return {
+            success: false,
+            action: "login",
+            code: 401,
+            error_code: 1003,
+            message: "Invalid credentials",
+        };
     }
 
     return {
         success: true,
-        action: 'login',
+        action: "login",
         code: 200,
         user: {
             id: user.id,
@@ -314,12 +377,14 @@ async function authenticateUser(db, usernameOrEmail, password) {
 
 // ---------- 刷新令牌 KV 操作 ----------
 async function storeRefreshToken(kv, token, userId, ttlSeconds) {
-    await kv.put(`refresh:${token}`, String(userId), { expirationTtl: ttlSeconds });
+    await kv.put(`refresh:${token}`, String(userId), {
+        expirationTtl: ttlSeconds,
+    });
     await addRefreshTokenForUser(kv, userId, token);
 }
 function isVersionValid(current, required) {
-    const parts = current.split('.').map(Number);
-    const reqParts = required.split('.').map(Number);
+    const parts = current.split(".").map(Number);
+    const reqParts = required.split(".").map(Number);
     for (let i = 0; i < Math.max(parts.length, reqParts.length); i++) {
         const p = parts[i] || 0;
         const r = reqParts[i] || 0;
@@ -348,7 +413,9 @@ async function addRefreshTokenForUser(kv, userId, token) {
     let list = existing ? JSON.parse(existing) : [];
     if (!list.includes(token)) {
         list.push(token);
-        await kv.put(key, JSON.stringify(list), { expirationTtl: REFRESH_TOKEN_TTL });
+        await kv.put(key, JSON.stringify(list), {
+            expirationTtl: REFRESH_TOKEN_TTL,
+        });
     }
 }
 
@@ -373,9 +440,11 @@ async function removeRefreshTokenFromUserList(kv, userId, token) {
     const existing = await kv.get(key);
     if (!existing) return;
     let list = JSON.parse(existing);
-    list = list.filter(t => t !== token);
+    list = list.filter((t) => t !== token);
     if (list.length > 0) {
-        await kv.put(key, JSON.stringify(list), { expirationTtl: REFRESH_TOKEN_TTL });
+        await kv.put(key, JSON.stringify(list), {
+            expirationTtl: REFRESH_TOKEN_TTL,
+        });
     } else {
         await kv.delete(key);
     }
@@ -383,18 +452,42 @@ async function removeRefreshTokenFromUserList(kv, userId, token) {
 // ---------- 改密码 ----------
 async function changePassword(db, kv, userId, oldPassword, newPassword) {
     if (!validatePassword(newPassword)) {
-        return { success: false, code: 400, action: 'changePassword', error_code: 1005, message: 'New password must be at least 6 characters and contain only a-z A-Z 0-9 -_=+@#$%' };
+        return {
+            success: false,
+            code: 400,
+            action: "changePassword",
+            error_code: 1005,
+            message:
+                "New password must be at least 6 characters and contain only a-z A-Z 0-9 -_=+@#$%",
+        };
     }
 
-    const user = await db.prepare('SELECT password_salt, password_hash FROM online_users WHERE id = ?').bind(userId).first();
-    if (!user) return { success: false, code: 404, action: 'changePassword', message: 'User not found' };
+    const user = await db
+        .prepare(
+            "SELECT password_salt, password_hash FROM online_users WHERE id = ?",
+        )
+        .bind(userId)
+        .first();
+    if (!user)
+        return {
+            success: false,
+            code: 404,
+            action: "changePassword",
+            message: "User not found",
+        };
 
     const salt = fromBase64(user.password_salt);
     const oldHashBytes = await hashPassword(oldPassword, salt);
     const oldHashBase64 = toBase64(oldHashBytes);
 
     if (oldHashBase64 !== user.password_hash) {
-        return { success: false, code: 401, action: 'changePassword', error_code: 1006, message: 'Old password incorrect' };
+        return {
+            success: false,
+            code: 401,
+            action: "changePassword",
+            error_code: 1006,
+            message: "Old password incorrect",
+        };
     }
 
     const newSalt = generateRandomBytes(SALT_LENGTH);
@@ -403,12 +496,21 @@ async function changePassword(db, kv, userId, oldPassword, newPassword) {
     const newHashBase64 = toBase64(newHashBytes);
 
     const now = Date.now();
-    await db.prepare('UPDATE online_users SET password_salt = ?, password_hash = ?, updated_at = ? WHERE id = ?')
-        .bind(newSaltBase64, newHashBase64, now, userId).run();
+    await db
+        .prepare(
+            "UPDATE online_users SET password_salt = ?, password_hash = ?, updated_at = ? WHERE id = ?",
+        )
+        .bind(newSaltBase64, newHashBase64, now, userId)
+        .run();
 
     await revokeAllUserRefreshTokens(kv, userId);
 
-    return { success: true, code: 200, action: 'changePassword', message: 'Password updated. Please log in again.' };
+    return {
+        success: true,
+        code: 200,
+        action: "changePassword",
+        message: "Password updated. Please log in again.",
+    };
 }
 // ---------- 请求处理 ----------
 export default {
@@ -417,7 +519,7 @@ export default {
         const path = url.pathname;
         const method = request.method;
 
-        if (method === 'OPTIONS') {
+        if (method === "OPTIONS") {
             return handleOptions(request);
         }
 
@@ -426,85 +528,229 @@ export default {
         try {
             // ---------- 初始化数据库（需 Admin Key） ----------
 
-            if (path.startsWith('/api/')) {
-                if (path === '/api/ayonline/init' && method === 'POST') {
-                    const authKey = request.headers.get('X-Admin-Key');
+            if (path.startsWith("/api/")) {
+                if (path === "/api/ayonline/init" && method === "POST") {
+                    const authKey = request.headers.get("X-Admin-Key");
                     if (authKey !== env.KEY) {
-                        return jsonResponse({ error: 'Unauthorized' }, 401, cors);
+                        return jsonResponse({ error: "Unauthorized" }, 401, cors);
                     }
                     await initDatabase(env.db);
-                    return jsonResponse({ success: true, message: 'Database initialized' }, 200, cors);
+                    return jsonResponse(
+                        { success: true, message: "Database initialized" },
+                        200,
+                        cors,
+                    );
                 }
 
-
-                const appId = request.headers.get('X-App-Id') || '';
+                const appId = request.headers.get("X-App-Id") || "";
                 if (!env.ALLOWED_APP_IDS.includes(appId)) {
-                    return jsonResponse({ success: false, code: 403, error_code: 1019, message: 'appId is invalid' }, 403, cors);
+                    return jsonResponse(
+                        {
+                            success: false,
+                            code: 403,
+                            error_code: 1019,
+                            message: "appId is invalid",
+                        },
+                        403,
+                        cors,
+                    );
                 }
-                const sdkVer = request.headers.get('X-SDK-VER') || '';
-                if (!sdkVer || !isVersionValid(sdkVer, '1.4.7')) {
-                    return jsonResponse({
-                        success: false,
-                        code: 500,
-                        error_code: 1018,
-                        message: 'SDK version outdated, please upgrade'
-                    }, 500, cors);
+                const sdkVer = request.headers.get("X-SDK-VER") || "";
+                if (!sdkVer || !isVersionValid(sdkVer, "1.4.7")) {
+                    return jsonResponse(
+                        {
+                            success: false,
+                            code: 500,
+                            error_code: 1018,
+                            message: "SDK version outdated, please upgrade",
+                        },
+                        500,
+                        cors,
+                    );
                 }
-                if (path === '/api/ayonline/test') {
-                    return jsonResponse({ success: true, message: 'Server is ready', code: 200 }, 200, cors);
+                if (path === "/api/ayonline/test") {
+                    return jsonResponse(
+                        { success: true, message: "Server is ready", code: 200 },
+                        200,
+                        cors,
+                    );
+                }
+                if (path === "/api/ayonline/send-verification" && method === "POST") {
+                    const body = await request.json().catch(() => null);
+                    if (!body || !body.email) {
+                        return jsonResponse(
+                            { error: "Email required", error_code: 1025 },
+                            400,
+                            cors,
+                        );
+                    }
+                    const result = await handleSendVerification(
+                        env,
+                        body.email,
+                        VERIFY_CODE_EXPDATA,
+                        "AyService",
+                        REG_TEMPLATE,
+                    );
+                    if (result.msg === "OK") {
+                        return jsonResponse({ token: result.token }, 200, cors);
+                    } else {
+                        // 映射错误信息
+                        const msgMap = {
+                            EMAIL_REQUIRED: "Email required",
+                            CONFIG_ERROR: "Server config error",
+                            FAILED_SEND_EMAIL: "Failed to send email",
+                            INVALID_RESPONSE: "Mail service error",
+                        };
+                        return jsonResponse(
+                            {
+                                error: msgMap[result.msg] || "Unknown error",
+                                error_code: 1026,
+                            },
+                            500,
+                            cors,
+                        );
+                    }
                 }
                 // ---------- 用户注册 ----------
-                if (path === '/api/ayonline/register' && method === 'POST') {
-
+                if (path === "/api/ayonline/register" && method === "POST") {
                     const body = await request.json().catch(() => null);
-                    if (!body || !body.username || !body.password || !body.email) {
-                        return jsonResponse({ error: 'Missing required fields', error_code: 1007 }, 400, cors);
+                    if (!body || !body.username || !body.password || !body.email || !body.emailToken || !body.emailCode) {
+                        return jsonResponse(
+                            { error: "Missing required fields", error_code: 1007 },
+                            400,
+                            cors,
+                        );
                     }
                     if (body.gt) {
+                        const verifyResult = await handleVerifyCode(body.emailCode, body.emailToken, env);
+                        if (!verifyResult.valid) {
+                            return jsonResponse({
+                                action: 'register',
+                                error: verifyResult.error || 'Invalid or expired verification code',
+                                error_code: 1025
+                            }, 400, cors);
+                        }
                         let gt;
                         try {
                             const jsonStr = base64ToUtf8(body.gt);
                             gt = JSON.parse(jsonStr);
                         } catch {
                             gt = null;
-                        }//客户传来的是base64编码的json文本
-                        if (gt === null) { return jsonResponse({ action: 'register', error: 'Missing required fields', error_code: 1007 }, 400, cors); }
+                        } //客户传来的是base64编码的json文本
+                        if (gt === null) {
+                            return jsonResponse(
+                                {
+                                    action: "register",
+                                    error: "Missing required fields",
+                                    error_code: 1007,
+                                },
+                                400,
+                                cors,
+                            );
+                        }
                         const prikey = JSON.parse(env.GTCODEMAP)[gt.captcha_id];
 
                         if (!prikey) {
-                            return jsonResponse({ action: 'register', code: 400, 'message': 'id is not in id pools ', error_code: 1021 }, 400, cors);
+                            return jsonResponse(
+                                {
+                                    action: "register",
+                                    code: 400,
+                                    message: "id is not in id pools ",
+                                    error_code: 1021,
+                                },
+                                400,
+                                cors,
+                            );
                         }
                         const sign_token = await hmacSha256(prikey, gt.lot_number);
                         const query = Object.assign(gt, { sign_token });
-                        console.debug(gt)
-                        const validateUrl = new URL('https://gcaptcha4.geetest.com/validate');
+                        console.debug(gt);
+                        const validateUrl = new URL(
+                            "https://gcaptcha4.geetest.com/validate",
+                        );
                         validateUrl.search = new URLSearchParams(query).toString();
                         try {
+
                             const geetestRes = await fetch(validateUrl);
                             const geetestData = await geetestRes.json();
-                            if (geetestData.result === 'success') {
-                                const result = await registerUser(env.db, body.username, body.email, body.password);
+                            if (geetestData.result === "success") {
+                                const result = await registerUser(
+                                    env.db,
+                                    body.username,
+                                    body.email,
+                                    body.password,
+                                );
                                 if (!result.success) {
-                                    return jsonResponse({ action: 'register', error: result.message, error_code: result.error_code }, result.code, cors);
+                                    return jsonResponse(
+                                        {
+                                            action: "register",
+                                            error: result.message,
+                                            error_code: result.error_code,
+                                        },
+                                        result.code,
+                                        cors,
+                                    );
                                 }
-                                return jsonResponse({ action: 'register', success: true, message: result.message, code: 200 }, 201, cors);
+                                return jsonResponse(
+                                    {
+                                        action: "register",
+                                        success: true,
+                                        message: result.message,
+                                        code: 200,
+                                    },
+                                    201,
+                                    cors,
+                                );
                             } else {
-                                return jsonResponse({ action: 'register', error_code: 1022, message: 'Verification failed' }, 400, cors);
+                                return jsonResponse(
+                                    {
+                                        action: "register",
+                                        error_code: 1022,
+                                        message: "Verification failed",
+                                    },
+                                    400,
+                                    cors,
+                                );
                             }
                         } catch {
-                            return jsonResponse({ action: 'register', error_code: 1020, message: 'GeeTest Server Error' }, 500, cors);
+                            return jsonResponse(
+                                {
+                                    action: "register",
+                                    error_code: 1020,
+                                    message: "GeeTest Server Error",
+                                },
+                                500,
+                                cors,
+                            );
                         }
                     } else {
-                        return jsonResponse({ action: 'register', success: true, gt_code: JSON.parse(env.GTCODE)[0], message: '请求频繁，请稍后再试', error_code: 1023 }, 429, cors);
+                        return jsonResponse(
+                            {
+                                action: "register",
+                                success: true,
+                                gt_code: JSON.parse(env.GTCODE)[0],
+                                message: "请求频繁，请稍后再试",
+                                error_code: 1023,
+                            },
+                            429,
+                            cors,
+                        );
                     }
-
                 }
 
                 // ---------- 用户登录 ----------
-                if (path === '/api/ayonline/login' && method === 'POST') {
+                if (path === "/api/ayonline/login" && method === "POST") {
                     const body = await request.json().catch(() => null);
                     if (!body || (!body.username && !body.email) || !body.password) {
-                        return jsonResponse({ action: 'login', error_code: 1009, error: 'Username/email and password required' }, 400, cors);
+                        return jsonResponse(
+                            {
+                                action: "login",
+                                error_code: 1009,
+                                error: "Username/email and password required",
+                            },
+                            400,
+                            cors,
+                        );
                     }
                     if (body.gt) {
                         let gt;
@@ -513,97 +759,197 @@ export default {
                             gt = JSON.parse(jsonStr);
                         } catch {
                             gt = null;
-                        }//客户传来的是base64编码的json文本
-                        if (gt === null) { return jsonResponse({ action: 'login', error: 'Missing required fields', error_code: 1007 }, 400, cors); }
+                        } //客户传来的是base64编码的json文本
+                        if (gt === null) {
+                            return jsonResponse(
+                                {
+                                    action: "login",
+                                    error: "Missing required fields",
+                                    error_code: 1007,
+                                },
+                                400,
+                                cors,
+                            );
+                        }
                         const prikey = JSON.parse(env.GTCODEMAP)[gt.captcha_id];
 
                         if (!prikey) {
-                            return jsonResponse({ action: 'login', code: 400, 'message': 'id is not in id pools ', error_code: 1021 }, 400, cors);
+                            return jsonResponse(
+                                {
+                                    action: "login",
+                                    code: 400,
+                                    message: "id is not in id pools ",
+                                    error_code: 1021,
+                                },
+                                400,
+                                cors,
+                            );
                         }
                         const sign_token = await hmacSha256(prikey, gt.lot_number);
                         const query = Object.assign(gt, { sign_token });
-                        console.debug(gt)
-                        const validateUrl = new URL('https://gcaptcha4.geetest.com/validate');
+                        console.debug(gt);
+                        const validateUrl = new URL(
+                            "https://gcaptcha4.geetest.com/validate",
+                        );
                         validateUrl.search = new URLSearchParams(query).toString();
                         try {
                             const geetestRes = await fetch(validateUrl);
                             const geetestData = await geetestRes.json();
-                            if (geetestData.result === 'success') {
+                            if (geetestData.result === "success") {
                                 const login = body.username || body.email;
-                                const authResult = await authenticateUser(env.db, login, body.password);
+                                const authResult = await authenticateUser(
+                                    env.db,
+                                    login,
+                                    body.password,
+                                );
                                 if (!authResult.success) {
-                                    return jsonResponse({ error: authResult.message, error_code: authResult.error_code }, authResult.code, cors);
+                                    return jsonResponse(
+                                        {
+                                            error: authResult.message,
+                                            error_code: authResult.error_code,
+                                        },
+                                        authResult.code,
+                                        cors,
+                                    );
                                 }
 
                                 const user = authResult.user;
                                 if (user.banned == 1) {
-                                    return jsonResponse({
-                                        action: 'login',
-                                        error_code: 1017,
-                                        error: 'Account banned',
-                                        ban_reason: user.ban_reason || ''
-                                    }, 403, cors);
+                                    return jsonResponse(
+                                        {
+                                            action: "login",
+                                            error_code: 1017,
+                                            error: "Account banned",
+                                            ban_reason: user.ban_reason || "",
+                                        },
+                                        403,
+                                        cors,
+                                    );
                                 }
                                 // 生成访问令牌
                                 const accessToken = await signAccessToken(
                                     { sub: user.id, username: user.username, email: user.email },
-                                    env.JWT_KEY
+                                    env.JWT_KEY,
                                 );
                                 // 生成刷新令牌
                                 const refreshToken = generateRefreshToken();
-                                await storeRefreshToken(env.kv, refreshToken, user.id, REFRESH_TOKEN_TTL);
+                                await storeRefreshToken(
+                                    env.kv,
+                                    refreshToken,
+                                    user.id,
+                                    REFRESH_TOKEN_TTL,
+                                );
 
                                 // 使用 cookie 库的 serialize 设置两个 Cookie
                                 const cookieOptions = {
-                                    domain: '.undz.cn',
-                                    path: '/',
+                                    domain: ".undz.cn",
+                                    path: "/",
                                     httpOnly: true,
                                     secure: true,
-                                    sameSite: 'Lax',
+                                    sameSite: "Lax",
                                     maxAge: REFRESH_TOKEN_TTL,
                                 };
                                 const responseBody = {
-                                    action: 'login',
+                                    action: "login",
                                     success: true,
                                     code: 200,
-                                    user: { id: user.id, username: user.username, email: user.email },
+                                    user: {
+                                        id: user.id,
+                                        username: user.username,
+                                        email: user.email,
+                                    },
                                 };
 
                                 const headers = new Headers(corsHeaders(request));
-                                headers.set('Content-Type', 'application/json');
-                                headers.append('Set-Cookie', serialize('access_token', accessToken, cookieOptions));
-                                headers.append('Set-Cookie', serialize('refresh_token', refreshToken, cookieOptions));
+                                headers.set("Content-Type", "application/json");
+                                headers.append(
+                                    "Set-Cookie",
+                                    serialize("access_token", accessToken, cookieOptions),
+                                );
+                                headers.append(
+                                    "Set-Cookie",
+                                    serialize("refresh_token", refreshToken, cookieOptions),
+                                );
                                 return new Response(JSON.stringify(responseBody), {
                                     status: 200,
                                     headers: headers,
                                 });
-
                             } else {
-                                return jsonResponse({ action: 'login', error_code: 1022, message: 'Verification failed' }, 400, cors);
+                                return jsonResponse(
+                                    {
+                                        action: "login",
+                                        error_code: 1022,
+                                        message: "Verification failed",
+                                    },
+                                    400,
+                                    cors,
+                                );
                             }
                         } catch {
-                            return jsonResponse({ action: 'login', error_code: 1020, message: 'GeeTest Server Error' }, 500, cors);
+                            return jsonResponse(
+                                {
+                                    action: "login",
+                                    error_code: 1020,
+                                    message: "GeeTest Server Error",
+                                },
+                                500,
+                                cors,
+                            );
                         }
                     } else {
-                        return jsonResponse({ action: 'login', success: true, gt_code: JSON.parse(env.GTCODE)[1], message: '请求频繁，请稍后再试', error_code: 1023 }, 429, cors);
+                        return jsonResponse(
+                            {
+                                action: "login",
+                                success: true,
+                                gt_code: JSON.parse(env.GTCODE)[1],
+                                message: "请求频繁，请稍后再试",
+                                error_code: 1023,
+                            },
+                            429,
+                            cors,
+                        );
                     }
                 }
                 // ---------- 修改密码 ----------
-                if (path === '/api/ayonline/change-password' && method === 'POST') {
+                if (path === "/api/ayonline/change-password" && method === "POST") {
                     // 从 Cookie 获取 access_token 验证身份（也可单独传 token）
-                    const cookies = parse(request.headers.get('Cookie') || '');
+                    const cookies = parse(request.headers.get("Cookie") || "");
                     const accessToken = cookies.access_token;
                     if (!accessToken) {
-                        return jsonResponse({ action: 'changePassword', error_code: 1010, error: 'Unauthorized' }, 401, cors);
+                        return jsonResponse(
+                            {
+                                action: "changePassword",
+                                error_code: 1010,
+                                error: "Unauthorized",
+                            },
+                            401,
+                            cors,
+                        );
                     }
                     const payload = await verifyAccessToken(accessToken, env.JWT_KEY);
                     if (!payload) {
-                        return jsonResponse({ action: 'changePassword', error_code: 1011, error: 'Invalid or expired token' }, 401, cors);
+                        return jsonResponse(
+                            {
+                                action: "changePassword",
+                                error_code: 1011,
+                                error: "Invalid or expired token",
+                            },
+                            401,
+                            cors,
+                        );
                     }
 
                     const body = await request.json().catch(() => null);
                     if (!body || !body.oldPassword || !body.newPassword) {
-                        return jsonResponse({ action: 'changePassword', error_code: 1012, error: 'Missing oldPassword or newPassword' }, 400, cors);
+                        return jsonResponse(
+                            {
+                                action: "changePassword",
+                                error_code: 1012,
+                                error: "Missing oldPassword or newPassword",
+                            },
+                            400,
+                            cors,
+                        );
                     }
                     if (body.gt) {
                         let gt;
@@ -612,61 +958,129 @@ export default {
                             gt = JSON.parse(jsonStr);
                         } catch {
                             gt = null;
-                        }//客户传来的是base64编码的json文本
-                        if (gt === null) { return jsonResponse({ action: 'changePassword', error: 'Missing required fields', error_code: 1007 }, 400, cors); }
+                        } //客户传来的是base64编码的json文本
+                        if (gt === null) {
+                            return jsonResponse(
+                                {
+                                    action: "changePassword",
+                                    error: "Missing required fields",
+                                    error_code: 1007,
+                                },
+                                400,
+                                cors,
+                            );
+                        }
                         const prikey = JSON.parse(env.GTCODEMAP)[gt.captcha_id];
 
                         if (!prikey) {
-                            return jsonResponse({ action: 'changePassword', code: 400, 'message': 'id is not in id pools ', error_code: 1021 }, 400, cors);
+                            return jsonResponse(
+                                {
+                                    action: "changePassword",
+                                    code: 400,
+                                    message: "id is not in id pools ",
+                                    error_code: 1021,
+                                },
+                                400,
+                                cors,
+                            );
                         }
                         const sign_token = await hmacSha256(prikey, gt.lot_number);
                         const query = Object.assign(gt, { sign_token });
-                        console.debug(gt)
-                        const validateUrl = new URL('https://gcaptcha4.geetest.com/validate');
+                        console.debug(gt);
+                        const validateUrl = new URL(
+                            "https://gcaptcha4.geetest.com/validate",
+                        );
                         validateUrl.search = new URLSearchParams(query).toString();
                         try {
                             const geetestRes = await fetch(validateUrl);
                             const geetestData = await geetestRes.json();
-                            if (geetestData.result === 'success') {
+                            if (geetestData.result === "success") {
                                 const userId = parseInt(payload.sub, 10);
-                                const result = await changePassword(env.db, env.kv, userId, body.oldPassword, body.newPassword);
+                                const result = await changePassword(
+                                    env.db,
+                                    env.kv,
+                                    userId,
+                                    body.oldPassword,
+                                    body.newPassword,
+                                );
                                 if (!result.success) {
-                                    return jsonResponse({ action: 'changePassword', error_code: result.error_code, error: result.message }, result.code, cors);
+                                    return jsonResponse(
+                                        {
+                                            action: "changePassword",
+                                            error_code: result.error_code,
+                                            error: result.message,
+                                        },
+                                        result.code,
+                                        cors,
+                                    );
                                 }
 
                                 // 清除当前设备的 Cookie（因为刷新令牌已被删除）
                                 const clearOptions = {
-                                    domain: '.undz.cn',
-                                    path: '/',
+                                    domain: ".undz.cn",
+                                    path: "/",
                                     httpOnly: true,
                                     secure: true,
-                                    sameSite: 'None',
+                                    sameSite: "None",
                                     maxAge: 0,
                                 };
                                 const clearHeaders = [
-                                    serialize('access_token', '', clearOptions),
-                                    serialize('refresh_token', '', clearOptions),
+                                    serialize("access_token", "", clearOptions),
+                                    serialize("refresh_token", "", clearOptions),
                                 ];
 
-                                return jsonResponse({ action: 'changePassword', success: true, message: result.message, code: 200 }, 200, {
-                                    ...cors,
-                                    'Set-Cookie': clearHeaders,
-                                });
-
+                                return jsonResponse(
+                                    {
+                                        action: "changePassword",
+                                        success: true,
+                                        message: result.message,
+                                        code: 200,
+                                    },
+                                    200,
+                                    {
+                                        ...cors,
+                                        "Set-Cookie": clearHeaders,
+                                    },
+                                );
                             } else {
-                                return jsonResponse({ action: 'changePassword', error_code: 1022, message: 'Verification failed' }, 400, cors);
+                                return jsonResponse(
+                                    {
+                                        action: "changePassword",
+                                        error_code: 1022,
+                                        message: "Verification failed",
+                                    },
+                                    400,
+                                    cors,
+                                );
                             }
                         } catch {
-                            return jsonResponse({ action: 'changePassword', error_code: 1020, message: 'GeeTest Server Error' }, 500, cors);
+                            return jsonResponse(
+                                {
+                                    action: "changePassword",
+                                    error_code: 1020,
+                                    message: "GeeTest Server Error",
+                                },
+                                500,
+                                cors,
+                            );
                         }
                     } else {
-                        return jsonResponse({ action: 'changePassword', success: true, gt_code: JSON.parse(env.GTCODE)[1], message: '请求频繁，请稍后再试', error_code: 1023 }, 429, cors);
+                        return jsonResponse(
+                            {
+                                action: "changePassword",
+                                success: true,
+                                gt_code: JSON.parse(env.GTCODE)[1],
+                                message: "请求频繁，请稍后再试",
+                                error_code: 1023,
+                            },
+                            429,
+                            cors,
+                        );
                     }
-
                 }
                 // ---------- 用户登出 ----------
-                if (path === '/api/ayonline/logout' && method === 'POST') {
-                    const cookies = parse(request.headers.get('Cookie') || '');
+                if (path === "/api/ayonline/logout" && method === "POST") {
+                    const cookies = parse(request.headers.get("Cookie") || "");
                     const refreshToken = cookies.refresh_token;
                     if (refreshToken) {
                         await deleteRefreshToken(env.kv, refreshToken);
@@ -674,112 +1088,169 @@ export default {
 
                     // 清除 Cookie（maxAge=0）
                     const clearOptions = {
-                        domain: '.undz.cn',
-                        path: '/',
+                        domain: ".undz.cn",
+                        path: "/",
                         httpOnly: true,
                         secure: true,
-                        sameSite: 'None',
+                        sameSite: "None",
                         maxAge: 0,
                     };
                     const clearHeaders = [
-                        serialize('access_token', '', clearOptions),
-                        serialize('refresh_token', '', clearOptions),
+                        serialize("access_token", "", clearOptions),
+                        serialize("refresh_token", "", clearOptions),
                     ];
 
                     return jsonResponse(
-                        { action: 'logout', success: true, message: 'Logged out', code: 200 },
+                        {
+                            action: "logout",
+                            success: true,
+                            message: "Logged out",
+                            code: 200,
+                        },
                         200,
                         {
                             ...cors,
-                            'Set-Cookie': clearHeaders,
-                        }
+                            "Set-Cookie": clearHeaders,
+                        },
                     );
                 }
 
                 // ---------- 验证令牌 ----------
-                if (path === '/api/ayonline/verify' && method === 'GET') {
-                    const cookies = parse(request.headers.get('Cookie') || '');
+                if (path === "/api/ayonline/verify" && method === "GET") {
+                    const cookies = parse(request.headers.get("Cookie") || "");
                     const accessToken = cookies.access_token;
                     if (!accessToken) {
-                        return jsonResponse({ valid: false, error_code: 1013, error: 'No token' }, 401, cors);
+                        return jsonResponse(
+                            { valid: false, error_code: 1013, error: "No token" },
+                            401,
+                            cors,
+                        );
                     }
                     const payload = await verifyAccessToken(accessToken, env.JWT_KEY);
                     if (!payload) {
-                        return jsonResponse({ valid: false, error_code: 1015, error: 'Invalid or expired token' }, 401, cors);
+                        return jsonResponse(
+                            {
+                                valid: false,
+                                error_code: 1015,
+                                error: "Invalid or expired token",
+                            },
+                            401,
+                            cors,
+                        );
                     }
-                    return jsonResponse({
-                        valid: true,
-                        code: 200,
-                        user: {
-                            id: payload.sub,
-                            username: payload.username,
-                            email: payload.email,
+                    return jsonResponse(
+                        {
+                            valid: true,
+                            code: 200,
+                            user: {
+                                id: payload.sub,
+                                username: payload.username,
+                                email: payload.email,
+                            },
                         },
-                    }, 200, cors);
+                        200,
+                        cors,
+                    );
                 }
 
                 // ---------- 刷新访问令牌 ----------
-                if (path === '/api/ayonline/refresh' && method === 'POST') {
-                    const cookies = parse(request.headers.get('Cookie') || '');
+                if (path === "/api/ayonline/refresh" && method === "POST") {
+                    const cookies = parse(request.headers.get("Cookie") || "");
                     const refreshToken = cookies.refresh_token;
                     if (!refreshToken) {
-                        return jsonResponse({ error_code: 1014, error: 'Refresh token missing' }, 401, cors);
+                        return jsonResponse(
+                            { error_code: 1014, error: "Refresh token missing" },
+                            401,
+                            cors,
+                        );
                     }
 
                     const userId = await getUserIdFromRefreshToken(env.kv, refreshToken);
                     if (!userId) {
-                        return jsonResponse({ error_code: 1015, error: 'Invalid or expired refresh token' }, 401, cors);
+                        return jsonResponse(
+                            { error_code: 1015, error: "Invalid or expired refresh token" },
+                            401,
+                            cors,
+                        );
                     }
 
-                    const user = await env.db.prepare(
-                        'SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?'
-                    ).bind(userId).first();
+                    const user = await env.db
+                        .prepare(
+                            "SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?",
+                        )
+                        .bind(userId)
+                        .first();
 
                     if (!user) {
                         await deleteRefreshToken(env.kv, refreshToken);
-                        return jsonResponse({ error_code: 1016, error: 'User not found' }, 401, cors);
+                        return jsonResponse(
+                            { error_code: 1016, error: "User not found" },
+                            401,
+                            cors,
+                        );
                     }
 
                     // 检查封禁状态
                     if (user.banned == 1) {
-                        return jsonResponse({
-                            error_code: 1017,
-                            error: 'Account banned',
-                            ban_reason: user.ban_reason || ''
-                        }, 403, cors);
+                        return jsonResponse(
+                            {
+                                error_code: 1017,
+                                error: "Account banned",
+                                ban_reason: user.ban_reason || "",
+                            },
+                            403,
+                            cors,
+                        );
                     }
 
                     const newAccessToken = await signAccessToken(
                         { sub: user.id, username: user.username, email: user.email },
-                        env.JWT_KEY
+                        env.JWT_KEY,
                     );
 
                     const cookieOptions = {
-                        domain: '.undz.cn',
-                        path: '/',
+                        domain: ".undz.cn",
+                        path: "/",
                         httpOnly: true,
                         secure: true,
-                        sameSite: 'Lax',
+                        sameSite: "Lax",
                         maxAge: REFRESH_TOKEN_TTL,
                     };
-                    const setCookie = serialize('access_token', newAccessToken, cookieOptions);
+                    const setCookie = serialize(
+                        "access_token",
+                        newAccessToken,
+                        cookieOptions,
+                    );
 
                     return jsonResponse(
-                        { action: 'refresh', success: true, message: 'Token refreshed', code: 200 },
+                        {
+                            action: "refresh",
+                            success: true,
+                            message: "Token refreshed",
+                            code: 200,
+                        },
                         200,
                         {
                             ...cors,
-                            'Set-Cookie': setCookie,
-                        }
+                            "Set-Cookie": setCookie,
+                        },
                     );
                 }
-                return jsonResponse({ action: 'refresh', error: 'API not found', error_code: 404 }, 404, cors);
+                return jsonResponse(
+                    { action: "refresh", error: "API not found", error_code: 404 },
+                    404,
+                    cors,
+                );
             }
 
             return env.assets.fetch(request);
         } catch (error) {
-            console.error('Unhandled error:', error);
-            return jsonResponse({ action: 'refresh', error: 'Internal Server Error', error_code: 1018 }, 500, cors);
+            console.error("Unhandled error:", error);
+            return jsonResponse(
+                { action: "refresh", error: "Internal Server Error", error_code: 1018 },
+                500,
+                cors,
+            );
         }
     },
 };
