@@ -367,6 +367,7 @@ async function initDatabase(db) {
                 user_id INTEGER NOT NULL,
                 redirect_uri TEXT NOT NULL,
                 scope TEXT,
+                state TEXT,
                 expires_at INTEGER NOT NULL,
                 used BOOLEAN DEFAULT 0
             )`
@@ -1461,10 +1462,10 @@ export default {
 
                         await env.db
                             .prepare(
-                                `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, expires_at, used)
+                                `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, state, expires_at, used)
              VALUES (?, ?, ?, ?, ?, ?, 0)`
                             )
-                            .bind(code, clientId, user.id, redirectUri, scope, expiresAt)
+                            .bind(code, clientId, user.id, redirectUri, scope, state, expiresAt)
                             .run();
 
                         // 3. 重定向回客户端
@@ -1496,6 +1497,7 @@ export default {
                     }
                     const grantType = body.grant_type;
                     const code = body.code;
+                    const state = body.state || null;
                     const redirectUri = body.redirect_uri;
                     const clientId = body.client_id;
                     const clientSecret = body.client_secret;
@@ -1525,6 +1527,9 @@ export default {
                         return jsonResponse({ error: 'invalid_grant' }, 400, cors);
                     }
                     if (authCode.redirect_uri !== redirectUri) {
+                        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
+                    }
+                    if (authCode.state !== state) {
                         return jsonResponse({ error: 'invalid_grant' }, 400, cors);
                     }
                     await env.db
