@@ -389,7 +389,7 @@ async function initDatabase(db) {
     await db
         .prepare(`CREATE INDEX IF NOT EXISTS idx_email ON online_users(email)`)
         .run();
-    await registerOAuthClient(env.db, 'app_chat', generateToken(), '聊天助手', 'https://chat.undz.cn/oauth/callback,http://test.undz.cn:8080/callback');
+    await registerOAuthClient(db, 'app_chat', generateToken(), '聊天助手', 'https://chat.undz.cn/oauth/callback,http://test.undz.cn:8080/callback');
 }
 async function registerOAuthClient(db, clientId, clientSecret, name, redirectUris, scope = 'openid profile email', trusted = 0) {
     const now = Math.floor(Date.now() / 1000);
@@ -1576,7 +1576,7 @@ export default {
         } catch (error) {
             console.error("Unhandled error:", error);
             return jsonResponse(
-                { action: "refresh", error: "Internal Server Error", error_code: 1018 },
+                { action: "none", error: "Internal Server Error", error_code: 1018 },
                 500,
                 cors,
             );
