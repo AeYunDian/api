@@ -402,6 +402,7 @@ async function registerOAuthClient(db, clientId, clientSecret, name, redirectUri
         .run();
 }
 export async function exchangeOAuthToken(request, env) {
+    const cors = corsHeaders(request);
     // OAuth 2.0 标准要求使用 application/x-www-form-urlencoded
     const contentType = request.headers.get('Content-Type') || '';
     let body;
