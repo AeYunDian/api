@@ -1463,9 +1463,9 @@ export default {
                         await env.db
                             .prepare(
                                 `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, state, expires_at, used)
-             VALUES (?, ?, ?, ?, ?, ?, 0)`
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
                             )
-                            .bind(code, clientId, user.id, redirectUri, scope, state, expiresAt)
+                            .bind(code, clientId, user.id, redirectUri, scope, state, expiresAt, 0)
                             .run();
 
                         // 3. 重定向回客户端
