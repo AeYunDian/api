@@ -175,5 +175,41 @@ export const corsHeaders_GPO = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
+export async function proxyStaticFile(url) {
+  try {
+    const response = await fetch(url, { method: "GET" });
+
+    if (response.status === 304) return response;
+
+    // 对 4xx 返回明确状态码，而不是抛给 catch
+    if (response.status === 404) {
+      return new Response(`Web Server Down`, { status: 404, headers: { 'Content-Type': 'text/plain' } });
+    }
+    if (response.status >= 400 && response.status < 500) {
+      return new Response(`Web Server Down ${response.status}`, { status: response.status, headers: { 'Content-Type': 'text/plain' } });
+    }
+    if (!response.ok) throw new Error(`Web Server Down ${response.status}`);
+
+    // 成功响应（2xx）：透传所有头，并添加缓存头（若无）
+    const headers = new Headers(response.headers);
+    if (!headers.has('Cache-Control')) {
+      headers.set('Cache-Control', 'public, max-age=86400');
+    }
+    // 确保 Content-Type 有合理默认值
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'image/x-icon');
+    }
+    return new Response(response.body, { headers });
+  } catch {
+    // 网络错误或 5xx：返回 503，并告知不可缓存
+    return new Response('`Web server is down', {
+      status: 503,
+      headers: {
+        'Content-Type': 'text/plain',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
+    });
+  }
+}
 
 export const mobileRegex = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|windows phone|phone|webos|kindle|tablet/i;

@@ -1,4 +1,4 @@
-import { getMainPage, proxyStaticFile, mobileRegex } from './utils.js';
+import { getMainPage } from './utils.js';
 import { triggerWorkflow } from './trigger_workflow.js';
 
 import apiundzcn from './api.undz.cn.js';
