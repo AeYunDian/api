@@ -171,13 +171,14 @@
             <ul class="scope-list">
                 %SCOPE_LIST%
             </ul>
+            <div class="actions">
+                <a href="/api/oauth/authorize?action=deny&client_id=%CLIENT_ID%&redirect_uri=%REDIRECT_URI%&state=%STATE%&scope=%SCOPE%"
+                    class="btn btn-secondary">拒绝</a>
+                <a href="/api/oauth/authorize?action=approve&client_id=%CLIENT_ID%&redirect_uri=%REDIRECT_URI%&state=%STATE%&scope=%SCOPE%"
+                    class="btn btn-primary">同意</a>
+            </div>
         </div>
-        <div class="actions">
-            <a href="/api/oauth/authorize?action=deny&client_id=%CLIENT_ID%&redirect_uri=%REDIRECT_URI%&state=%STATE%&scope=%SCOPE%"
-                class="btn btn-secondary">拒绝</a>
-            <a href="/api/oauth/authorize?action=approve&client_id=%CLIENT_ID%&redirect_uri=%REDIRECT_URI%&state=%STATE%&scope=%SCOPE%"
-                class="btn btn-primary">同意</a>
-        </div>
+
     </div>
 </body>
 

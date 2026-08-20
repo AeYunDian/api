@@ -1500,126 +1500,82 @@ export default {
                     const responseType = query.get('response_type');
                     const state = query.get('state') || '';
                     const scope = query.get('scope') || 'openid profile email';
-                    const action = query.get('action'); // 'approve' 或 'deny'
 
-                    // 参数校验
                     if (!clientId || !redirectUri || responseType !== 'code') {
                         const errorUrl = new URL('/oauth2/invalid_request', url.origin);
-                        return new Response(null, { status: 302, headers: { Location: errorUrl.toString(), ...cors } });
+                        return new Response(null, {
+                            status: 302,
+                            headers: {
+                                Location: errorUrl.toString(),
+                                ...cors
+                            }
+                        });
                     }
                     const client = await env.db
                         .prepare('SELECT id, name, redirect_uris, scope FROM oauth_clients WHERE client_id = ?')
                         .bind(clientId)
                         .first();
+                    // 应用未注册 -> 跳转至 invalid_client
                     if (!client) {
                         const errorUrl = new URL('/oauth2/invalid_client', url.origin);
-                        return new Response(null, { status: 302, headers: { Location: errorUrl.toString(), ...cors } });
+                        return new Response(null, {
+                            status: 302,
+                            headers: {
+                                Location: errorUrl.toString(),
+                                ...cors
+                            }
+                        });
                     }
                     if (!validateRedirectUri(client.redirect_uris, redirectUri)) {
                         const errorUrl = new URL('/oauth2/invalid_redirect_uri', url.origin);
-                        return new Response(null, { status: 302, headers: { Location: errorUrl.toString(), ...cors } });
+                        return new Response(null, {
+                            status: 302,
+                            headers: {
+                                Location: errorUrl.toString(),
+                                ...cors
+                            }
+                        });
                     }
 
-                    // 处理拒绝
-                    if (action === 'deny') {
-                        const errorUrl = new URL(redirectUri);
-                        errorUrl.searchParams.set('error', 'access_denied');
-                        if (state) errorUrl.searchParams.set('state', state);
-                        return new Response(null, { status: 302, headers: { Location: errorUrl.toString(), ...cors } });
-                    }
-
-                    // 检查登录状态
                     const [authStatus, user] = await checkAuth(request, env);
                     if (authStatus !== TAG_LOGGEDIN) {
                         const loginUrl = new URL('/oauth2/login', url.origin);
                         loginUrl.searchParams.set('redirect_url', request.url);
-                        return new Response(null, { status: 302, headers: { Location: loginUrl.toString(), ...cors } });
+                        loginUrl.searchParams.set('client_id', clientId);
+                        loginUrl.searchParams.set('scope', scope);
+                        if (state) loginUrl.searchParams.set('state', state);
+                        const client = await getOAuthClient(env.db, clientId);
+                        if (client) loginUrl.searchParams.set('client_name', client.name);
+                        return new Response(null, {
+                            status: 302,
+                            headers: {
+                                Location: loginUrl.toString(),
+                                ...cors
+                            }
+                        });
                     }
-
-                    // 处理同意
-                    if (action === 'approve') {
+                    if (authStatus === TAG_LOGGEDIN) {
                         const code = generateToken();
                         const expiresAt = Math.floor(Date.now() / 1000) + OAUTH_TOKEN_EXPIRES_IN;
+
                         await env.db
                             .prepare(
                                 `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, state, expires_at, used)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
                             )
-                            .bind(code, clientId, user.id, redirectUri, scope, state, expiresAt)
+                            .bind(code, clientId, user.id, redirectUri, scope, state, expiresAt, 0)
                             .run();
+
+                        // 3. 重定向回客户端
                         const redirectUrl = new URL(redirectUri);
                         redirectUrl.searchParams.set('code', code);
                         if (state) redirectUrl.searchParams.set('state', state);
-                        return new Response(null, { status: 302, headers: { Location: redirectUrl.toString(), ...cors } });
+
+                        return new Response(null, {
+                            status: 302,
+                            headers: { Location: redirectUrl.toString(), ...cors }
+                        });
                     }
-
-                    // 无 action → 跳转到授权确认页面
-                    const consentUrl = new URL('/oauth2/consent', url.origin);
-                    consentUrl.searchParams.set('client_id', clientId);
-                    consentUrl.searchParams.set('redirect_uri', redirectUri);
-                    consentUrl.searchParams.set('state', state);
-                    consentUrl.searchParams.set('scope', scope);
-                    return new Response(null, { status: 302, headers: { Location: consentUrl.toString(), ...cors } });
-                }
-                // 在 path.startsWith("/api/oauth/") 块之后，添加：
-                if (path === "/oauth2/consent" && method === 'GET') {
-                    const query = url.searchParams;
-                    const clientId = query.get('client_id');
-                    const redirectUri = query.get('redirect_uri');
-                    const state = query.get('state') || '';
-                    const scope = query.get('scope') || 'openid profile email';
-
-                    // 验证 client_id 是否存在并获取名称
-                    const client = await env.db
-                        .prepare('SELECT name FROM oauth_clients WHERE client_id = ?')
-                        .bind(clientId)
-                        .first();
-                    if (!client) {
-                        // 若 client_id 无效，跳转到 invalid_client
-                        const errorUrl = new URL('/oauth2/invalid_client', url.origin);
-                        return new Response(null, { status: 302, headers: { Location: errorUrl.toString(), ...cors } });
-                    }
-
-                    // 验证用户是否登录（若未登录则跳转登录页）
-                    const [authStatus] = await checkAuth(request, env);
-                    if (authStatus !== TAG_LOGGEDIN) {
-                        const loginUrl = new URL('/oauth2/login', url.origin);
-                        loginUrl.searchParams.set('redirect_url', request.url);
-                        return new Response(null, { status: 302, headers: { Location: loginUrl.toString(), ...cors } });
-                    }
-
-                    // 获取 assets 中的 consent.html
-                    const assetResponse = await env.assets.fetch(new Request('/oauth2/consent.html', request));
-                    if (!assetResponse.ok) {
-                        return new Response('Consent page not found', { status: 404 });
-                    }
-                    let html = await assetResponse.text();
-
-                    // 构建权限列表 HTML
-                    const scopeDescriptions = {
-                        'openid': '使用您的身份标识（OpenID）',
-                        'profile': '查看您的个人资料（昵称、头像等）',
-                        'email': '查看您的邮箱地址',
-                        'offline_access': '允许离线访问（刷新令牌）'
-                    };
-                    const scopeItems = scope.split(/\s+/)
-                        .filter(s => s)
-                        .map(s => `<li>${scopeDescriptions[s] || s}</li>`)
-                        .join('');
-
-                    // 替换占位符
-                    html = html
-                        .replace(/%APP_NAME%/g, client.name)
-                        .replace(/%SCOPE_LIST%/g, scopeItems)
-                        .replace(/%CLIENT_ID%/g, clientId)
-                        .replace(/%REDIRECT_URI%/g, redirectUri)
-                        .replace(/%STATE%/g, state)
-                        .replace(/%SCOPE%/g, scope);
-
-                    return new Response(html, {
-                        status: 200,
-                        headers: { 'Content-Type': 'text/html', ...cors }
-                    });
                 }
                 if (path === "/api/oauth/token" && method === 'POST') {
                     return exchangeOAuthToken(request, env);
