@@ -455,7 +455,7 @@ export async function exchangeOAuthToken(request, env) {
         return jsonResponse({ error: 'invalid_grant' }, 400, cors);
     }
     await env.db
-        .prepare('UPDATE oauth_auth_codes SET used = 1 WHERE code = ?')
+        .prepare('DELETE FROM oauth_auth_codes WHERE code = ?')
         .bind(code)
         .run();
     const user = await env.db
@@ -1549,27 +1549,109 @@ export default {
                         });
                     }
                     if (authStatus === TAG_LOGGEDIN) {
+                        const consentUrl = new URL('/oauth2/consent', url.origin);
+                        consentUrl.searchParams.set('client_id', clientId);
+                        consentUrl.searchParams.set('redirect_uri', redirectUri);
+                        consentUrl.searchParams.set('scope', scope);
+                        if (state) consentUrl.searchParams.set('state', state);
+                        return new Response(null, {
+                            status: 302,
+                            headers: {
+                                Location: consentUrl.toString(),
+                                ...cors
+                            }
+                        });
+                        //             const code = generateToken();
+                        //             const expiresAt = Math.floor(Date.now() / 1000) + OAUTH_TOKEN_EXPIRES_IN;
+
+                        //             await env.db
+                        //                 .prepare(
+                        //                     `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, state, expires_at, used)
+                        //  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+                        //                 )
+                        //                 .bind(code, clientId, user.id, redirectUri, scope, state, expiresAt, 0)
+                        //                 .run();
+
+                        //             // 3. 重定向回客户端
+                        //             const redirectUrl = new URL(redirectUri);
+                        //             redirectUrl.searchParams.set('code', code);
+                        //             if (state) redirectUrl.searchParams.set('state', state);
+
+                        //             return new Response(null, {
+                        //                 status: 302,
+                        //                 headers: { Location: redirectUrl.toString(), ...cors }
+                        //             });
+                    }
+                }
+                if (path === "/api/oauth/consent" && method === "POST") {
+                    const formData = await request.formData();
+                    const action = formData.get('action');
+                    const clientId = formData.get('client_id');
+                    const redirectUri = formData.get('redirect_uri');
+                    const scope = formData.get('scope') || 'openid profile email';
+                    const state = formData.get('state') || '';
+
+                    // 1. 验证用户登录
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) {
+                        return jsonResponse({ error: 'unauthorized' }, 401, cors);
+                    }
+
+                    // 2. 验证 client_id 和 redirect_uri
+                    const client = await getOAuthClient(env.db, clientId);
+                    if (!client || !validateRedirectUri(client.redirect_uris, redirectUri)) {
+                        return jsonResponse({ error: 'invalid_request' }, 400, cors);
+                    }
+
+                    if (action === 'deny') {
+                        // 用户拒绝：重定向回应用并携带 error=access_denied
+                        const errorUrl = new URL(redirectUri);
+                        errorUrl.searchParams.set('error', 'access_denied');
+                        if (state) errorUrl.searchParams.set('state', state);
+                        return new Response(null, {
+                            status: 302,
+                            headers: { Location: errorUrl.toString(), ...cors }
+                        });
+                    }
+
+                    if (action === 'allow') {
+                        // 用户允许：生成授权码
                         const code = generateToken();
                         const expiresAt = Math.floor(Date.now() / 1000) + OAUTH_TOKEN_EXPIRES_IN;
-
                         await env.db
                             .prepare(
                                 `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, state, expires_at, used)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
                             )
-                            .bind(code, clientId, user.id, redirectUri, scope, state, expiresAt, 0)
+                            .bind(code, clientId, user.id, redirectUri, scope, state, expiresAt)
                             .run();
 
-                        // 3. 重定向回客户端
+                        // 重定向回应用
                         const redirectUrl = new URL(redirectUri);
                         redirectUrl.searchParams.set('code', code);
                         if (state) redirectUrl.searchParams.set('state', state);
-
                         return new Response(null, {
                             status: 302,
                             headers: { Location: redirectUrl.toString(), ...cors }
                         });
                     }
+
+                    // 未知 action
+                    return jsonResponse({ error: 'invalid_action' }, 400, cors);
+                }
+                if (path === "/api/oauth/client-info" && method === "GET") {
+                    const clientId = url.searchParams.get('client_id');
+                    if (!clientId) {
+                        return jsonResponse({ error: 'missing_client_id' }, 400, cors);
+                    }
+                    const client = await getOAuthClient(env.db, clientId);
+                    if (!client) {
+                        return jsonResponse({ error: 'invalid_client' }, 404, cors);
+                    }
+                    return jsonResponse({
+                        name: client.name,
+                        scope: client.scope || 'openid profile email'
+                    }, 200, cors);
                 }
                 if (path === "/api/oauth/token" && method === 'POST') {
                     return exchangeOAuthToken(request, env);
@@ -1581,6 +1663,31 @@ export default {
                     }
                     return jsonResponse({ valid: true, user: result.user }, 200, cors);
                 }
+            }
+
+            if (path === "/oauth2/consent" && method === "GET") {
+                const [authStatus, user] = await checkAuth(request, env);
+                if (authStatus !== TAG_LOGGEDIN) {
+                    const loginUrl = new URL('/oauth2/login', url.origin);
+                    loginUrl.searchParams.set('redirect_url', request.url);
+                    return new Response(null, {
+                        status: 302,
+                        headers: { Location: loginUrl.toString(), ...cors }
+                    });
+                }
+                const clientId = url.searchParams.get('client_id');
+                if (clientId) {
+                    const client = await getOAuthClient(env.db, clientId);
+                    if (!client) {
+                        return new Response(null, {
+                            status: 302,
+                            headers: { Location: '/oauth2/invalid_client', ...cors }
+                        });
+                    }
+                }
+                const staticUrl = new URL('/oauth2/consent.html', url.origin);
+                staticUrl.search = url.search;
+                return env.assets.fetch(new Request(staticUrl.toString(), request));
             }
             return env.assets.fetch(request);
         } catch (error) {

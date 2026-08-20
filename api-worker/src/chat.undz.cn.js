@@ -104,7 +104,7 @@ export default {
             if (path === "/") {
                 return new Response(chat_getIndexHtml(), { headers: { "Content-Type": "text/html; charset=utf-8" } });
             }
-            if (path === "/oauth/callback" && method === 'GET') {
+            if (path === "/oauth/callback") {
                 const code = url.searchParams.get('code');
                 const state = url.searchParams.get('state') || '';
                 if (!code) {

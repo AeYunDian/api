@@ -131,11 +131,13 @@
             const card = document.querySelector(".md3-card");
             const loadingIcon = document.querySelector(".loading-icon");
             const errorIcon = document.querySelector(".error-icon");
-            const btn = document.querySelector(".md3-btn")
-            const title = document.querySelector(".md3-title")
+            const btn = document.querySelector(".md3-btn");
+            const title = document.querySelector(".md3-title");
+
             if (!subtitle || !card || !loadingIcon || !errorIcon || !btn) return;
+
             function showError(text) {
-                title.innerHTML = '出错啦！'
+                title.innerHTML = '出错啦！';
                 subtitle.innerHTML = text;
                 card.style.display = '';
                 btn.style.display = '';
@@ -143,17 +145,15 @@
                 loadingIcon.style.display = 'none';
             }
 
-
             function waitForDependencies(timeout = 10000) {
                 return new Promise((resolve, reject) => {
                     const start = Date.now();
                     const check = () => {
                         const geetestReady = typeof initGeetest4 !== 'undefined';
                         const toastReady = typeof AyShowResult !== 'undefined' && typeof AyCloseToast !== 'undefined';
-
                         if (geetestReady && toastReady) {
                             document.body.style.backgroundColor = "#fff";
-                            card.classList.add("fade-out")
+                            card.classList.add("fade-out");
                             setTimeout(() => { card.style.display = 'none'; }, 250);
                             resolve();
                             return;
@@ -167,6 +167,7 @@
                     check();
                 });
             }
+
             function waitForIframeAndHideClose(account) {
                 return new Promise((resolve) => {
                     const handler = (event) => {
@@ -190,20 +191,68 @@
                 });
             }
 
+            /**
+             * 检查登录状态，如果未登录则尝试刷新令牌，再检查一次
+             * @returns {Promise<{ loggedIn: boolean, user?: Object }>}
+             */
+            async function checkAuthWithRefresh(account) {
+                try {
+                    // 第一次验证
+                    const verifyResult = await account.verify();
+                    if (verifyResult && verifyResult.valid) {
+                        return { loggedIn: true, user: verifyResult.user };
+                    }
+                } catch (err) {
+                    console.debug('First verify failed:', err.message);
+                }
+
+                // 第一次验证失败（未登录或 token 过期），尝试刷新
+                try {
+                    console.debug('Attempting to refresh token...');
+                    await account.refresh();
+                    // 刷新成功，再次验证
+                    const retryVerifyResult = await account.verify();
+                    if (retryVerifyResult && retryVerifyResult.valid) {
+                        console.debug('Refresh successful, user is now logged in');
+                        return { loggedIn: true, user: retryVerifyResult.user };
+                    }
+                } catch (refreshErr) {
+                    console.debug('Refresh failed:', refreshErr.message);
+                }
+                return { loggedIn: false };
+            }
+
             async function main() {
                 try {
                     await waitForDependencies();
+
                     const account = createAyAccount({
                         appId: 'oauth2',
                         i18n: 'zh-cn'
                     });
+
+                    const authCheck = await checkAuthWithRefresh(account);
+                    if (authCheck.loggedIn) {
+                        console.debug('User already logged in, redirecting...');
+                        title.innerHTML = '登录成功';
+                        subtitle.innerHTML = '正在等待服务器响应...';
+                        card.style.display = '';
+                        btn.style.display = 'none';
+                        errorIcon.style.display = 'none';
+                        loadingIcon.style.display = 'none';
+                        window.location.href = targetUrl;
+                        return;
+                    }
+                    // -----------------------------------------
+
+                    // 未登录，弹出登录框
                     const loginPromise = account.login();
                     await waitForIframeAndHideClose(account);
                     const result = await loginPromise;
                     document.body.style.backgroundColor = "";
-                    card.classList.remove("fade-out")
+                    card.classList.remove("fade-out");
                     if (result && result.action === 'login') {
-                        title.innerHTML = '登录成功'
+                        title.innerHTML = '登录成功';
                         subtitle.innerHTML = '正在等待服务器响应...';
                         card.style.display = '';
                         btn.style.display = 'none';
