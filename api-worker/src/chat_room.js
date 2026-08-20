@@ -1,4 +1,5 @@
 import { escapeHtml, anonymizeIp } from "./utils.js";
+import { serialize } from 'cookie';
 
 // ========== 配置 ==========
 const MAX_MESSAGES = 200;
@@ -590,6 +591,8 @@ export function chat_getIndexHtml() {
           <p><strong>主房间</strong></p>
           <p>昵称：<input type="text" id="mainNick" maxlength="30" size="20" placeholder="你的昵称"></p>
           <button id="joinMainBtn">进入聊天室</button>
+          <hr>
+    <p><button id="oauthLoginBtn" style="background:#c0c0c0;border:2px solid;border-top-color:#ffffff;border-left-color:#ffffff;border-right-color:#808080;border-bottom-color:#808080;padding:4px 12px;cursor:pointer;">使用统一账号登录</button></p>
         </div>
         <div id="tab-custom" style="display:none;">
           <p><strong>自定义房间</strong></p>
@@ -678,6 +681,9 @@ export function chat_getIndexHtml() {
     if (!nick) { alert('请输入昵称'); return; }
     goToChat('main', nick, '', '');
   };
+  document.getElementById('oauthLoginBtn').onclick = function() {
+    window.location.href = 'https://online.undz.cn/api/oauth/authorize?client_id=app_chat&response_type=code&redirect_uri=https%3A%2F%2Fchat.undz.cn%2Foauth%2Fcallback';
+};
   document.getElementById('joinCustomBtn').onclick = function() {
     var nick = trim(document.getElementById('customNick').value);
     var username = trim(document.getElementById('customUsername').value);
@@ -1490,4 +1496,63 @@ export function chat_getMobileTip() {
 </body>
 </html>
   `;
+}
+// ========== OAuth 回调处理 ==========
+export async function chat_oauthCallback(request, env) {
+  const url = new URL(request.url);
+  const code = url.searchParams.get('code');
+  const state = url.searchParams.get('state') || '';
+  if (!code) {
+    return new Response('Missing code', { status: 400 });
+  }
+
+  const tokenEndpoint = 'https://online.undz.cn/api/oauth/token';
+  const clientId = 'app_chat';
+  // 从环境变量读取 secret，如果没有则使用硬编码（建议放入环境变量）
+  const clientSecret = env.CHAT_OAUTH_CLIENT_SECRET;
+  const redirectUri = 'https://chat.undz.cn/oauth/callback';
+
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code,
+    client_id: clientId,
+    client_secret: clientSecret,
+    redirect_uri: redirectUri,
+    state: state
+  });
+
+  const resp = await fetch(tokenEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString()
+  });
+
+  const data = await resp.json();
+  if (!resp.ok || !data.access_token) {
+    return new Response('Token exchange failed: ' + JSON.stringify(data), { status: 500 });
+  }
+
+  // 设置 access_token cookie（与 online.undz.cn 保持一致）
+  const cookieOptions = {
+    domain: '.undz.cn',
+    path: '/',
+    httpOnly: true,
+    secure: true,
+    sameSite: 'lax',
+    maxAge: 900 // 15分钟
+  };
+  const accessCookie = serialize('access_token', data.access_token, cookieOptions);
+
+  // 可选：也存 refresh_token
+  let refreshCookie = '';
+  if (data.refresh_token) {
+    const refreshOptions = { ...cookieOptions, maxAge: 60 * 60 * 24 * 30 };
+    refreshCookie = serialize('refresh_token', data.refresh_token, refreshOptions);
+  }
+
+  const headers = {
+    'Location': '/chat',  // 登录成功后跳转到聊天室
+    'Set-Cookie': accessCookie + (refreshCookie ? '; ' + refreshCookie : '')
+  };
+  return new Response(null, { status: 302, headers });
 }

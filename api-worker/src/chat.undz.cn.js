@@ -14,6 +14,7 @@ import {
     chat_initTables,
     chat_userLogin,
     chat_getMobileTip,
+    chat_oauthCallback,
 } from './chat_room.js';
 import { getMainPage, mobileRegex } from './utils.js';
 import { parse, serialize } from 'cookie';
@@ -103,7 +104,9 @@ export default {
             if (path === "/") {
                 return new Response(chat_getIndexHtml(), { headers: { "Content-Type": "text/html; charset=utf-8" } });
             }
-
+            if (path === "/oauth/callback") {
+                return chat_oauthCallback(request, env);
+            }
             if (path === "/chat") return new Response(chat_getChatHtml(), { headers: { "Content-Type": "text/html; charset=utf-8" } });
 
             if (path.toLowerCase() === "/logo.png") {

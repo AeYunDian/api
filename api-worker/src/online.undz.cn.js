@@ -1571,6 +1571,13 @@ export default {
 
                     return jsonResponse(response, 200, cors);
                 }
+                if (path === "/api/oauth/verify" && method === "GET") {
+                    const result = await verifyBearerToken(request, env);
+                    if (!result.valid) {
+                        return jsonResponse({ valid: false, error: result.error }, 401, cors);
+                    }
+                    return jsonResponse({ valid: true, user: result.user }, 200, cors);
+                }
             }
             return env.assets.fetch(request);
         } catch (error) {
