@@ -18,7 +18,6 @@ import {
 } from './chat_room.js';
 import { getMainPage, mobileRegex } from './utils.js';
 import { parse, serialize } from 'cookie';
-import { serialize } from 'cookie';                // 用于设置 Cookie
 import { exchangeOAuthToken } from './online.undz.cn.js';  // 导入 token 交换函数
 
 const corsHeaders_GO = {
