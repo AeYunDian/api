@@ -1527,7 +1527,18 @@ export async function chat_oauthCallback(request, env) {
     body: body.toString()
   });
 
-  const data = await resp.json();
+  const text = await resp.text();  // 先读为文本
+  console.log('Token response status:', resp.status);
+  console.log('Token response body:', text);
+
+  let data;
+  try {
+    data = JSON.parse(text);  // 尝试解析 JSON
+  } catch (e) {
+    console.error('Response is not JSON:', text);
+    return new Response('Token exchange failed: invalid response', { status: 500 });
+  }
+
   if (!resp.ok || !data.access_token) {
     return new Response('Token exchange failed: ' + JSON.stringify(data), { status: 500 });
   }
