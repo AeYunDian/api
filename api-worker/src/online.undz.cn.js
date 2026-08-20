@@ -401,6 +401,98 @@ async function registerOAuthClient(db, clientId, clientSecret, name, redirectUri
         .bind(clientId, clientSecret, name, redirectUris, scope, trusted, now, now)
         .run();
 }
+export async function exchangeOAuthToken(request, env) {
+    // OAuth 2.0 标准要求使用 application/x-www-form-urlencoded
+    const contentType = request.headers.get('Content-Type') || '';
+    let body;
+    if (contentType.includes('application/json')) {
+        body = await request.json().catch(() => null);
+    } else {
+        const formData = await request.formData();
+        body = {};
+        for (const [key, value] of formData.entries()) {
+            body[key] = value;
+        }
+    }
+    if (!body) {
+        return jsonResponse({ error: 'invalid_request' }, 400, cors);
+    }
+    const grantType = body.grant_type;
+    const code = body.code;
+    const state = body.state || null;
+    const redirectUri = body.redirect_uri;
+    const clientId = body.client_id;
+    const clientSecret = body.client_secret;
+    if (grantType !== 'authorization_code') {
+        return jsonResponse({ error: 'unsupported_grant_type' }, 400, cors);
+    }
+    if (!code || !clientId || !clientSecret) {
+        return jsonResponse({ error: 'invalid_request' }, 400, cors);
+    }
+    const client = await env.db
+        .prepare('SELECT * FROM oauth_clients WHERE client_id = ?')
+        .bind(clientId)
+        .first();
+
+    if (!client || client.client_secret !== clientSecret) {
+        return jsonResponse({ error: 'invalid_client' }, 401, cors);
+    }
+    const authCode = await env.db
+        .prepare(
+            `SELECT * FROM oauth_auth_codes 
+             WHERE code = ? AND used = 0 AND expires_at > ?`
+        )
+        .bind(code, Math.floor(Date.now() / 1000))
+        .first();
+
+    if (!authCode) {
+        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
+    }
+    if (authCode.redirect_uri !== redirectUri) {
+        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
+    }
+    if (state && authCode.state && authCode.state !== state) {
+        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
+    }
+    await env.db
+        .prepare('UPDATE oauth_auth_codes SET used = 1 WHERE code = ?')
+        .bind(code)
+        .run();
+    const user = await env.db
+        .prepare('SELECT id, username, email FROM online_users WHERE id = ?')
+        .bind(authCode.user_id)
+        .first();
+
+    if (!user) {
+        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
+    }
+    const accessToken = await signAccessToken(
+        {
+            sub: user.id,
+            username: user.username,
+            email: user.email,
+            client_id: clientId,
+            scope: authCode.scope || client.scope
+        },
+        env.JWT_KEY
+    );
+    const refreshToken = generateRefreshToken();
+    await storeRefreshToken(
+        env.kv,
+        refreshToken,
+        user.id,
+        REFRESH_TOKEN_TTL
+    );
+    const response = {
+        access_token: accessToken,
+        token_type: 'Bearer',
+        expires_in: 900, // 15分钟，与 ACCESS_TOKEN_EXPIRES_IN 保持一致
+        refresh_token: refreshToken,
+        scope: authCode.scope || client.scope
+    };
+
+    return jsonResponse(response, 200, cors);
+}
 async function getOAuthClient(db, clientId) {
     const client = await db
         .prepare('SELECT * FROM oauth_clients WHERE client_id = ?')
@@ -1480,96 +1572,7 @@ export default {
                     }
                 }
                 if (path === "/api/oauth/token" && method === 'POST') {
-                    // OAuth 2.0 标准要求使用 application/x-www-form-urlencoded
-                    const contentType = request.headers.get('Content-Type') || '';
-                    let body;
-                    if (contentType.includes('application/json')) {
-                        body = await request.json().catch(() => null);
-                    } else {
-                        const formData = await request.formData();
-                        body = {};
-                        for (const [key, value] of formData.entries()) {
-                            body[key] = value;
-                        }
-                    }
-                    if (!body) {
-                        return jsonResponse({ error: 'invalid_request' }, 400, cors);
-                    }
-                    const grantType = body.grant_type;
-                    const code = body.code;
-                    const state = body.state || null;
-                    const redirectUri = body.redirect_uri;
-                    const clientId = body.client_id;
-                    const clientSecret = body.client_secret;
-                    if (grantType !== 'authorization_code') {
-                        return jsonResponse({ error: 'unsupported_grant_type' }, 400, cors);
-                    }
-                    if (!code || !clientId || !clientSecret) {
-                        return jsonResponse({ error: 'invalid_request' }, 400, cors);
-                    }
-                    const client = await env.db
-                        .prepare('SELECT * FROM oauth_clients WHERE client_id = ?')
-                        .bind(clientId)
-                        .first();
-
-                    if (!client || client.client_secret !== clientSecret) {
-                        return jsonResponse({ error: 'invalid_client' }, 401, cors);
-                    }
-                    const authCode = await env.db
-                        .prepare(
-                            `SELECT * FROM oauth_auth_codes 
-             WHERE code = ? AND used = 0 AND expires_at > ?`
-                        )
-                        .bind(code, Math.floor(Date.now() / 1000))
-                        .first();
-
-                    if (!authCode) {
-                        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
-                    }
-                    if (authCode.redirect_uri !== redirectUri) {
-                        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
-                    }
-                    if (state && authCode.state && authCode.state !== state) {
-                        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
-                    }
-                    await env.db
-                        .prepare('UPDATE oauth_auth_codes SET used = 1 WHERE code = ?')
-                        .bind(code)
-                        .run();
-                    const user = await env.db
-                        .prepare('SELECT id, username, email FROM online_users WHERE id = ?')
-                        .bind(authCode.user_id)
-                        .first();
-
-                    if (!user) {
-                        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
-                    }
-                    const accessToken = await signAccessToken(
-                        {
-                            sub: user.id,
-                            username: user.username,
-                            email: user.email,
-                            client_id: clientId,
-                            scope: authCode.scope || client.scope
-                        },
-                        env.JWT_KEY
-                    );
-                    const refreshToken = generateRefreshToken();
-                    await storeRefreshToken(
-                        env.kv,
-                        refreshToken,
-                        user.id,
-                        REFRESH_TOKEN_TTL
-                    );
-                    const response = {
-                        access_token: accessToken,
-                        token_type: 'Bearer',
-                        expires_in: 900, // 15分钟，与 ACCESS_TOKEN_EXPIRES_IN 保持一致
-                        refresh_token: refreshToken,
-                        scope: authCode.scope || client.scope
-                    };
-
-                    return jsonResponse(response, 200, cors);
+                    return exchangeOAuthToken(request, env);
                 }
                 if (path === "/api/oauth/verify" && method === "GET") {
                     const result = await verifyBearerToken(request, env);
