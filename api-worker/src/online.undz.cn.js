@@ -1529,7 +1529,7 @@ export default {
                     if (authCode.redirect_uri !== redirectUri) {
                         return jsonResponse({ error: 'invalid_grant' }, 400, cors);
                     }
-                    if (authCode.state !== state) {
+                    if (state && authCode.state && authCode.state !== state) {
                         return jsonResponse({ error: 'invalid_grant' }, 400, cors);
                     }
                     await env.db
