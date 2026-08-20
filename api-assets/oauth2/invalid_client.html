@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>应用未注册 - AyOauth2Center</title>
+    <style>
+        @import url('https://cdn.undz.cn/npm/typeface-roboto@1.1.13/index.css');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #F4F2F9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .md3-card {
+            background: #FEF7FF;
+            border-radius: 28px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05), 0 12px 24px rgba(103, 80, 164, 0.10);
+            max-width: 520px;
+            width: 100%;
+            padding: 48px 40px 32px;
+            text-align: center;
+            border: 1px solid #EADDF2;
+        }
+
+        .md3-icon-wrapper {
+            width: 80px;
+            height: 80px;
+            background: #F6EDFF;
+            border-radius: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 24px;
+        }
+
+        .md3-icon-wrapper svg {
+            width: 48px;
+            height: 48px;
+        }
+
+        .md3-title {
+            font-size: 24px;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+            color: #1D1B20;
+            margin-bottom: 8px;
+        }
+
+        .md3-subtitle {
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 0.25px;
+            line-height: 1.6;
+            color: #49454F;
+            margin-bottom: 24px;
+        }
+
+        .md3-detail-box {
+            background: #F3EDF7;
+            border-radius: 16px;
+            padding: 16px 20px;
+            text-align: left;
+            margin-bottom: 28px;
+            border: 1px solid #EADDF2;
+        }
+
+        .md3-detail-box p {
+            font-size: 13px;
+            font-weight: 400;
+            line-height: 1.8;
+            color: #1D1B20;
+            margin: 0;
+        }
+
+        .md3-detail-box strong {
+            color: #6750A4;
+            font-weight: 500;
+        }
+
+        .md3-detail-box code {
+            background: #E6E0E9;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #21005D;
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        .md3-roles {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 32px;
+            text-align: left;
+        }
+
+        .md3-role-item {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            background: #FBF8FE;
+            border-radius: 16px;
+            padding: 16px 20px;
+            border: 1px solid #E6E0E9;
+            transition: background 0.1s ease;
+        }
+
+        .md3-role-item:hover {
+            background: #F6EDFF;
+        }
+
+        .md3-role-icon {
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            background: #E8DEF8;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .md3-role-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: #6750A4;
+        }
+
+        .md3-role-content {
+            flex: 1;
+        }
+
+        .md3-role-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #1D1B20;
+            letter-spacing: 0.3px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .md3-role-desc {
+            font-size: 13px;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #49454F;
+            margin: 0;
+        }
+
+        .md3-role-desc code {
+            background: #E6E0E9;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #21005D;
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        .md3-btn {
+            background: #6750A4;
+            color: #FFFFFF;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 100px;
+            font-family: 'Roboto', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: background 0.2s ease, box-shadow 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .md3-btn:hover {
+            background: #4F378A;
+            box-shadow: 0 2px 6px rgba(103, 80, 164, 0.3);
+        }
+
+        .md3-footer {
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 1px solid #EADDF2;
+            font-size: 13px;
+            color: #79747E;
+            letter-spacing: 0.25px;
+        }
+
+        .md3-footer a {
+            color: #6750A4;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .md3-footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="md3-card">
+        <div class="md3-icon-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                    d="M18 8H17V6C17 3.24 14.76 1 12 1C9.24 1 7 3.24 7 6V8H6C4.9 8 4 8.9 4 10V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V10C20 8.9 19.1 8 18 8ZM9 6C9 4.34 10.34 3 12 3C13.66 3 15 4.34 15 6V8H9V6ZM12 17C10.9 17 10 16.1 10 15C10 13.9 10.9 13 12 13C13.1 13 14 13.9 14 15C14 16.1 13.1 17 12 17Z"
+                    fill="#6750A4" />
+            </svg>
+        </div>
+        <h1 class="md3-title">应用标识未注册</h1>
+        <p class="md3-subtitle">当前请求的应用标识（<code>client_id</code>）不在本认证中心的白名单内。</p>
+
+        <div class="md3-detail-box">
+            <p>
+                <strong>可能的原因：</strong><br>
+                · 该应用尚未通过管理员审核并完成注册<br>
+                · 请求中传递的 <code>client_id</code> 拼写错误或大小写不匹配<br>
+            </p>
+        </div>
+
+        <div class="md3-roles">
+            <div class="md3-role-item">
+                <div class="md3-role-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0 4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z" />
+                    </svg>
+                </div>
+                <div class="md3-role-content">
+                    <span class="md3-role-label">如果您是 应用开发者</span>
+                    <p class="md3-role-desc">
+                        请核对 <code>client_id</code> 是否与平台分配的一致，并确认该应用已完成注册。
+                    </p>
+                </div>
+            </div>
+            <div class="md3-role-item">
+                <div class="md3-role-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    </svg>
+                </div>
+                <div class="md3-role-content">
+                    <span class="md3-role-label">如果您是 普通用户</span>
+                    <p class="md3-role-desc">
+                        您正在使用的第三方应用尚未获得本平台授权，请联系该应用的开发者确认 <code>client_id</code> 配置是否正确。
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <a href="javascript:history.back()" class="md3-btn">重试</a>
+        <!-- 因为是302过来的，所以直接back就行 -->
+        <!-- <div class="md3-footer">
+            需要注册新应用？请联系 <a href="mailto:admin@undz.cn">平台管理员</a>
+        </div> -->
+    </div>
+</body>
+
+</html>

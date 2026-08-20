@@ -1,6 +1,6 @@
-'v2.0.0 AyAccountSDK';
+'v2.0.1 AyAccountSDK';
 
-const VERSION = '2.0.0';
+const VERSION = '2.0.1';
 const PRODUCE = false;
 
 // ---------- 本地南瓜种植基地 ----------//
@@ -46,6 +46,7 @@ const allowedEmailDomains = [
   '126.com',
   'foxmail.com',
   'sina.com',
+  'sina.cn',
   'sohu.com',
   '139.com',
   '189.cn',
@@ -56,6 +57,7 @@ const allowedEmailDomains = [
   'vip.qq.com',
   'vip.163.com',
   'vip.sina.com',
+  'vip.sina.cn',
   'gmail.com',
   'outlook.com',
   'hotmail.com',
@@ -89,9 +91,7 @@ const BUILTIN_TRANSLATIONS = {
     'link.faq': 'https://online.undz.cn/login/faq/zh-cn.html',
     'reg.username': '用户名',
     'reg.email': '邮箱',
-
     'reg.emailCode': '验证码',
-
     'reg.password': '密码',
     'reg.passwordConfirm': '请再次输入密码',
     'agreement.prefix': '我已阅读并同意',
@@ -132,9 +132,17 @@ const BUILTIN_TRANSLATIONS = {
     'error.1022': '验证码二次校验失败',
     'error.1023': '需要通过人机验证',
     'error.1024': '您已取消验证',
-
     'error.1025': '验证码错误',
     'error.1026': '不支持的邮箱域名',
+
+    'error.1027': '发送验证码过于频繁',
+    'error.1028': '请求发送时失败',
+    'error.1029': '请填写邮箱',
+    'error.1030': '服务器错误：无可用发送途径',
+    'error.1031': '邮件服务器不可用',
+    'error.1032': '发送邮件失败',
+    'error.1033': '发件服务器出现内部错误',
+
     'common.send_email_code_success': '发送验证码成功',
     'common.send_email_code_failure': '发送验证码失败',
     'error.modal_already_open': '登录窗口已打开，请勿重复操作',
@@ -214,6 +222,15 @@ const BUILTIN_TRANSLATIONS = {
     'error.1022': 'Verification code check failed again',
     'error.1023': 'You need to pass a human verification',
     'error.1024': 'Verification cancelled, please retry',
+    'error.1025': 'Invalid verification code',
+    'error.1026': 'Email domain not supported',
+    'error.1027': 'Verification code sent too frequently',
+    'error.1028': 'Failed to send request',
+    'error.1029': 'Please enter your email',
+    'error.1030': 'Server error: no available sending method',
+    'error.1031': 'Email server unavailable',
+    'error.1032': 'Failed to send email',
+    'error.1033': 'Internal error in the sending server',
     'error.modal_already_open': 'Login modal is already open, please do not repeat',
     'error.aytoast_not_found': 'The AyToast component failed to load, please reload.',
     'common.network_error': 'Network request failed, please check your connection',
@@ -244,8 +261,7 @@ const BUILTIN_TRANSLATIONS = {
     'common.send_email_code_success': 'Verification code sent successfully',
     'common.send_email_code_failure': 'Failed to send verification code',
     'common.reg_email_code_length': 'Verification code length is invalid',
-    'error.1025': 'Invalid verification code',
-    'error.1026': 'Email domain not supported'
+
   },
   'zh-hk': {
     'title.login': '登錄',
@@ -296,6 +312,15 @@ const BUILTIN_TRANSLATIONS = {
     'error.1022': '驗證碼第二次驗證失敗',
     'error.1023': '需要通過人機驗證',
     'error.1024': '驗證已取消，請重試',
+    'error.1025': '驗證碼錯誤',
+    'error.1026': '不支援的電郵域名',
+    'error.1027': '發送驗證碼過頻繁',
+    'error.1028': '發送時請求失敗',
+    'error.1029': '請輸入您的電子郵件地址',
+    'error.1030': '伺服器錯誤:無可用傳送路徑',
+    'error.1031': '郵件伺服器無法使用',
+    'error.1032': 'Failed to send email',
+    'error.1033': '發送伺服器內部錯誤',
     'error.modal_already_open': '登錄視窗已打開，請勿重複操作',
     'error.aytoast_not_found': 'AyToast 組件未成功加載，請你重載',
     'common.network_error': '網絡請求失敗，請檢查網絡',
@@ -326,8 +351,7 @@ const BUILTIN_TRANSLATIONS = {
     'common.send_email_code_success': '發送驗證碼成功',
     'common.send_email_code_failure': '發送驗證碼失敗',
     'common.reg_email_code_length': '郵箱驗證碼長度錯誤',
-    'error.1025': '驗證碼錯誤',
-    'error.1026': '不支援的電郵域名',
+
   },
 };
 function isMobile() {
@@ -921,6 +945,16 @@ class AyAccount {
    */
   register() {
     return this.#_openModal('register');
+  }
+  /**
+ * 隐藏关闭
+ */
+  hideClose() {
+    if (this._iframe.contentWindow.postMessage) {
+      this._iframe.contentWindow.postMessage(JSON.stringify({
+        action: 'hideClose'
+      }), '*');
+    }
   }
   /**
    * 发送邮箱验证码

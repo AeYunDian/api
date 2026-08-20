@@ -1,11 +1,9 @@
 import qr from 'qr-image';
-import { net_proxy } from './net_proxy.js';
-import { getMainPage, md5Hex, escapeHtml, corsHeaders_GPO, mobileRegex } from './utils.js';
+import { getMainPage, escapeHtml, corsHeaders_GPO, mobileRegex } from './utils.js';
 import { triggerWorkflow } from './trigger_workflow.js';
 import text_save from './pass_the_text_v1.js';
 import graduation_yearbook from './graduation_yearbook_v1.js';
 import short_link from './short_link_v1.js';
-import proxy_auth from './proxy_auth_v1.js';
 import { handleSendVerification } from './mail_verify/send.js';
 import { parse } from 'cookie';
 import { handleVerifyCode } from './mail_verify/verify.js';
@@ -28,9 +26,6 @@ export default {
         if (request.method === 'GET') {
             if (path === "/") {
                 return new Response(null, { status: 301, headers: { 'Content-Type': 'text/html', 'Location': 'https://open.undz.cn' } });
-            }
-            if (path === "/proxy/v1/auth") {
-                return await proxy_auth.fetch(request, env);
             }
             if (path === "/qrcode") {
                 return new Response(null,
@@ -222,25 +217,6 @@ button { padding: 8px 16px; background-color: #0073e6; color: white; border: non
             if (path === '/shortlink/v1/init') {
                 return await short_link.initLink(request, env);
             }
-            if (path.startsWith('/gh/')) {
-                return await net_proxy(url, false, true);
-            }
-            if (path.startsWith('/gh_fix/')) {
-                return await net_proxy(url, true, true);
-            }
-            if (path.startsWith('/proxy/')) {
-                if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + env.KEY))) {
-                    return new Response(getMainPage("AyUndz API Service", "<h1>403 Forbidden</h1>", "<p>You are not authorized to access this resource.</p><a href=\"/proxy/v1/auth?redirect-to=" + encodeURIComponent(url.pathname + url.search) + "\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
-                }
-                return await net_proxy(url, false, false);
-            }
-            if (path.startsWith('/proxy_fix/')) {
-                if (!(cookies['undz_api_proxy'] === 'true') && !(cookies['undz_api_key'] === await md5Hex(clientIP + env.KEY))) {
-                    return new Response(getMainPage("AyUndz API Service", "<h1>403 Forbidden</h1>", "<p>You are not authorized to access this resource.</p><a href=\"/proxy/v1/auth?redirect-to=" + encodeURIComponent(url.pathname + url.search) + "\">Click here to authenticate</a>"), { status: 403, headers: { 'Content-Type': 'text/html', ...corsHeaders_GPO } });
-                }
-                return await net_proxy(url, true, false);
-            }
-
             if (path.startsWith('/sf/')) {
                 return await text_save.handleGetText(path, env);
             }

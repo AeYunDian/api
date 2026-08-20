@@ -9,10 +9,12 @@ import { serialize, parse } from "cookie";
 import { base64ToUtf8 } from "./utils.js";
 import { handleVerifyCode } from "./mail_verify/verify.js";
 import { REG_TEMPLATE, handleSendVerification } from "./mail_verify/send.js";
-
+import { generateToken } from './utils'
 // ---------- 常量与配置 ----------
+const SDK_VER = "2.0.1";
 const JWT_ALG = "HS256";
 const ACCESS_TOKEN_EXPIRES_IN = "15m"; // 访问令牌有效期
+const OAUTH_TOKEN_EXPIRES_IN = 300; // Oauth token 有效期 5m
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 30; // 刷新令牌有效期（秒），30天
 const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_HASH = "SHA-256";
@@ -22,6 +24,50 @@ const VERIFY_CODE_EXPDATA = 300;
 export const TAG_LOGGEDIN = "logged_in";
 export const TAG_NOT_LOGGEDIN = "not_logged_in";
 export const TAG_BANNED = "banned";
+
+/**
+ * Oauth 检查传入的请求是否已登录授权
+ * @param {Request} request - 原始的 HTTP 请求对象
+ * @param {Env} env - Cloudflare Workers 的环境绑定
+ * @returns {Promise<[string, Object|null]>} - 返回认证状态和用户信息
+ */
+export async function verifyBearerToken(request, env) {
+    try {
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return { valid: false, error: 'missing_token' };
+        }
+        const token = authHeader.slice(7); // 去掉 "Bearer "
+        const payload = await verifyAccessToken(token, env.JWT_KEY);
+
+        if (!payload) {
+            return { valid: false, error: 'invalid_token' };
+        }
+
+        // 目前没有权限管理，空着
+        // 检查 token 是否包含特定的 scope（权限）
+        // const scope = payload.scope || '';
+        // if (!scope.includes('read_user')) { return { valid: false, error: 'insufficient_scope' }; }
+        return {
+            valid: true,
+            user: {
+                id: payload.sub,
+                username: payload.username,
+                email: payload.email,
+                client_id: payload.client_id, // 哪个应用在调用
+                scope: payload.scope
+            }
+        };
+    } catch (error) {
+        return { valid: false, error: 'server_error' };
+    }
+}
+/**
+ * 检查传入的请求是否已登录授权
+ * @param {Request} request - 原始的 HTTP 请求对象
+ * @param {Env} env - Cloudflare Workers 的环境绑定
+ * @returns {Promise<[string, Object|null]>} - 返回认证状态和用户信息
+ */
 export async function checkAuth(request, env) {
     try {
         const cookies = parse(request.headers.get("Cookie") || "");
@@ -172,7 +218,6 @@ async function hmacSha256(key, message) {
 function toBase64(buffer) {
     return btoa(String.fromCharCode(...buffer));
 }
-
 function fromBase64(str) {
     const bin = atob(str);
     const bytes = new Uint8Array(bin.length);
@@ -298,7 +343,42 @@ async function initDatabase(db) {
     `,
         )
         .run();
+    await db
+        .prepare(
+            `CREATE TABLE IF NOT EXISTS oauth_clients (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_id TEXT UNIQUE NOT NULL,
+                client_secret TEXT NOT NULL,
+                name TEXT NOT NULL,
+                redirect_uris TEXT NOT NULL,
+                scope TEXT DEFAULT 'openid profile email',
+                trusted BOOLEAN DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )`
+        )
+        .run();
 
+    await db
+        .prepare(
+            `CREATE TABLE IF NOT EXISTS oauth_auth_codes (
+                code TEXT PRIMARY KEY,
+                client_id TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                redirect_uri TEXT NOT NULL,
+                scope TEXT,
+                expires_at INTEGER NOT NULL,
+                used BOOLEAN DEFAULT 0
+            )`
+        )
+        .run();
+
+    await db
+        .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_codes_used ON oauth_auth_codes(used)`)
+        .run();
+    await db
+        .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_codes_expires ON oauth_auth_codes(expires_at)`)
+        .run();
     await db
         .prepare(
             `CREATE INDEX IF NOT EXISTS idx_username ON online_users(username)`,
@@ -308,6 +388,29 @@ async function initDatabase(db) {
     await db
         .prepare(`CREATE INDEX IF NOT EXISTS idx_email ON online_users(email)`)
         .run();
+    await registerOAuthClient(env.db, 'app_chat', generateToken(), '聊天助手', 'https://chat.undz.cn/oauth/callback,http://test.undz.cn:8080/callback');
+}
+async function registerOAuthClient(db, clientId, clientSecret, name, redirectUris, scope = 'openid profile email', trusted = 0) {
+    const now = Math.floor(Date.now() / 1000);
+    await db
+        .prepare(
+            `INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, scope, trusted, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .bind(clientId, clientSecret, name, redirectUris, scope, trusted, now, now)
+        .run();
+}
+async function getOAuthClient(db, clientId) {
+    const client = await db
+        .prepare('SELECT * FROM oauth_clients WHERE client_id = ?')
+        .bind(clientId)
+        .first();
+    return client;
+}
+function validateRedirectUri(allowedUris, redirectUri) {
+    // allowedUris 是逗号分隔的字符串，转为数组
+    const uris = allowedUris.split(',').map(u => u.trim());
+    return uris.includes(redirectUri);
 }
 async function registerUser(db, username, email, password) {
     if (!validateEmail(email)) {
@@ -566,7 +669,7 @@ export default {
         try {
             // ---------- 初始化数据库（需 Admin Key） ----------
 
-            if (path.startsWith("/api/")) {
+            if (path.startsWith("/api/ayonline/")) {
                 if (path === "/api/ayonline/init" && method === "POST") {
                     const authKey = request.headers.get("X-Admin-Key");
                     if (authKey !== env.KEY) {
@@ -594,7 +697,7 @@ export default {
                     );
                 }
                 const sdkVer = request.headers.get("X-SDK-VER") || "";
-                if (!sdkVer || !isVersionValid(sdkVer, "2.0.0")) {
+                if (!sdkVer || !isVersionValid(sdkVer, SDK_VER)) {
                     return jsonResponse(
                         {
                             success: false,
@@ -617,7 +720,7 @@ export default {
                     const body = await request.json().catch(() => null);
                     if (!body || !body.email) {
                         return jsonResponse(
-                            { error: "Email required", error_code: 1025 },
+                            { error: "Email required", error_code: 1029 },
                             400,
                             cors,
                         );
@@ -638,11 +741,21 @@ export default {
                             CONFIG_ERROR: "Server config error",
                             FAILED_SEND_EMAIL: "Failed to send email",
                             INVALID_RESPONSE: "Mail service error",
+                            ERR429: "Too frequent",
+                            ERR500: "Send mail server down"
+                        };
+                        const codeMap = {
+                            EMAIL_REQUIRED: 1029,
+                            CONFIG_ERROR: 1030,
+                            FAILED_SEND_EMAIL: 1032,
+                            INVALID_RESPONSE: 1031,
+                            ERR429: 1027,
+                            ERR500: 1033
                         };
                         return jsonResponse(
                             {
                                 error: msgMap[result.msg] || "Unknown error",
-                                error_code: 1026,
+                                error_code: codeMap[result.msg] || 1028,
                             },
                             500,
                             cors,
@@ -955,7 +1068,6 @@ export default {
                 }
                 // ---------- 修改密码 ----------
                 if (path === "/api/ayonline/change-password" && method === "POST") {
-                    // 从 Cookie 获取 access_token 验证身份（也可单独传 token）
                     const cookies = parse(request.headers.get("Cookie") || "");
                     const accessToken = cookies.access_token;
                     if (!accessToken) {
@@ -1285,7 +1397,176 @@ export default {
                     cors,
                 );
             }
+            if (path.startsWith("/api/oauth/")) {
+                // 开发中
+                if (path === "/api/oauth/authorize" && method === 'GET') {
+                    const query = url.searchParams;
+                    const clientId = query.get('client_id');
+                    const redirectUri = query.get('redirect_uri');
+                    const responseType = query.get('response_type');
+                    const state = query.get('state') || '';
+                    const scope = query.get('scope') || 'openid profile email';
 
+                    if (!clientId || !redirectUri || responseType !== 'code') {
+                        const errorUrl = new URL('/oauth2/invalid_request', url.origin);
+                        return new Response(null, {
+                            status: 302,
+                            headers: {
+                                Location: errorUrl.toString(),
+                                ...cors
+                            }
+                        });
+                    }
+                    const client = await env.db
+                        .prepare('SELECT id, name, redirect_uris, scope FROM oauth_clients WHERE client_id = ?')
+                        .bind(clientId)
+                        .first();
+                    // 应用未注册 -> 跳转至 invalid_client
+                    if (!client) {
+                        const errorUrl = new URL('/oauth2/invalid_client', url.origin);
+                        return new Response(null, {
+                            status: 302,
+                            headers: {
+                                Location: errorUrl.toString(),
+                                ...cors
+                            }
+                        });
+                    }
+                    if (!validateRedirectUri(client.redirect_uris, redirectUri)) {
+                        const errorUrl = new URL('/oauth2/invalid_redirect_uri', url.origin);
+                        return new Response(null, {
+                            status: 302,
+                            headers: {
+                                Location: errorUrl.toString(),
+                                ...cors
+                            }
+                        });
+                    }
+
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) {
+                        const loginUrl = new URL('/oauth2/login', url.origin);
+                        loginUrl.searchParams.set('redirect_url', request.url);
+                        return new Response(null, {
+                            status: 302,
+                            headers: {
+                                Location: loginUrl.toString(),
+                                ...cors
+                            }
+                        });
+                    }
+                    if (authStatus === TAG_LOGGEDIN) {
+                        const code = generateToken();
+                        const expiresAt = Math.floor(Date.now() / 1000) + OAUTH_TOKEN_EXPIRES_IN;
+
+                        await env.db
+                            .prepare(
+                                `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, expires_at, used)
+             VALUES (?, ?, ?, ?, ?, ?, 0)`
+                            )
+                            .bind(code, clientId, user.id, redirectUri, scope, expiresAt)
+                            .run();
+
+                        // 3. 重定向回客户端
+                        const redirectUrl = new URL(redirectUri);
+                        redirectUrl.searchParams.set('code', code);
+                        if (state) redirectUrl.searchParams.set('state', state);
+
+                        return new Response(null, {
+                            status: 302,
+                            headers: { Location: redirectUrl.toString(), ...cors }
+                        });
+                    }
+                }
+                if (path === "/api/oauth/token" && method === 'POST') {
+                    // OAuth 2.0 标准要求使用 application/x-www-form-urlencoded
+                    const contentType = request.headers.get('Content-Type') || '';
+                    let body;
+                    if (contentType.includes('application/json')) {
+                        body = await request.json().catch(() => null);
+                    } else {
+                        const formData = await request.formData();
+                        body = {};
+                        for (const [key, value] of formData.entries()) {
+                            body[key] = value;
+                        }
+                    }
+                    if (!body) {
+                        return jsonResponse({ error: 'invalid_request' }, 400, cors);
+                    }
+                    const grantType = body.grant_type;
+                    const code = body.code;
+                    const redirectUri = body.redirect_uri;
+                    const clientId = body.client_id;
+                    const clientSecret = body.client_secret;
+                    if (grantType !== 'authorization_code') {
+                        return jsonResponse({ error: 'unsupported_grant_type' }, 400, cors);
+                    }
+                    if (!code || !clientId || !clientSecret) {
+                        return jsonResponse({ error: 'invalid_request' }, 400, cors);
+                    }
+                    const client = await env.db
+                        .prepare('SELECT * FROM oauth_clients WHERE client_id = ?')
+                        .bind(clientId)
+                        .first();
+
+                    if (!client || client.client_secret !== clientSecret) {
+                        return jsonResponse({ error: 'invalid_client' }, 401, cors);
+                    }
+                    const authCode = await env.db
+                        .prepare(
+                            `SELECT * FROM oauth_auth_codes 
+             WHERE code = ? AND used = 0 AND expires_at > ?`
+                        )
+                        .bind(code, Math.floor(Date.now() / 1000))
+                        .first();
+
+                    if (!authCode) {
+                        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
+                    }
+                    if (authCode.redirect_uri !== redirectUri) {
+                        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
+                    }
+                    await env.db
+                        .prepare('UPDATE oauth_auth_codes SET used = 1 WHERE code = ?')
+                        .bind(code)
+                        .run();
+                    const user = await env.db
+                        .prepare('SELECT id, username, email FROM online_users WHERE id = ?')
+                        .bind(authCode.user_id)
+                        .first();
+
+                    if (!user) {
+                        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
+                    }
+                    const accessToken = await signAccessToken(
+                        {
+                            sub: user.id,
+                            username: user.username,
+                            email: user.email,
+                            client_id: clientId,
+                            scope: authCode.scope || client.scope
+                        },
+                        env.JWT_KEY
+                    );
+                    const refreshToken = generateRefreshToken();
+                    await storeRefreshToken(
+                        env.kv,
+                        refreshToken,
+                        user.id,
+                        REFRESH_TOKEN_TTL
+                    );
+                    const response = {
+                        access_token: accessToken,
+                        token_type: 'Bearer',
+                        expires_in: 900, // 15分钟，与 ACCESS_TOKEN_EXPIRES_IN 保持一致
+                        refresh_token: refreshToken,
+                        scope: authCode.scope || client.scope
+                    };
+
+                    return jsonResponse(response, 200, cors);
+                }
+            }
             return env.assets.fetch(request);
         } catch (error) {
             console.error("Unhandled error:", error);

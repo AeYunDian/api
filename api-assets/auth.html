@@ -303,6 +303,7 @@
               fallbackLang: 'zh-cn'
             }
           });
+          window.acc = account;
           showResult('✅ SDK 初始化成功！\nappId: chat630\n当前语言: ' + account.lang);
           // 更新下拉框显示当前语言
           langSelect.value = account.lang || 'zh-cn';

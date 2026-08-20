@@ -216,6 +216,9 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
 
         if (typeof data === 'object' && data.action) {
             switch (data.action) {
+                case 'hideClose':
+                    document.querySelector(".card-close").style.display = 'none';
+                    break;
                 case 'sendEmailCodeSuccess':
                     emailCodeToken = data.token;
                     AyCloseToast();
