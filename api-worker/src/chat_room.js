@@ -611,7 +611,7 @@ export function chat_getIndexHtml() {
         </div>
         <div id="tab-about" style="display:none;">
           <div class="about-page">
-            <img src="/logo.png"> <h2>Ay Online Chat Room</h2>
+            <h2>Ay Online Chat Room</h2>
           </div>
           <hr/>
           <p>在线网络聊天室 v1.6</p>

@@ -1,3 +1,5 @@
+import { cleanExpiredKv, initKvTable } from './kvWithD1.js';
+
 import { getMainPage } from './utils.js';
 import { triggerWorkflow } from './trigger_workflow.js';
 
@@ -29,7 +31,7 @@ export default {
     // } catch (error) {
     //   console.error('Failed to clean consent requests:', error);
     // }
-    // await triggerWorkflow(env);
+    await cleanExpiredKv(env.db);
   },
 
   async fetch(request, env) {
@@ -42,6 +44,7 @@ export default {
     //   _tm_path = url.pathname; // 解码失败时直接使用原路径
     // }
     // const path = _tm_path;
+
     // const userAgent = request.headers.get('User-Agent') || '';
     // const platform = request.headers.get('sec-ch-ua-platform') || '';
 
@@ -81,6 +84,39 @@ export default {
         return await chatundzcn.fetch(request, env);
       }
 
+      if (hostname === 'kv.undz.cn' && url.pathname === '/initdb') {
+        const authKey = request.headers.get("X-Admin-Key");
+        if (authKey !== env.KEY) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: {
+              "Content-Type": "application/json",
+            }
+          });
+        }
+        try {
+          await initKvTable(env.db);
+          return new Response(JSON.stringify({ success: true, message: "Database initialized" }), {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+            }
+          });
+        } catch (err) {
+          console.error('Init failed:', err);
+          return new Response(JSON.stringify({
+            error: 'Database initialization failed',
+            detail: err.message,
+            stack: err.stack
+          }),
+            {
+              status: 500,
+              headers: {
+                "Content-Type": "application/json",
+              }
+            });
+        }
+      }
       // 班级文章服务
       // if (hostname === 'sh.undz.cn') {
       //   return await shundzcn.fetch(request, env);

@@ -10,13 +10,19 @@ import { base64ToUtf8, generateToken, generateRandomBytes, getMainPage } from ".
 import { handleVerifyCode } from "./mail_verify/verify.js";
 import { REG_TEMPLATE, handleSendVerification } from "./mail_verify/send.js";
 
+
+import { createKvStore } from './kvWithD1.js';
+
+
+let kvStore = null;
+
 // ---------- 常量与配置 ----------
 const SDK_VER = "2.0.2";
 const JWT_ALG = "HS256";
 const ACCESS_TOKEN_EXPIRES_IN = "15m"; // 访问令牌有效期
 const OAUTH_TOKEN_EXPIRES_IN = 300; // Oauth token 有效期 5m
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 30; // 刷新令牌有效期（秒），30天
-const OAUTH_RREFRESH_TOKEN_TTL = 60 * 60 * 24 * 15; // OAuth客户端刷新令牌有效期（秒），15天
+const OAUTH_REFRESH_TOKEN_TTL = 60 * 60 * 24 * 15; // OAuth客户端刷新令牌有效期（秒），15天
 const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_HASH = "SHA-256";
 const SALT_LENGTH = 16; // 字节
@@ -466,7 +472,7 @@ async function refreshAccessToken(refreshToken, clientId, clientSecret, env) {
         };
     }
 
-    const userId = await getUserIdFromRefreshToken(env.kv, refreshToken);
+    const userId = await getUserIdFromRefreshToken(kvStore, refreshToken);
     if (!userId) {
         return {
             success: false,
@@ -480,7 +486,7 @@ async function refreshAccessToken(refreshToken, clientId, clientSecret, env) {
         .bind(userId)
         .first();
     if (!user) {
-        await deleteRefreshToken(env.kv, refreshToken);
+        await deleteRefreshToken(kvStore, refreshToken);
         return {
             success: false,
             error: 'invalid_grant',
@@ -624,10 +630,10 @@ export async function exchangeOAuthToken(params, env) {
     // 生成刷新令牌
     const refreshToken = generateToken();
     await storeRefreshToken(
-        env.kv,
+        kvStore,
         refreshToken,
         user.id,
-        OAUTH_RREFRESH_TOKEN_TTL
+        OAUTH_REFRESH_TOKEN_TTL
     );
 
     const scopes = (authCode.scope || '').split(' ').filter(s => s);
@@ -922,7 +928,7 @@ export default {
         const url = new URL(request.url);
         const path = url.pathname;
         const method = request.method;
-
+        kvStore = createKvStore(env.db);
         if (method === "OPTIONS") {
             return handleOptions(request);
         }
@@ -1313,7 +1319,7 @@ export default {
                                 // 生成刷新令牌
                                 const refreshToken = generateToken();
                                 await storeRefreshToken(
-                                    env.kv,
+                                    kvStore,
                                     refreshToken,
                                     user.id,
                                     REFRESH_TOKEN_TTL,
@@ -1476,7 +1482,7 @@ export default {
                                 const userId = parseInt(payload.sub, 10);
                                 const result = await changePassword(
                                     env.db,
-                                    env.kv,
+                                    kvStore,
                                     userId,
                                     body.oldPassword,
                                     body.newPassword,
@@ -1561,7 +1567,7 @@ export default {
                     const cookies = parse(request.headers.get("Cookie") || "");
                     const refreshToken = cookies.refresh_token;
                     if (refreshToken) {
-                        await deleteRefreshToken(env.kv, refreshToken);
+                        await deleteRefreshToken(kvStore, refreshToken);
                     }
 
                     // 清除 Cookie（maxAge=0）
@@ -1654,7 +1660,7 @@ export default {
                         );
                     }
 
-                    const userId = await getUserIdFromRefreshToken(env.kv, refreshToken);
+                    const userId = await getUserIdFromRefreshToken(kvStore, refreshToken);
                     if (!userId) {
                         return jsonResponse(
                             { error_code: 1015, error: "Invalid or expired refresh token" },
@@ -1671,7 +1677,7 @@ export default {
                         .first();
 
                     if (!user) {
-                        await deleteRefreshToken(env.kv, refreshToken);
+                        await deleteRefreshToken(kvStore, refreshToken);
                         return jsonResponse(
                             { error_code: 1016, error: "User not found" },
                             401,

@@ -1,5 +1,10 @@
+import { createKvStore } from '../kvWithD1'
+
 // 生成随机 token
 import { generateToken } from '../utils'
+
+
+
 export const LOGIN_TEMPLATE = `Dear users,\n\n
 
 Your one-time login verification code is: %CODE%\n\n
@@ -22,7 +27,7 @@ Best regards,\n
 %SERVICENAME%`
 
 export async function handleSendVerification(env, email, expirationTtl = 300, serviceName = 'AyService', template = LOGIN_TEMPLATE) {
-
+  const kvStore = createKvStore(env.db);
   try {
     if (!email) {
       return { msg: 'EMAIL_REQUIRED' };
@@ -76,7 +81,7 @@ export async function handleSendVerification(env, email, expirationTtl = 300, se
       return { msg: 'FAILED_SEND_EMAIL' };
     }
 
-    await env.kv.put(
+    await kvStore.put(
       `token:${token}`,
       JSON.stringify({ email, code: verificationCode }),
       { expirationTtl: expirationTtl }
