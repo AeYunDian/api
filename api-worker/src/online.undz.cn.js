@@ -1616,19 +1616,30 @@ export default {
                             cors,
                         );
                     }
-                    return jsonResponse(
-                        {
-                            valid: true,
-                            code: 200,
-                            user: {
-                                id: payload.sub,
-                                username: payload.username,
-                                email: payload.email,
-                            },
+                    const userId = parseInt(payload.sub, 10);
+                    const user = await env.db
+                        .prepare("SELECT banned, ban_reason FROM online_users WHERE id = ?")
+                        .bind(userId)
+                        .first();
+                    if (user && user.banned === 1) {
+                        return jsonResponse({
+                            valid: false,
+                            banned: true,
+                            error_code: 1017,
+                            error: "Account banned",
+                            ban_reason: user.ban_reason || "",
+                        }, 403, cors);
+                    }
+                    return jsonResponse({
+                        valid: true,
+                        code: 200,
+                        banned: false,
+                        user: {
+                            id: payload.sub,
+                            username: payload.username,
+                            email: payload.email,
                         },
-                        200,
-                        cors,
-                    );
+                    }, 200, cors);
                 }
 
                 // ---------- 刷新访问令牌 ----------
@@ -1741,7 +1752,7 @@ export default {
                         });
                     }
                     const client = await env.db
-                        .prepare('SELECT id, name, redirect_uris, scope FROM oauth_clients WHERE client_id = ?')
+                        .prepare('SELECT id, name, redirect_uris, scope, trusted FROM oauth_clients WHERE client_id = ?')
                         .bind(clientId)
                         .first();
                     // 应用未注册 -> 跳转至 invalid_client
@@ -1768,6 +1779,14 @@ export default {
 
                     const [authStatus, user] = await checkAuth(request, env);
                     if (authStatus !== TAG_LOGGEDIN) {
+                        const clearOptions = {
+                            domain: ".undz.cn",
+                            path: "/",
+                            httpOnly: true,
+                            secure: true,
+                            sameSite: "Lax",
+                            maxAge: 0,
+                        };
                         const loginUrl = new URL('/oauth2/login', url.origin);
                         loginUrl.searchParams.set('redirect_url', request.url);
                         loginUrl.searchParams.set('client_id', clientId);
@@ -1775,13 +1794,15 @@ export default {
                         if (state) loginUrl.searchParams.set('state', state);
                         const client = await getOAuthClient(env.db, clientId);
                         if (client) loginUrl.searchParams.set('client_name', client.name);
-                        return new Response(null, {
-                            status: 302,
-                            headers: {
-                                Location: loginUrl.toString(),
-                                ...cors
-                            }
+                        const headers = new Headers({
+                            Location: loginUrl.toString(),
+                            ...cors
                         });
+                        if (authStatus === TAG_BANNED) {
+                            headers.append('Set-Cookie', serialize('access_token', '', clearOptions));
+                            headers.append('Set-Cookie', serialize('refresh_token', '', clearOptions));
+                        }
+                        return new Response(null, { status: 302, headers });
                     }
                     if (authStatus === TAG_LOGGEDIN) {
                         const clientScopeArray = (client.scope || DEFAULT_OAUTH_CLIENT_SCOPE).split(' ').filter(s => s);
@@ -1810,7 +1831,7 @@ export default {
                             const requestId = generateToken();
                             const consentToken = generateToken();
                             const now = Math.floor(Date.now() / 1000);
-                            const expiresAt = now + 300;
+                            const expiresAt = now + OAUTH_TOKEN_EXPIRES_IN;
                             await env.db.prepare(
                                 `INSERT INTO oauth_consent_requests 
              (id, client_id, redirect_uri, scope, state, user_id, created_at, expires_at, status, consent_token)

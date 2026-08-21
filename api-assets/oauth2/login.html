@@ -133,7 +133,7 @@
             const errorIcon = document.querySelector(".error-icon");
             const btn = document.querySelector(".md3-btn");
             const title = document.querySelector(".md3-title");
-
+            let account = null;
             if (!subtitle || !card || !loadingIcon || !errorIcon || !btn) return;
 
             function showError(text) {
@@ -197,13 +197,18 @@
              */
             async function checkAuthWithRefresh(account) {
                 try {
-                    // 第一次验证
                     const verifyResult = await account.verify();
-                    if (verifyResult && verifyResult.valid) {
-                        return { loggedIn: true, user: verifyResult.user };
+                    if (verifyResult) {
+                        if (verifyResult.valid) {
+                            return { loggedIn: true, user: verifyResult.user };
+                        }
+                        if (verifyResult.banned || verifyResult.error_code === 1017) {
+                            await account.logout();
+                            return { loggedIn: false };
+                        }
                     }
                 } catch (err) {
-                    console.debug('First verify failed:', err.message);
+                    console.debug('Verify failed:', err.message);
                 }
 
                 // 第一次验证失败（未登录或 token 过期），尝试刷新
@@ -226,7 +231,7 @@
                 try {
                     await waitForDependencies();
 
-                    const account = createAyAccount({
+                    account = createAyAccount({
                         appId: 'oauth2',
                         i18n: 'zh-cn'
                     });
