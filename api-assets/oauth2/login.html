@@ -208,21 +208,17 @@
                         }
                     }
                 } catch (err) {
-                    console.debug('Verify failed:', err.message);
                 }
 
                 // 第一次验证失败（未登录或 token 过期），尝试刷新
                 try {
-                    console.debug('Attempting to refresh token...');
                     await account.refresh();
-                    // 刷新成功，再次验证
                     const retryVerifyResult = await account.verify();
                     if (retryVerifyResult && retryVerifyResult.valid) {
-                        console.debug('Refresh successful, user is now logged in');
                         return { loggedIn: true, user: retryVerifyResult.user };
                     }
                 } catch (refreshErr) {
-                    console.debug('Refresh failed:', refreshErr.message);
+                    console.debug('刷新失败', refreshErr.message);
                 }
                 return { loggedIn: false };
             }
@@ -238,7 +234,6 @@
 
                     const authCheck = await checkAuthWithRefresh(account);
                     if (authCheck.loggedIn) {
-                        console.debug('User already logged in, redirecting...');
                         title.innerHTML = '登录成功';
                         subtitle.innerHTML = '正在等待服务器响应...';
                         card.style.display = '';
@@ -248,9 +243,6 @@
                         window.location.href = targetUrl;
                         return;
                     }
-                    // -----------------------------------------
-
-                    // 未登录，弹出登录框
                     const loginPromise = account.login();
                     await waitForIframeAndHideClose(account);
                     const result = await loginPromise;
@@ -272,8 +264,6 @@
                     showError(error.message || '登录初始化失败，请刷新页面重试');
                 }
             }
-
-            // 启动
             main();
         })();
     </script>
