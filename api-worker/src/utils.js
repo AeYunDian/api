@@ -127,10 +127,16 @@ function expandIPv6(addr) {
   return result;
 }
 const notBase64 = /[^A-Z0-9+\/=]/i;
+export function generateRandomBytes(length) {
+  const buffer = new Uint8Array(length);
+  crypto.getRandomValues(buffer);
+  return buffer;
+}
 export function generateToken() {
-  return Array.from(crypto.getRandomValues(new Uint8Array(16)))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+  const bytes = generateRandomBytes(32);
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 export function isBase64(str) {
   assertString(str);

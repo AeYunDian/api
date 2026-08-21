@@ -1,21 +1,22 @@
 // ============================================================
-// 统一身份认证中心 (online.undz.cn)
-// 功能：注册、登录、登出、验证、刷新令牌
+// AY 统一身份认证中心 (online.undz.cn)
+// 功能：注册、登录、登出、验证、刷新令牌、OAUTH
 // 技术栈：Cloudflare Workers + D1 + KV + JWT (jose) + cookie
 // ============================================================
 
 import { SignJWT, jwtVerify } from "jose";
 import { serialize, parse } from "cookie";
-import { base64ToUtf8 } from "./utils.js";
+import { base64ToUtf8, generateToken, generateRandomBytes } from "./utils.js";
 import { handleVerifyCode } from "./mail_verify/verify.js";
 import { REG_TEMPLATE, handleSendVerification } from "./mail_verify/send.js";
-import { generateToken } from './utils'
+
 // ---------- 常量与配置 ----------
 const SDK_VER = "2.0.1";
 const JWT_ALG = "HS256";
 const ACCESS_TOKEN_EXPIRES_IN = "15m"; // 访问令牌有效期
 const OAUTH_TOKEN_EXPIRES_IN = 300; // Oauth token 有效期 5m
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 30; // 刷新令牌有效期（秒），30天
+const OAUTH_RREFRESH_TOKEN_TTL = 60 * 60 * 24 * 15; // OAuth客户端刷新令牌有效期（秒），15天
 const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_HASH = "SHA-256";
 const SALT_LENGTH = 16; // 字节
@@ -193,12 +194,6 @@ const ALLOWED_ORIGINS = [
     "https://zyyos.exm2.eu.cc",
 ];
 
-// ---------- 工具函数 ----------
-function generateRandomBytes(length) {
-    const buffer = new Uint8Array(length);
-    crypto.getRandomValues(buffer);
-    return buffer;
-}
 async function hmacSha256(key, message) {
     const encoder = new TextEncoder();
     const keyData = encoder.encode(key);
@@ -249,12 +244,6 @@ async function hashPassword(password, salt) {
     return new Uint8Array(derived);
 }
 
-function generateRefreshToken() {
-    const bytes = generateRandomBytes(32);
-    return Array.from(bytes)
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-}
 // ---------- 输入校验函数 ----------
 function validateEmail(email) {
     const re = /^[A-Za-z0-9\u4e00-\u9fa5]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/;
@@ -415,6 +404,33 @@ async function initDatabase(db) {
         throw err; // 向上抛出，由上层处理
     }
 }
+/**
+ * 注册一个新的 OAuth 客户端应用。
+ * 
+ * 此函数向 `oauth_clients` 表中插入一条客户端记录，用于 OAuth 2.0 授权流程。
+ * 通常在系统初始化时或通过管理后台调用。
+ * 
+ * @param {import('@cloudflare/workers-types').D1Database} db - Cloudflare D1 数据库实例
+ * @param {string} clientId - 客户端唯一标识符（由调用方生成，如 `generateToken()`）
+ * @param {string} clientSecret - 客户端密钥（用于令牌交换时的认证，应妥善保管）
+ * @param {string} name - 应用名称（显示在授权确认页面等场景）
+ * @param {string} redirectUris - 允许的回调地址，多个以逗号分隔（如 'https://app.com/callback,http://localhost:8080/callback'）
+ * @param {string} [scope='openid profile email'] - 默认请求的权限范围（空格分隔）
+ * @param {number} [trusted=0] - 是否信任该客户端（1=信任，0=不信任，影响某些安全策略，当前未使用）
+ * @returns {Promise<void>} 无返回值（插入操作异步完成）
+ * 
+ * @throws {Error} 如果客户端 ID 已存在，D1 会抛出 UNIQUE 约束错误，调用方需捕获处理。
+ * 
+ * @example
+ * // 在 initDatabase 中调用
+ * await registerOAuthClient(
+ *   db,
+ *   'app_chat',
+ *   generateToken(),
+ *   '聊天助手',
+ *   'https://chat.undz.cn/oauth/callback,http://test.undz.cn:8080/callback'
+ * );
+ */
 async function registerOAuthClient(db, clientId, clientSecret, name, redirectUris, scope = 'openid profile email', trusted = 0) {
     const now = Math.floor(Date.now() / 1000);
     await db
@@ -426,7 +442,7 @@ async function registerOAuthClient(db, clientId, clientSecret, name, redirectUri
         .run();
 }
 /**
- * 交换授权码为访问令牌（纯函数版本）
+ * 交换授权码为访问令牌
  * @param {Object} params - 参数对象
  * @param {string} params.code - 授权码
  * @param {string} params.clientId - 应用 ID
@@ -438,8 +454,6 @@ async function registerOAuthClient(db, clientId, clientSecret, name, redirectUri
  */
 export async function exchangeOAuthToken(params, env) {
     const { code, clientId, clientSecret, redirectUri, state } = params;
-
-    // 基本参数校验
     if (!code || !clientId || !clientSecret) {
         return {
             success: false,
@@ -447,8 +461,6 @@ export async function exchangeOAuthToken(params, env) {
             error_description: 'Missing required parameters'
         };
     }
-
-    // 1. 验证客户端
     const client = await env.db
         .prepare('SELECT * FROM oauth_clients WHERE client_id = ?')
         .bind(clientId)
@@ -462,7 +474,6 @@ export async function exchangeOAuthToken(params, env) {
         };
     }
 
-    // 2. 验证授权码
     const authCode = await env.db
         .prepare(
             `SELECT * FROM oauth_auth_codes 
@@ -497,13 +508,12 @@ export async function exchangeOAuthToken(params, env) {
         };
     }
 
-    // 3. 标记授权码为已使用
     await env.db
-        .prepare('UPDATE oauth_auth_codes SET used = 1 WHERE code = ?')
+        .prepare('DELETE FROM oauth_auth_codes WHERE code = ?')
         .bind(code)
         .run();
 
-    // 4. 获取用户信息
+    // 获取用户信息
     const user = await env.db
         .prepare('SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?')
         .bind(authCode.user_id)
@@ -517,7 +527,7 @@ export async function exchangeOAuthToken(params, env) {
         };
     }
 
-    // 5. 生成访问令牌
+    // 生成访问令牌
     const accessToken = await signAccessToken(
         {
             sub: user.id,
@@ -529,16 +539,16 @@ export async function exchangeOAuthToken(params, env) {
         env.JWT_KEY
     );
 
-    // 6. 生成刷新令牌
-    const refreshToken = generateRefreshToken();
+    // 生成刷新令牌
+    const refreshToken = generateToken();
     await storeRefreshToken(
         env.kv,
         refreshToken,
         user.id,
-        REFRESH_TOKEN_TTL
+        OAUTH_RREFRESH_TOKEN_TTL
     );
 
-    // 7. 返回成功结果（包含用户信息和令牌）
+    // 返回成功结果（包含用户信息和令牌）
     return {
         success: true,
         data: {
@@ -547,7 +557,6 @@ export async function exchangeOAuthToken(params, env) {
             expires_in: 900, // 15分钟
             refresh_token: refreshToken,
             scope: authCode.scope || client.scope,
-            // 额外返回用户信息，方便调用方使用
             user: {
                 id: user.id,
                 username: user.username,
@@ -829,6 +838,59 @@ export default {
             // ---------- 初始化数据库（需 Admin Key） ----------
 
             if (path.startsWith("/api/ayonline/")) {
+                if (path === "/api/ayonline/register-oauth-client" && method === "POST") {
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) {
+                        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+                    }
+                    if (user.id !== 0) {
+                        return jsonResponse({ error: "Forbidden: Admin only" }, 403, cors);
+                    }
+
+                    const body = await request.json().catch(() => null);
+                    if (!body) {
+                        return jsonResponse({ error: "Invalid JSON body" }, 400, cors);
+                    }
+
+                    const { client_id, client_secret, name, redirect_uris, scope, trusted } = body;
+                    if (!client_id || !client_secret || !name || !redirect_uris) {
+                        return jsonResponse({
+                            error: "Missing required fields: client_id, client_secret, name, redirect_uris"
+                        }, 400, cors);
+                    }
+
+                    const existing = await env.db
+                        .prepare("SELECT client_id FROM oauth_clients WHERE client_id = ?")
+                        .bind(client_id)
+                        .first();
+                    if (existing) {
+                        return jsonResponse({
+                            error: "Client ID already exists"
+                        }, 409, cors);
+                    }
+
+                    try {
+                        await registerOAuthClient(
+                            env.db,
+                            client_id,
+                            client_secret,
+                            name,
+                            redirect_uris,
+                            scope || 'openid profile email',
+                            trusted ? 1 : 0
+                        );
+                        return jsonResponse({
+                            success: true,
+                            message: "OAuth client registered successfully"
+                        }, 201, cors);
+                    } catch (err) {
+                        console.error("Register OAuth client error:", err);
+                        return jsonResponse({
+                            error: "Failed to register client",
+                            detail: err.message
+                        }, 500, cors);
+                    }
+                }
                 if (path === "/api/ayonline/init" && method === "POST") {
                     const authKey = request.headers.get("X-Admin-Key");
                     if (authKey !== env.KEY) {
@@ -1154,7 +1216,7 @@ export default {
                                     env.JWT_KEY,
                                 );
                                 // 生成刷新令牌
-                                const refreshToken = generateRefreshToken();
+                                const refreshToken = generateToken();
                                 await storeRefreshToken(
                                     env.kv,
                                     refreshToken,
