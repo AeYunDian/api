@@ -8,7 +8,7 @@ import i0undzcn from './i0.undz.cn.js';
 import i1undzcn from './i1.undz.cn.js';
 import i2undzcn from './i2.undz.cn.js';
 import onlineundzcn from './online.undz.cn.js';
-import shundzcn from './sh.undz.cn.js'
+// import shundzcn from './sh.undz.cn.js'
 const corsHeaders_GPO = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -28,6 +28,7 @@ export default {
       console.log(`Cleaned up expired consent requests`);
     } catch (error) {
       console.error('Failed to clean consent requests:', error);
+
     }
     // await triggerWorkflow(env);
   },
@@ -57,24 +58,36 @@ export default {
       if (url.pathname.toLowerCase() === "/favicon.ico") {
         return env.assets.fetch(request);
       }
+
+      // 图床服务
       if (hostname === 'i0.undz.cn') return await i0undzcn.fetch(request);
       if (hostname === 'i1.undz.cn') return await i1undzcn.fetch(request);
       if (hostname === 'i2.undz.cn') return await i2undzcn.fetch(request);
+
+      // jsdelivr 代理服务
       if (hostname === 'cdn.undz.cn') {
         return await cdnundzcn.fetch(request, env);
       }
       if (hostname === 'mail.undz.cn' || hostname === 'mail.io.hb.cn') {
         return new Response("邮件服务彻底关闭，很抱歉给您带来不便体验", { headers: corsHeaders_GPO });
       }
+
+      // 通用API服务
       if (hostname === 'api.undz.cn' || hostname === 'api.io.hb.cn') {
         return await apiundzcn.fetch(request, env);
       }
+
+      // IE8 怀旧聊天室服务
       if (hostname === 'chat.undz.cn' || hostname === 'c.undz.cn') {
         return await chatundzcn.fetch(request, env);
       }
-      if (hostname === 'sh.undz.cn') {
-        return await shundzcn.fetch(request, env);
-      }
+
+      // 班级文章服务
+      // if (hostname === 'sh.undz.cn') {
+      //   return await shundzcn.fetch(request, env);
+      // }
+
+      // AyAccount 集中服务
       if (hostname === 'online.undz.cn') {
         return await onlineundzcn.fetch(request, env);
       }

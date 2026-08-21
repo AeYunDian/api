@@ -52,6 +52,15 @@
         } else if (password.length < 6) {
             valid = false;
             msg = 'common.password_min_length';
+        } else if (password.length > 32) {
+            valid = false;
+            msg = 'common.password_max_length';
+        } else if (username.length < 4) {
+            valid = false;
+            msg = 'common.username_min_length';
+        } else if (username.length > 20) {
+            valid = false;
+            msg = 'common.username_max_length';
         } else if (!agreed) {
             valid = false;
             msg = 'common.please_read_and_agree';
@@ -89,6 +98,15 @@
         } else if (password.length < 6) {
             valid = false;
             msg = 'common.password_min_length';
+        } else if (password.length > 32) {
+            valid = false;
+            msg = 'common.password_max_length';
+        } else if (username.length < 4) {
+            valid = false;
+            msg = 'common.username_min_length';
+        } else if (username.length > 20) {
+            valid = false;
+            msg = 'common.username_max_length';
         } else if (password !== confirm) {
             valid = false;
             msg = 'common.password_mismatch';

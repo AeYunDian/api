@@ -20,9 +20,10 @@ const CHAT_DEFAULT_FILTER_WORDS = ["sb", "cnm", "fuck", "傻逼", "操你妈", "
 
 
 export async function chat_checkServiceSuspended(db) {
-  const stmt = await db.prepare(`SELECT value FROM ${CHAT_TBL_SETTING} WHERE key = 'service_suspended'`);
-  const { results } = await stmt.all();
-  return results.length > 0 && results[0].value == '1';
+  // const stmt = await db.prepare(`SELECT value FROM ${CHAT_TBL_SETTING} WHERE key = 'service_suspended'`);
+  // const { results } = await stmt.all();
+  // return results.length > 0 && results[0].value == '1';
+  return false;
 }
 
 // 检查是否包含敏感词（从数据库读取）

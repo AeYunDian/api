@@ -1,6 +1,6 @@
-'v2.0.1 AyAccountSDK';
+'v2.0.2 AyAccountSDK';
 
-const VERSION = '2.0.1';
+const VERSION = '2.0.2';
 const PRODUCE = false;
 
 // ---------- 本地南瓜种植基地 ----------//
@@ -110,12 +110,13 @@ const BUILTIN_TRANSLATIONS = {
     'agreement.and1': '、',
     'agreement.and2': '和',
     'error.1000': '邮箱格式无效',
-    'error.1001': '密码长度至少 6 位，仅允许 a-z A-Z 0-9 -_=+@#$%',
+    'error.1001': '密码长度须在6~32之间，仅允许 a-z A-Z 0-9 -_=+@#$%',
     'error.1002': '用户名或邮箱已存在',
     'error.1003': '用户名/邮箱或密码错误',
-    'error.1005': '新密码格式不合法（至少 6 位，仅允许 a-z A-Z 0-9 -_=+@#$%）',
+    'error.1005': '新密码格式不合法（长度须在6~32之间，仅允许 a-z A-Z 0-9 -_=+@#$%）',
     'error.1006': '旧密码错误',
     'error.1007': '缺少必填字段',
+    'error.1008': '用户名必须在4~20之间',
     'error.1009': '请提供用户名/邮箱和密码',
     'error.1010': '未授权，请先登录',
     'error.1011': '令牌无效或已过期',
@@ -157,6 +158,9 @@ const BUILTIN_TRANSLATIONS = {
     'common.enter_username_or_email': '请输入用户名/邮箱',
     'common.please_read_and_agree': '请您阅读并同意协议',
     'common.password_min_length': '密码至少6位',
+    'common.password_max_length': '密码最多32位',
+    'common.username_min_length': '用户名至少4位',
+    'common.username_max_length': '用户名最多20位',
     'common.enter_password': '请输入密码',
     'common.invalid_email_format': '邮箱格式不正确',
     'common.enter_username': '请输入用户名',
@@ -200,12 +204,13 @@ const BUILTIN_TRANSLATIONS = {
     'cookie_policy.link': 'https://undz.cn/cookie_policy/en-us.html',
     'terms.link': 'https://undz.cn/terms/en-us.html',
     'error.1000': 'Invalid email format',
-    'error.1001': 'Password must be at least 6 characters and contain only a-z A-Z 0-9 -_=+@#$%',
+    'error.1001': 'Password must be between 4 and 20 characters and contain only a-z A-Z 0-9 -_=+@#$%',
     'error.1002': 'Username or email already exists',
     'error.1003': 'Invalid credentials',
-    'error.1005': 'New password must be at least 6 characters and contain only a-z A-Z 0-9 -_=+@#$%',
+    'error.1005': 'New password must be between 4 and 20 characters and contain only a-z A-Z 0-9 -_=+@#$%',
     'error.1006': 'Old password is incorrect',
     'error.1007': 'Missing required fields',
+    'error.1008': 'Username must be between 4 and 20 characters',
     'error.1009': 'Username/email and password are required',
     'error.1010': 'Unauthorized, please login',
     'error.1011': 'Invalid or expired token',
@@ -244,6 +249,9 @@ const BUILTIN_TRANSLATIONS = {
     'common.enter_username_or_email': 'Please enter username/email',
     'common.please_read_and_agree': 'Please read and agree to the terms',
     'common.password_min_length': 'Password must be at least 6 characters',
+    'common.password_max_length': 'Password must be at most 32 characters',
+    'common.username_min_length': 'Username must be at least 4 characters',
+    'common.username_max_length': 'Username must be at most 20 characters',
     'common.enter_password': 'Please enter your password',
     'common.no_account_register': 'No account? Sign up',
     'common.have_account_login': 'Already have an account? Log in',
@@ -290,12 +298,13 @@ const BUILTIN_TRANSLATIONS = {
     'agreement.and1': '、',
     'agreement.and2': '和',
     'error.1000': '電郵格式無效',
-    'error.1001': '密碼長度至少 6 位，僅允許 a-z A-Z 0-9 -_=+@#$%',
+    'error.1001': '密碼長度在6~32之间，僅允許 a-z A-Z 0-9 -_=+@#$%',
     'error.1002': '用戶名或電郵已存在',
     'error.1003': '用戶名/電郵或密碼錯誤',
-    'error.1005': '新密碼格式不合法（至少 6 位，僅允許 a-z A-Z 0-9 -_=+@#$%）',
+    'error.1005': '新密碼格式不合法（在6~32之间，僅允許 a-z A-Z 0-9 -_=+@#$%）',
     'error.1006': '舊密碼錯誤',
     'error.1007': '缺少必填欄位',
+    'error.1008': '用戶名长度需要在4~20之间',
     'error.1009': '請提供用戶名/電郵和密碼',
     'error.1010': '未授權，請先登錄',
     'error.1011': '令牌無效或已過期',
@@ -333,6 +342,9 @@ const BUILTIN_TRANSLATIONS = {
     'common.enter_username_or_email': '請輸入用戶名/電郵',
     'common.please_read_and_agree': '請您閱讀並同意協議',
     'common.password_min_length': '密碼至少6位',
+    'common.password_max_length': '密碼最多6位',
+    'common.username_min_length': '用戶名至少4位',
+    'common.username_max_length': '用戶名最多20位',
     'common.enter_password': '請輸入密碼',
     'common.invalid_email_format': '電郵格式不正確',
     'common.enter_username': '請輸入用戶名',
@@ -355,9 +367,7 @@ const BUILTIN_TRANSLATIONS = {
   },
 };
 function isMobile() {
-  const userAgentInfo = navigator.userAgent;
-  const mobileAgents = ["Android", "iPhone", "SymbianOS", "Windows Phone", "iPad", "iPod"];
-  return mobileAgents.some(agent => userAgentInfo.includes(agent));
+  return window.innerWidth < 768;
 }
 // ---------- 工具函数 ----------
 function utf8ToBase64(str) {

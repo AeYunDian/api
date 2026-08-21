@@ -6,12 +6,12 @@
 
 import { SignJWT, jwtVerify } from "jose";
 import { serialize, parse } from "cookie";
-import { base64ToUtf8, generateToken, generateRandomBytes } from "./utils.js";
+import { base64ToUtf8, generateToken, generateRandomBytes, getMainPage } from "./utils.js";
 import { handleVerifyCode } from "./mail_verify/verify.js";
 import { REG_TEMPLATE, handleSendVerification } from "./mail_verify/send.js";
 
 // ---------- 常量与配置 ----------
-const SDK_VER = "2.0.1";
+const SDK_VER = "2.0.2";
 const JWT_ALG = "HS256";
 const ACCESS_TOKEN_EXPIRES_IN = "15m"; // 访问令牌有效期
 const OAUTH_TOKEN_EXPIRES_IN = 300; // Oauth token 有效期 5m
@@ -20,7 +20,11 @@ const OAUTH_RREFRESH_TOKEN_TTL = 60 * 60 * 24 * 15; // OAuth客户端刷新令�
 const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_HASH = "SHA-256";
 const SALT_LENGTH = 16; // 字节
+const DEFAULT_OAUTH_CLIENT_SCOPE = 'openid profile email'
 const MIN_PASSWORD_LENGTH = 6;
+const MAX_PASSWORD_LENGTH = 32;
+const MIN_USERNAME_LENGTH = 4;
+const MAX_USERNAME_LENGTH = 20;
 const VERIFY_CODE_EXPDATA = 300;
 export const TAG_LOGGEDIN = "logged_in";
 export const TAG_NOT_LOGGEDIN = "not_logged_in";
@@ -253,7 +257,7 @@ function validateEmail(email) {
 function validatePassword(password) {
     const allowed = /^[a-zA-Z0-9\-_=+@#$%]+$/;
     if (!allowed.test(password)) return false;
-    if (password.length < MIN_PASSWORD_LENGTH) return false;
+    if (password.length < MIN_PASSWORD_LENGTH & password.length > MAX_PASSWORD_LENGTH) return false;
     return true;
 }
 function jsonResponse(data, status = 200, extraHeaders = {}) {
@@ -337,7 +341,7 @@ async function initDatabase(db) {
                 client_secret TEXT NOT NULL,
                 name TEXT NOT NULL,
                 redirect_uris TEXT NOT NULL,
-                scope TEXT DEFAULT 'openid profile email',
+                scope TEXT DEFAULT ${DEFAULT_OAUTH_CLIENT_SCOPE},
                 trusted BOOLEAN DEFAULT 0,
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL
@@ -396,7 +400,7 @@ async function initDatabase(db) {
             await db.prepare(`
                 INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, scope, trusted, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `).bind('app_chat', generateToken(), '聊天助手', 'https://chat.undz.cn/oauth/callback,http://test.undz.cn:8080/callback', 'openid profile email', 0, now, now).run();
+            `).bind('app_chat', generateToken(), '聊天助手', 'https://chat.undz.cn/oauth/callback,http://test.undz.cn:8080/callback', DEFAULT_OAUTH_CLIENT_SCOPE, 0, now, now).run();
         }
         return { success: true, message: 'Database initialized' };
     } catch (err) {
@@ -415,7 +419,7 @@ async function initDatabase(db) {
  * @param {string} clientSecret - 客户端密钥（用于令牌交换时的认证，应妥善保管）
  * @param {string} name - 应用名称（显示在授权确认页面等场景）
  * @param {string} redirectUris - 允许的回调地址，多个以逗号分隔（如 'https://app.com/callback,http://localhost:8080/callback'）
- * @param {string} [scope='openid profile email'] - 默认请求的权限范围（空格分隔）
+ * @param {string} [scope=DEFAULT_OAUTH_CLIENT_SCOPE] - 默认请求的权限范围（空格分隔）
  * @param {number} [trusted=0] - 是否信任该客户端（1=信任，0=不信任，影响某些安全策略，当前未使用）
  * @returns {Promise<void>} 无返回值（插入操作异步完成）
  * 
@@ -431,7 +435,7 @@ async function initDatabase(db) {
  *   'https://chat.undz.cn/oauth/callback,http://test.undz.cn:8080/callback'
  * );
  */
-async function registerOAuthClient(db, clientId, clientSecret, name, redirectUris, scope = 'openid profile email', trusted = 0) {
+async function registerOAuthClient(db, clientId, clientSecret, name, redirectUris, scope = DEFAULT_OAUTH_CLIENT_SCOPE, trusted = 0) {
     const now = Math.floor(Date.now() / 1000);
     await db
         .prepare(
@@ -440,6 +444,76 @@ async function registerOAuthClient(db, clientId, clientSecret, name, redirectUri
         )
         .bind(clientId, clientSecret, name, redirectUris, scope, trusted, now, now)
         .run();
+}
+/**
+ * 使用 refresh_token 刷新访问令牌
+ * @param {string} refreshToken - 刷新令牌
+ * @param {string} clientId - 客户端 ID
+ * @param {string} clientSecret - 客户端密钥
+ * @param {Env} env - 环境
+ * @returns {Promise<Object>} 返回新令牌或错误
+ */
+async function refreshAccessToken(refreshToken, clientId, clientSecret, env) {
+    const client = await env.db
+        .prepare('SELECT * FROM oauth_clients WHERE client_id = ?')
+        .bind(clientId)
+        .first();
+    if (!client || client.client_secret !== clientSecret) {
+        return {
+            success: false,
+            error: 'invalid_client',
+            error_description: 'Invalid client credentials'
+        };
+    }
+
+    const userId = await getUserIdFromRefreshToken(env.kv, refreshToken);
+    if (!userId) {
+        return {
+            success: false,
+            error: 'invalid_grant',
+            error_description: 'Invalid or expired refresh token'
+        };
+    }
+
+    const user = await env.db
+        .prepare('SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?')
+        .bind(userId)
+        .first();
+    if (!user) {
+        await deleteRefreshToken(env.kv, refreshToken);
+        return {
+            success: false,
+            error: 'invalid_grant',
+            error_description: 'User not found'
+        };
+    }
+
+    if (user.banned === 1) {
+        const banReason = user.ban_reason || null;
+        return {
+            success: false,
+            error: 'access_denied',
+            error_description: `User account is banned. Reason: ${banReason}.  You can read ban_reason to get full message.`,
+            ban_reason: banReason
+        };
+    }
+
+    // 生成新的 access_token
+    const newAccessToken = await signAccessToken(
+        { sub: user.id, username: user.username, email: user.email },
+        env.JWT_KEY
+    );
+
+    // 返回响应
+    return {
+        success: true,
+        data: {
+            access_token: newAccessToken,
+            token_type: 'Bearer',
+            expires_in: 900,
+            scope: client.scope
+        }
+    };
 }
 /**
  * 交换授权码为访问令牌
@@ -526,7 +600,15 @@ export async function exchangeOAuthToken(params, env) {
             error_description: 'User not found'
         };
     }
-
+    if (user.banned === 1) {
+        const banReason = user.ban_reason || null;
+        return {
+            success: false,
+            error: 'access_denied',
+            error_description: `User account is banned. Reason: ${banReason}. You can read ban_reason to get full message.`,
+            ban_reason: banReason
+        };
+    }
     // 生成访问令牌
     const accessToken = await signAccessToken(
         {
@@ -548,22 +630,26 @@ export async function exchangeOAuthToken(params, env) {
         OAUTH_RREFRESH_TOKEN_TTL
     );
 
-    // 返回成功结果（包含用户信息和令牌）
+    const scopes = (authCode.scope || '').split(' ').filter(s => s);
+    const userData = { id: user.id };
+    // 仅当请求了 profile 或 openid scope 时才返回 username
+    if (scopes.includes('profile') || scopes.includes('openid')) {
+        userData.username = user.username;
+    }
+    // 仅当请求了 email scope 时才返回 email
+    if (scopes.includes('email')) {
+        userData.email = user.email;
+    }
+
     return {
         success: true,
         data: {
             access_token: accessToken,
             token_type: 'Bearer',
-            expires_in: 900, // 15分钟
+            expires_in: 900,
             refresh_token: refreshToken,
             scope: authCode.scope || client.scope,
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                banned: user.banned === 1,
-                ban_reason: user.ban_reason || ''
-            }
+            user: userData
         }
     };
 }
@@ -598,6 +684,15 @@ async function registerUser(db, username, email, password) {
             error_code: 1001,
             message:
                 "Password must be at least 6 characters and contain only a-z A-Z 0-9 -_=+@#$%",
+        };
+    }
+    if (username.length < MIN_USERNAME_LENGTH || username.length > MAX_USERNAME_LENGTH) {
+        return {
+            success: false,
+            action: "register",
+            code: 400,
+            error_code: 1008,
+            message: "Username must be between 4 and 20 characters"
         };
     }
     const existing = await db
@@ -843,7 +938,7 @@ export default {
                     if (authStatus !== TAG_LOGGEDIN) {
                         return jsonResponse({ error: "Unauthorized" }, 401, cors);
                     }
-                    if (user.id !== 0) {
+                    if (user.id !== 1) {
                         return jsonResponse({ error: "Forbidden: Admin only" }, 403, cors);
                     }
 
@@ -876,7 +971,7 @@ export default {
                             client_secret,
                             name,
                             redirect_uris,
-                            scope || 'openid profile email',
+                            scope || DEFAULT_OAUTH_CLIENT_SCOPE,
                             trusted ? 1 : 0
                         );
                         return jsonResponse({
@@ -1619,21 +1714,21 @@ export default {
                         },
                     );
                 }
-                return jsonResponse(
-                    { action: "refresh", error: "API not found", error_code: 404 },
-                    404,
-                    cors,
-                );
+                return new Response(
+                    getMainPage("Ay Account Center", "<h1>404 Not Found</h1>",
+                        "<p>The page you are looking for cannot be found, please check and try again.</p>"),
+                    {
+                        status: 404, headers: { 'Content-Type': 'text/html', ...cors }
+                    });
             }
             if (path.startsWith("/api/oauth/")) {
-                // 开发中
                 if (path === "/api/oauth/authorize" && method === 'GET') {
                     const query = url.searchParams;
                     const clientId = query.get('client_id');
                     const redirectUri = query.get('redirect_uri');
                     const responseType = query.get('response_type');
                     const state = query.get('state') || '';
-                    const scope = query.get('scope') || 'openid profile email';
+                    const scope = query.get('scope') || DEFAULT_OAUTH_CLIENT_SCOPE;
 
                     if (!clientId || !redirectUri || responseType !== 'code') {
                         const errorUrl = new URL('/oauth2/invalid_request', url.origin);
@@ -1734,41 +1829,115 @@ export default {
                     }
                 }
                 if (path === "/api/oauth/token" && method === 'POST') {
-                    if (path === "/api/oauth/token" && method === 'POST') {
-                        const contentType = request.headers.get('Content-Type') || '';
-                        let body;
-                        if (contentType.includes('application/json')) {
-                            body = await request.json().catch(() => null);
-                        } else {
-                            const formData = await request.formData();
-                            body = {};
-                            for (const [key, value] of formData.entries()) {
-                                body[key] = value;
-                            }
+                    const contentType = request.headers.get('Content-Type') || '';
+                    let body;
+                    if (contentType.includes('application/json')) {
+                        body = await request.json().catch(() => null);
+                    } else {
+                        const formData = await request.formData();
+                        body = {};
+                        for (const [key, value] of formData.entries()) {
+                            body[key] = value;
                         }
+                    }
+                    if (!body) {
+                        return jsonResponse({ error: 'invalid_request' }, 400, cors);
+                    }
 
-                        if (!body) {
-                            return jsonResponse({ error: 'invalid_request' }, 400, cors);
-                        }
+                    const grantType = body.grant_type;
+                    const clientId = body.client_id;
+                    const clientSecret = body.client_secret;
 
+                    if (grantType === 'authorization_code') {
                         const result = await exchangeOAuthToken({
                             code: body.code,
-                            clientId: body.client_id,
-                            clientSecret: body.client_secret,
+                            clientId,
+                            clientSecret,
                             redirectUri: body.redirect_uri,
                             state: body.state || null
                         }, env);
-
                         if (!result.success) {
-                            return jsonResponse(
-                                { error: result.error, error_description: result.error_description },
-                                result.error === 'invalid_client' ? 401 : 400,
-                                cors
-                            );
+                            // 构建基础错误体
+                            const errorBody = {
+                                error: result.error,
+                                error_description: result.error_description
+                            };
+                            if (result.ban_reason) {
+                                errorBody.ban_reason = result.ban_reason;
+                            }
+                            // 根据错误类型选择合适的 HTTP 状态码
+                            let statusCode = 400;
+                            if (result.error === 'invalid_client') {
+                                statusCode = 401;
+                            } else if (result.error === 'access_denied') {
+                                statusCode = 403;  // 封禁时使用 403 Forbidden
+                            }
+                            return jsonResponse(errorBody, statusCode, cors);
                         }
-
                         return jsonResponse(result.data, 200, cors);
                     }
+                    else if (grantType === 'refresh_token') {
+                        const refreshToken = body.refresh_token;
+                        if (!refreshToken) {
+                            return jsonResponse({ error: 'invalid_request', error_description: 'Missing refresh_token' }, 400, cors);
+                        }
+                        const result = await refreshAccessToken(refreshToken, clientId, clientSecret, env);
+                        if (!result.success) {
+                            const errorBody = {
+                                error: result.error,
+                                error_description: result.error_description
+                            };
+                            if (result.ban_reason) {
+                                errorBody.ban_reason = result.ban_reason;
+                            }
+                            let statusCode = 400;
+                            if (result.error === 'invalid_client') {
+                                statusCode = 401;
+                            } else if (result.error === 'access_denied') {
+                                statusCode = 403;
+                            }
+                            return jsonResponse(errorBody, statusCode, cors);
+                        }
+                        return jsonResponse(result.data, 200, cors);
+                    }
+                    else {
+                        return jsonResponse({ error: 'unsupported_grant_type' }, 400, cors);
+                    }
+                }
+                if (path === "/api/oauth/user/profile" && method === "GET") {
+                    const result = await verifyBearerToken(request, env);
+                    if (!result.valid) {
+                        return jsonResponse({ error: result.error }, 401, cors);
+                    }
+                    const scopeList = (result.user.scope || '').split(' ');
+                    if (!scopeList.includes('profile') && !scopeList.includes('openid')) {
+                        return jsonResponse({
+                            error: 'insufficient_scope',
+                            error_description: 'Missing required scope: profile or openid'
+                        }, 403, cors);
+                    }
+                    return jsonResponse({
+                        id: result.user.id,
+                        username: result.user.username,
+                        // 此处可扩展
+                    }, 200, cors);
+                }
+
+                if (path === "/api/oauth/user/email" && method === "GET") {
+                    const result = await verifyBearerToken(request, env);
+                    if (!result.valid) {
+                        return jsonResponse({ error: result.error }, 401, cors);
+                    }
+                    const scopeList = (result.user.scope || '').split(' ');
+                    if (!scopeList.includes('email')) {
+                        return jsonResponse({
+                            error: 'insufficient_scope',
+                            error_description: 'Missing required scope: email'
+                        }, 403, cors);
+                    }
+                    return jsonResponse({
+                        email: result.user.email
+                    }, 200, cors);
                 }
                 if (path === "/api/oauth/consent-data" && method === "GET") {
                     const requestId = url.searchParams.get('request_id');
@@ -1858,6 +2027,14 @@ export default {
                     }
                     return jsonResponse({ valid: true, user: result.user }, 200, cors);
                 }
+
+                return new Response(
+                    getMainPage("Ay OAuth2.0 Center", "<h1>404 Not Found</h1>",
+                        "<p>The page you are looking for cannot be found, please check and try again.</p>"),
+                    {
+                        status: 404, headers: { 'Content-Type': 'text/html', ...cors }
+                    });
+
             }
             return env.assets.fetch(request);
         } catch (error) {

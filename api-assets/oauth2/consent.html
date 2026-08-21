@@ -40,7 +40,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: start;
         }
 
         .left h1 {
@@ -83,7 +83,8 @@
         }
 
         .right .scope-list li::before {
-            content: "✓";
+            content: "•";
+            font-size: 18px;
             color: #6750A4;
             font-weight: bold;
             margin-right: 12px;
@@ -100,6 +101,13 @@
             margin-top: 16px;
         }
 
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+            box-shadow: none;
+        }
+
         .btn {
             padding: 10px 32px;
             border-radius: 100px;
@@ -107,7 +115,7 @@
             font-weight: 500;
             text-decoration: none;
             display: inline-block;
-            transition: background 0.2s, box-shadow 0.2s;
+            transition: background 0.2s, box-shadow 0.2s, opacity 0.2s;
             cursor: pointer;
             border: none;
             background: transparent;
@@ -119,7 +127,7 @@
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: #4F378A;
             box-shadow: 0 2px 6px rgba(103, 80, 164, 0.3);
         }
@@ -129,7 +137,7 @@
             border: 1px solid #6750A4;
         }
 
-        .btn-secondary:hover {
+        .btn-secondary:hover:not(:disabled) {
             background: #F6EDFF;
         }
 
@@ -161,12 +169,21 @@
         .error-msg {
             color: #b3261e;
             margin-top: 16px;
-            text-align: center;
         }
 
         .loading {
             text-align: center;
             color: #6750A4;
+        }
+
+        .reload-actions {
+            display: none;
+            justify-content: center;
+            margin-top: 16px;
+        }
+
+        .reload-actions .btn {
+            min-width: 120px;
         }
     </style>
 </head>
@@ -175,30 +192,61 @@
     <div class="container" id="consentContainer">
         <div class="left">
             <h1>授权确认</h1>
-            <p>应用 <strong id="appName"></strong> 请求以下权限：</p>
+            <p>应用 <strong id="appName">未知</strong> 请求以下权限：</p>
             <div id="errorMsg" class="error-msg"></div>
         </div>
         <div class="right">
             <ul class="scope-list" id="scopeList"></ul>
-            <div class="actions">
+            <div class="actions" id="actionButtons">
                 <button id="denyBtn" class="btn btn-secondary">拒绝</button>
                 <button id="approveBtn" class="btn btn-primary">同意</button>
             </div>
-
+            <div class="reload-actions" id="reloadActions">
+                <button id="reloadBtn" class="btn btn-primary">重载</button>
+            </div>
         </div>
     </div>
     <script>
         (function () {
+            function showReload() {
+                document.getElementById('actionButtons').style.display = 'none';
+                document.getElementById('reloadActions').style.display = 'flex';
+            }
+            document.getElementById('reloadBtn').addEventListener('click', function () {
+                window.location.href = window.location.href + (window.location.href.includes('?') ? '&' : '?') +
+                    '_t=' + Date.now();
+            });
+            const approveBtn = document.getElementById('approveBtn');
+            const denyBtn = document.getElementById('denyBtn');
+            function disableButtons() {
+                approveBtn.disabled = true;
+                denyBtn.disabled = true;
+            }
+
+            function enableButtons() {
+                approveBtn.disabled = false;
+                denyBtn.disabled = false;
+            }
+            disableButtons();
             const params = new URLSearchParams(window.location.search);
             const requestId = params.get('request_id');
             if (!requestId) {
                 document.getElementById('errorMsg').textContent = '缺少授权请求标识，请重试。';
+                showReload();
                 return;
             }
-
             let consentToken = '';
+            const scopeMap = {
+                'openid': '获取您的身份标识 (OpenID)',
+                'profile': '获取您的个人资料 (昵称、头像等)',
+                'email': '获取您的电子邮箱地址',
+                'phone': '获取您的手机号码',
+                'address': '获取您的地址信息',
+            };
+            function getScopeDescription(scope) {
+                return scopeMap[scope] || scope;
+            }
 
-            // 获取授权数据
             async function fetchConsentData() {
                 const res = await fetch('/api/oauth/consent-data?request_id=' + encodeURIComponent(requestId), {
                     credentials: 'include'
@@ -209,12 +257,9 @@
                 }
                 return res.json();
             }
-
-            // 处理同意
             async function approve() {
-                const btn = document.getElementById('approveBtn');
-                btn.disabled = true;
-                btn.textContent = '处理中...';
+                disableButtons();
+                approveBtn.textContent = '处理中...';
                 try {
                     const res = await fetch('/api/oauth/consent/approve', {
                         method: 'POST',
@@ -227,21 +272,16 @@
                         window.location.href = data.redirect_url;
                     } else {
                         document.getElementById('errorMsg').textContent = data.error || '授权失败，请重试';
-                        btn.disabled = false;
-                        btn.textContent = '同意';
+                        showReload();
                     }
                 } catch (err) {
                     document.getElementById('errorMsg').textContent = '网络错误，请重试';
-                    btn.disabled = false;
-                    btn.textContent = '同意';
+                    showReload();
                 }
             }
-
-            // 处理拒绝
             async function deny() {
-                const btn = document.getElementById('denyBtn');
-                btn.disabled = true;
-                btn.textContent = '处理中...';
+                disableButtons();
+                denyBtn.textContent = '处理中...';
                 try {
                     const res = await fetch('/api/oauth/consent/deny', {
                         method: 'POST',
@@ -254,13 +294,11 @@
                         window.location.href = data.redirect_url;
                     } else {
                         document.getElementById('errorMsg').textContent = data.error || '拒绝失败，请重试';
-                        btn.disabled = false;
-                        btn.textContent = '拒绝';
+                        showReload();
                     }
                 } catch (err) {
                     document.getElementById('errorMsg').textContent = '网络错误，请重试';
-                    btn.disabled = false;
-                    btn.textContent = '拒绝';
+                    showReload();
                 }
             }
 
@@ -276,15 +314,17 @@
                 } else {
                     scopes.forEach(s => {
                         const li = document.createElement('li');
-                        li.textContent = s; // 可改进为友好描述
+                        li.textContent = getScopeDescription(s);
                         scopeList.appendChild(li);
                     });
                 }
                 consentToken = data.consent_token || '';
-                document.getElementById('approveBtn').onclick = approve;
-                document.getElementById('denyBtn').onclick = deny;
+                approveBtn.onclick = approve;
+                denyBtn.onclick = deny;
+                enableButtons();
             }).catch(err => {
                 document.getElementById('errorMsg').textContent = err.message || '加载失败';
+                showReload();
             });
         })();
     </script>
