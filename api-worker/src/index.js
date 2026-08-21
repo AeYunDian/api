@@ -19,17 +19,16 @@ const corsHeaders_GPO = {
 
 export default {
   async scheduled(controller, env) {
-    try {
-      await env.db.exec(`
-                DELETE FROM oauth_consent_requests 
-                WHERE expires_at < UNIXEPOCH() 
-                OR status != 'pending'
-            `);
-      console.log(`Cleaned up expired consent requests`);
-    } catch (error) {
-      console.error('Failed to clean consent requests:', error);
-
-    }
+    // try {
+    //   await env.db.exec(`
+    //             DELETE FROM oauth_consent_requests 
+    //             WHERE expires_at < UNIXEPOCH() 
+    //             OR status != 'pending'
+    //         `);
+    //   console.log(`Cleaned up expired consent requests`);
+    // } catch (error) {
+    //   console.error('Failed to clean consent requests:', error);
+    // }
     // await triggerWorkflow(env);
   },
 

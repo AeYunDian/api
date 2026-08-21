@@ -257,7 +257,7 @@ function validateEmail(email) {
 function validatePassword(password) {
     const allowed = /^[a-zA-Z0-9\-_=+@#$%]+$/;
     if (!allowed.test(password)) return false;
-    if (password.length < MIN_PASSWORD_LENGTH & password.length > MAX_PASSWORD_LENGTH) return false;
+    if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) return false;
     return true;
 }
 function jsonResponse(data, status = 200, extraHeaders = {}) {
@@ -1784,48 +1784,46 @@ export default {
                         });
                     }
                     if (authStatus === TAG_LOGGEDIN) {
-                        const requestId = generateToken(); // 假设已有此函数
-                        const consentToken = generateToken();
-                        const now = Math.floor(Date.now() / 1000);
-                        const expiresAt = now + 300; // 5分钟有效期
+                        const clientScopeArray = (client.scope || DEFAULT_OAUTH_CLIENT_SCOPE).split(' ').filter(s => s);
+                        const requestScopeArray = scope.split(' ').filter(s => s);
+                        let finalScopeArray = requestScopeArray.filter(s => clientScopeArray.includes(s));
+                        if (finalScopeArray.length === 0) {
+                            finalScopeArray = clientScopeArray;
+                        }
+                        const finalScope = finalScopeArray.join(' ');
+                        if (client.trusted === 1) {
+                            const code = generateToken();
+                            const expiresAt = Math.floor(Date.now() / 1000) + OAUTH_TOKEN_EXPIRES_IN;
+                            await env.db.prepare(
+                                `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, state, expires_at, used)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
+                            ).bind(code, clientId, user.id, redirectUri, finalScope, state, expiresAt).run();
 
-                        // 2. 存入 D1
-                        await env.db.prepare(
-                            `INSERT INTO oauth_consent_requests 
-         (id, client_id, redirect_uri, scope, state, user_id, created_at, expires_at, status, consent_token)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`
-                        ).bind(requestId, clientId, redirectUri, scope, state, user.id, now, expiresAt, consentToken).run();
+                            const redirectUrl = new URL(redirectUri);
+                            redirectUrl.searchParams.set('code', code);
+                            if (state) redirectUrl.searchParams.set('state', state);
+                            return new Response(null, {
+                                status: 302,
+                                headers: { Location: redirectUrl.toString(), ...cors }
+                            });
+                        } else {
+                            const requestId = generateToken();
+                            const consentToken = generateToken();
+                            const now = Math.floor(Date.now() / 1000);
+                            const expiresAt = now + 300;
+                            await env.db.prepare(
+                                `INSERT INTO oauth_consent_requests 
+             (id, client_id, redirect_uri, scope, state, user_id, created_at, expires_at, status, consent_token)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`
+                            ).bind(requestId, clientId, redirectUri, finalScope, state, user.id, now, expiresAt, consentToken).run();
 
-                        // 3. 重定向到确认页面
-                        const consentUrl = new URL('/oauth2/consent', url.origin);
-                        consentUrl.searchParams.set('request_id', requestId);
-                        return new Response(null, {
-                            status: 302,
-                            headers: { Location: consentUrl.toString(), ...cors }
-                        });
-
-
-
-                        //             const code = generateToken();
-                        //             const expiresAt = Math.floor(Date.now() / 1000) + OAUTH_TOKEN_EXPIRES_IN;
-
-                        //             await env.db
-                        //                 .prepare(
-                        //                     `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, state, expires_at, used)
-                        //  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-                        //                 )
-                        //                 .bind(code, clientId, user.id, redirectUri, scope, state, expiresAt, 0)
-                        //                 .run();
-
-                        //             // 3. 重定向回客户端
-                        //             const redirectUrl = new URL(redirectUri);
-                        //             redirectUrl.searchParams.set('code', code);
-                        //             if (state) redirectUrl.searchParams.set('state', state);
-
-                        //             return new Response(null, {
-                        //                 status: 302,
-                        //                 headers: { Location: redirectUrl.toString(), ...cors }
-                        //             });
+                            const consentUrl = new URL('/oauth2/consent', url.origin);
+                            consentUrl.searchParams.set('request_id', requestId);
+                            return new Response(null, {
+                                status: 302,
+                                headers: { Location: consentUrl.toString(), ...cors }
+                            });
+                        }
                     }
                 }
                 if (path === "/api/oauth/token" && method === 'POST') {
@@ -1989,8 +1987,7 @@ export default {
          VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
                     ).bind(code, req.client_id, user.id, req.redirect_uri, req.scope, req.state, expiresAt).run();
 
-                    // 更新请求状态（可删除或标记）
-                    await env.db.prepare(`UPDATE oauth_consent_requests SET status = 'approved' WHERE id = ?`).bind(requestId).run();
+                    await env.db.prepare(`DELETE FROM oauth_consent_requests WHERE id = ?`).bind(requestId).run();
 
                     const redirectUrl = new URL(req.redirect_uri);
                     redirectUrl.searchParams.set('code', code);
@@ -2011,9 +2008,7 @@ export default {
                     ).bind(requestId, consentToken, Math.floor(Date.now() / 1000)).first();
                     if (!req) return jsonResponse({ error: 'invalid_request' }, 400, cors);
                     if (req.user_id !== user.id) return jsonResponse({ error: 'forbidden' }, 403, cors);
-
-                    // 标记拒绝
-                    await env.db.prepare(`UPDATE oauth_consent_requests SET status = 'denied' WHERE id = ?`).bind(requestId).run();
+                    await env.db.prepare(`DELETE FROM oauth_consent_requests WHERE id = ?`).bind(requestId).run();
 
                     const redirectUrl = new URL(req.redirect_uri);
                     redirectUrl.searchParams.set('error', 'access_denied');
