@@ -325,11 +325,10 @@ async function verifyAccessToken(token, secret) {
 
 // ---------- 数据库操作 ----------
 async function initDatabase(db) {
-    // 分别执行每条 DDL
-    await db
-        .prepare(
-            `
-        CREATE TABLE IF NOT EXISTS online_users (
+    try {
+        await db
+            .prepare(
+                `CREATE TABLE IF NOT EXISTS online_users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
@@ -339,13 +338,11 @@ async function initDatabase(db) {
             updated_at INTEGER NOT NULL,
             banned INTEGER DEFAULT 0,
             ban_reason TEXT DEFAULT ''
-        )
-    `,
-        )
-        .run();
-    await db
-        .prepare(
-            `CREATE TABLE IF NOT EXISTS oauth_clients (
+        )`,
+            ).run();
+        await db
+            .prepare(
+                `CREATE TABLE IF NOT EXISTS oauth_clients (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 client_id TEXT UNIQUE NOT NULL,
                 client_secret TEXT NOT NULL,
@@ -356,12 +353,11 @@ async function initDatabase(db) {
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL
             )`
-        )
-        .run();
+            ).run();
 
-    await db
-        .prepare(
-            `CREATE TABLE IF NOT EXISTS oauth_auth_codes (
+        await db
+            .prepare(
+                `CREATE TABLE IF NOT EXISTS oauth_auth_codes (
                 code TEXT PRIMARY KEY,
                 client_id TEXT NOT NULL,
                 user_id INTEGER NOT NULL,
@@ -371,10 +367,9 @@ async function initDatabase(db) {
                 expires_at INTEGER NOT NULL,
                 used BOOLEAN DEFAULT 0
             )`
-        )
-        .run();
-    // 在 initDatabase 函数中，其他 CREATE TABLE 之后添加：
-    await db.exec(`
+            ).run();
+        await db
+            .prepare(`
     CREATE TABLE IF NOT EXISTS oauth_consent_requests (
         id TEXT PRIMARY KEY,
         client_id TEXT NOT NULL,
@@ -386,26 +381,39 @@ async function initDatabase(db) {
         expires_at INTEGER NOT NULL,
         status TEXT DEFAULT 'pending',
         consent_token TEXT NOT NULL
-    )
-`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_consent_requests_expires ON oauth_consent_requests(expires_at)`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_consent_requests_status ON oauth_consent_requests(status)`);
-    await db
-        .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_codes_used ON oauth_auth_codes(used)`)
-        .run();
-    await db
-        .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_codes_expires ON oauth_auth_codes(expires_at)`)
-        .run();
-    await db
-        .prepare(
-            `CREATE INDEX IF NOT EXISTS idx_username ON online_users(username)`,
-        )
-        .run();
-
-    await db
-        .prepare(`CREATE INDEX IF NOT EXISTS idx_email ON online_users(email)`)
-        .run();
-    await registerOAuthClient(db, 'app_chat', generateToken(), '聊天助手', 'https://chat.undz.cn/oauth/callback,http://test.undz.cn:8080/callback');
+    )`).run();
+        await db
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_consent_requests_expires ON oauth_consent_requests(expires_at)`)
+            .run();
+        await db
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_consent_requests_status ON oauth_consent_requests(status)`)
+            .run();
+        await db
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_codes_used ON oauth_auth_codes(used)`)
+            .run();
+        await db
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_codes_expires ON oauth_auth_codes(expires_at)`)
+            .run();
+        await db
+            .prepare(
+                `CREATE INDEX IF NOT EXISTS idx_username ON online_users(username)`)
+            .run();
+        await db
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_email ON online_users(email)`)
+            .run();
+        const clientExists = await db.prepare(`SELECT COUNT(*) as cnt FROM oauth_clients WHERE client_id = 'app_chat'`).first();
+        if (!clientExists || clientExists.cnt === 0) {
+            const now = Math.floor(Date.now() / 1000);
+            await db.prepare(`
+                INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, scope, trusted, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind('app_chat', generateToken(), '聊天助手', 'https://chat.undz.cn/oauth/callback,http://test.undz.cn:8080/callback', 'openid profile email', 0, now, now).run();
+        }
+        return { success: true, message: 'Database initialized' };
+    } catch (err) {
+        console.error('initDatabase error:', err);
+        throw err; // 向上抛出，由上层处理
+    }
 }
 async function registerOAuthClient(db, clientId, clientSecret, name, redirectUris, scope = 'openid profile email', trusted = 0) {
     const now = Math.floor(Date.now() / 1000);
@@ -826,12 +834,19 @@ export default {
                     if (authKey !== env.KEY) {
                         return jsonResponse({ error: "Unauthorized" }, 401, cors);
                     }
-                    await initDatabase(env.db);
-                    return jsonResponse(
-                        { success: true, message: "Database initialized" },
-                        200,
-                        cors,
-                    );
+                    try {
+                        await initDatabase(env.db);
+                        return jsonResponse({ success: true, message: "Database initialized" }, 200, cors);
+                    } catch (err) {
+                        console.error('Init failed:', err);
+                        // 返回更详细的错误信息便于调试
+                        return jsonResponse({
+                            success: false,
+                            error: 'Database initialization failed',
+                            detail: err.message,
+                            stack: err.stack
+                        }, 500, cors);
+                    }
                 }
 
                 const appId = request.headers.get("X-App-Id") || "";
