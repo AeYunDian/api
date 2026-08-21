@@ -373,7 +373,23 @@ async function initDatabase(db) {
             )`
         )
         .run();
-
+    // 在 initDatabase 函数中，其他 CREATE TABLE 之后添加：
+    await db.exec(`
+    CREATE TABLE IF NOT EXISTS oauth_consent_requests (
+        id TEXT PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        redirect_uri TEXT NOT NULL,
+        scope TEXT,
+        state TEXT,
+        user_id INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        status TEXT DEFAULT 'pending',
+        consent_token TEXT NOT NULL
+    )
+`);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_consent_requests_expires ON oauth_consent_requests(expires_at)`);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_consent_requests_status ON oauth_consent_requests(status)`);
     await db
         .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_codes_used ON oauth_auth_codes(used)`)
         .run();
@@ -401,43 +417,44 @@ async function registerOAuthClient(db, clientId, clientSecret, name, redirectUri
         .bind(clientId, clientSecret, name, redirectUris, scope, trusted, now, now)
         .run();
 }
-export async function exchangeOAuthToken(request, env) {
-    const cors = corsHeaders(request);
-    // OAuth 2.0 标准要求使用 application/x-www-form-urlencoded
-    const contentType = request.headers.get('Content-Type') || '';
-    let body;
-    if (contentType.includes('application/json')) {
-        body = await request.json().catch(() => null);
-    } else {
-        const formData = await request.formData();
-        body = {};
-        for (const [key, value] of formData.entries()) {
-            body[key] = value;
-        }
-    }
-    if (!body) {
-        return jsonResponse({ error: 'invalid_request' }, 400, cors);
-    }
-    const grantType = body.grant_type;
-    const code = body.code;
-    const state = body.state || null;
-    const redirectUri = body.redirect_uri;
-    const clientId = body.client_id;
-    const clientSecret = body.client_secret;
-    if (grantType !== 'authorization_code') {
-        return jsonResponse({ error: 'unsupported_grant_type' }, 400, cors);
-    }
+/**
+ * 交换授权码为访问令牌（纯函数版本）
+ * @param {Object} params - 参数对象
+ * @param {string} params.code - 授权码
+ * @param {string} params.clientId - 应用 ID
+ * @param {string} params.clientSecret - 应用密钥
+ * @param {string} params.redirectUri - 回调地址
+ * @param {string} params.state - 状态参数（可选）
+ * @param {Env} env - Cloudflare Workers 环境
+ * @returns {Promise<Object>} 返回交换结果
+ */
+export async function exchangeOAuthToken(params, env) {
+    const { code, clientId, clientSecret, redirectUri, state } = params;
+
+    // 基本参数校验
     if (!code || !clientId || !clientSecret) {
-        return jsonResponse({ error: 'invalid_request' }, 400, cors);
+        return {
+            success: false,
+            error: 'invalid_request',
+            error_description: 'Missing required parameters'
+        };
     }
+
+    // 1. 验证客户端
     const client = await env.db
         .prepare('SELECT * FROM oauth_clients WHERE client_id = ?')
         .bind(clientId)
         .first();
 
     if (!client || client.client_secret !== clientSecret) {
-        return jsonResponse({ error: 'invalid_client' }, 401, cors);
+        return {
+            success: false,
+            error: 'invalid_client',
+            error_description: 'Invalid client credentials'
+        };
     }
+
+    // 2. 验证授权码
     const authCode = await env.db
         .prepare(
             `SELECT * FROM oauth_auth_codes 
@@ -447,26 +464,52 @@ export async function exchangeOAuthToken(request, env) {
         .first();
 
     if (!authCode) {
-        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
+        return {
+            success: false,
+            error: 'invalid_grant',
+            error_description: 'Invalid or expired authorization code'
+        };
     }
+
+    // 验证 redirect_uri 是否匹配
     if (authCode.redirect_uri !== redirectUri) {
-        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
+        return {
+            success: false,
+            error: 'invalid_grant',
+            error_description: 'Redirect URI mismatch'
+        };
     }
+
+    // 验证 state（如果提供）
     if (state && authCode.state && authCode.state !== state) {
-        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
+        return {
+            success: false,
+            error: 'invalid_grant',
+            error_description: 'State mismatch'
+        };
     }
+
+    // 3. 标记授权码为已使用
     await env.db
         .prepare('UPDATE oauth_auth_codes SET used = 1 WHERE code = ?')
         .bind(code)
         .run();
+
+    // 4. 获取用户信息
     const user = await env.db
-        .prepare('SELECT id, username, email FROM online_users WHERE id = ?')
+        .prepare('SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?')
         .bind(authCode.user_id)
         .first();
 
     if (!user) {
-        return jsonResponse({ error: 'invalid_grant' }, 400, cors);
+        return {
+            success: false,
+            error: 'invalid_grant',
+            error_description: 'User not found'
+        };
     }
+
+    // 5. 生成访问令牌
     const accessToken = await signAccessToken(
         {
             sub: user.id,
@@ -477,6 +520,8 @@ export async function exchangeOAuthToken(request, env) {
         },
         env.JWT_KEY
     );
+
+    // 6. 生成刷新令牌
     const refreshToken = generateRefreshToken();
     await storeRefreshToken(
         env.kv,
@@ -484,16 +529,28 @@ export async function exchangeOAuthToken(request, env) {
         user.id,
         REFRESH_TOKEN_TTL
     );
-    const response = {
-        access_token: accessToken,
-        token_type: 'Bearer',
-        expires_in: 900, // 15分钟，与 ACCESS_TOKEN_EXPIRES_IN 保持一致
-        refresh_token: refreshToken,
-        scope: authCode.scope || client.scope
-    };
 
-    return jsonResponse(response, 200, cors);
+    // 7. 返回成功结果（包含用户信息和令牌）
+    return {
+        success: true,
+        data: {
+            access_token: accessToken,
+            token_type: 'Bearer',
+            expires_in: 900, // 15分钟
+            refresh_token: refreshToken,
+            scope: authCode.scope || client.scope,
+            // 额外返回用户信息，方便调用方使用
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                banned: user.banned === 1,
+                ban_reason: user.ban_reason || ''
+            }
+        }
+    };
 }
+
 async function getOAuthClient(db, clientId) {
     const client = await db
         .prepare('SELECT * FROM oauth_clients WHERE client_id = ?')
@@ -1555,30 +1612,167 @@ export default {
                         });
                     }
                     if (authStatus === TAG_LOGGEDIN) {
-                        const code = generateToken();
-                        const expiresAt = Math.floor(Date.now() / 1000) + OAUTH_TOKEN_EXPIRES_IN;
+                        const requestId = generateToken(); // 假设已有此函数
+                        const consentToken = generateToken();
+                        const now = Math.floor(Date.now() / 1000);
+                        const expiresAt = now + 300; // 5分钟有效期
 
-                        await env.db
-                            .prepare(
-                                `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, state, expires_at, used)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-                            )
-                            .bind(code, clientId, user.id, redirectUri, scope, state, expiresAt, 0)
-                            .run();
+                        // 2. 存入 D1
+                        await env.db.prepare(
+                            `INSERT INTO oauth_consent_requests 
+         (id, client_id, redirect_uri, scope, state, user_id, created_at, expires_at, status, consent_token)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`
+                        ).bind(requestId, clientId, redirectUri, scope, state, user.id, now, expiresAt, consentToken).run();
 
-                        // 3. 重定向回客户端
-                        const redirectUrl = new URL(redirectUri);
-                        redirectUrl.searchParams.set('code', code);
-                        if (state) redirectUrl.searchParams.set('state', state);
-
+                        // 3. 重定向到确认页面
+                        const consentUrl = new URL('/oauth2/consent', url.origin);
+                        consentUrl.searchParams.set('request_id', requestId);
                         return new Response(null, {
                             status: 302,
-                            headers: { Location: redirectUrl.toString(), ...cors }
+                            headers: { Location: consentUrl.toString(), ...cors }
                         });
+
+
+
+                        //             const code = generateToken();
+                        //             const expiresAt = Math.floor(Date.now() / 1000) + OAUTH_TOKEN_EXPIRES_IN;
+
+                        //             await env.db
+                        //                 .prepare(
+                        //                     `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, state, expires_at, used)
+                        //  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+                        //                 )
+                        //                 .bind(code, clientId, user.id, redirectUri, scope, state, expiresAt, 0)
+                        //                 .run();
+
+                        //             // 3. 重定向回客户端
+                        //             const redirectUrl = new URL(redirectUri);
+                        //             redirectUrl.searchParams.set('code', code);
+                        //             if (state) redirectUrl.searchParams.set('state', state);
+
+                        //             return new Response(null, {
+                        //                 status: 302,
+                        //                 headers: { Location: redirectUrl.toString(), ...cors }
+                        //             });
                     }
                 }
                 if (path === "/api/oauth/token" && method === 'POST') {
-                    return exchangeOAuthToken(request, env);
+                    if (path === "/api/oauth/token" && method === 'POST') {
+                        const contentType = request.headers.get('Content-Type') || '';
+                        let body;
+                        if (contentType.includes('application/json')) {
+                            body = await request.json().catch(() => null);
+                        } else {
+                            const formData = await request.formData();
+                            body = {};
+                            for (const [key, value] of formData.entries()) {
+                                body[key] = value;
+                            }
+                        }
+
+                        if (!body) {
+                            return jsonResponse({ error: 'invalid_request' }, 400, cors);
+                        }
+
+                        const result = await exchangeOAuthToken({
+                            code: body.code,
+                            clientId: body.client_id,
+                            clientSecret: body.client_secret,
+                            redirectUri: body.redirect_uri,
+                            state: body.state || null
+                        }, env);
+
+                        if (!result.success) {
+                            return jsonResponse(
+                                { error: result.error, error_description: result.error_description },
+                                result.error === 'invalid_client' ? 401 : 400,
+                                cors
+                            );
+                        }
+
+                        return jsonResponse(result.data, 200, cors);
+                    }
+                }
+                if (path === "/api/oauth/consent-data" && method === "GET") {
+                    const requestId = url.searchParams.get('request_id');
+                    if (!requestId) return jsonResponse({ error: 'missing_request_id' }, 400, cors);
+
+                    // 验证用户登录
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) return jsonResponse({ error: 'unauthorized' }, 401, cors);
+
+                    // 查询请求记录
+                    const req = await env.db.prepare(
+                        `SELECT * FROM oauth_consent_requests WHERE id = ? AND status = 'pending' AND expires_at > ?`
+                    ).bind(requestId, Math.floor(Date.now() / 1000)).first();
+                    if (!req) return jsonResponse({ error: 'invalid_request' }, 400, cors);
+                    if (req.user_id !== user.id) return jsonResponse({ error: 'forbidden' }, 403, cors);
+
+                    // 查询应用名称
+                    const client = await env.db.prepare(`SELECT name FROM oauth_clients WHERE client_id = ?`).bind(req.client_id).first();
+                    return jsonResponse({
+                        client_name: client ? client.name : req.client_id,
+                        scope: req.scope || '',
+                        consent_token: req.consent_token,
+                        client_id: req.client_id,
+                        redirect_uri: req.redirect_uri,
+                        state: req.state || ''
+                    }, 200, cors);
+                }
+                if (path === "/api/oauth/consent/approve" && method === "POST") {
+                    const body = await request.json().catch(() => null);
+                    const requestId = body?.request_id;
+                    const consentToken = body?.consent_token;
+                    if (!requestId || !consentToken) return jsonResponse({ error: 'missing_parameters' }, 400, cors);
+
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) return jsonResponse({ error: 'unauthorized' }, 401, cors);
+
+                    // 查询并校验 token
+                    const req = await env.db.prepare(
+                        `SELECT * FROM oauth_consent_requests WHERE id = ? AND consent_token = ? AND status = 'pending' AND expires_at > ?`
+                    ).bind(requestId, consentToken, Math.floor(Date.now() / 1000)).first();
+                    if (!req) return jsonResponse({ error: 'invalid_request' }, 400, cors);
+                    if (req.user_id !== user.id) return jsonResponse({ error: 'forbidden' }, 403, cors);
+
+                    // 生成授权码
+                    const code = generateToken();
+                    const expiresAt = Math.floor(Date.now() / 1000) + OAUTH_TOKEN_EXPIRES_IN;
+                    await env.db.prepare(
+                        `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, state, expires_at, used)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
+                    ).bind(code, req.client_id, user.id, req.redirect_uri, req.scope, req.state, expiresAt).run();
+
+                    // 更新请求状态（可删除或标记）
+                    await env.db.prepare(`UPDATE oauth_consent_requests SET status = 'approved' WHERE id = ?`).bind(requestId).run();
+
+                    const redirectUrl = new URL(req.redirect_uri);
+                    redirectUrl.searchParams.set('code', code);
+                    if (req.state) redirectUrl.searchParams.set('state', req.state);
+                    return jsonResponse({ redirect_url: redirectUrl.toString() }, 200, cors);
+                }
+                if (path === "/api/oauth/consent/deny" && method === "POST") {
+                    const body = await request.json().catch(() => null);
+                    const requestId = body?.request_id;
+                    const consentToken = body?.consent_token;
+                    if (!requestId || !consentToken) return jsonResponse({ error: 'missing_parameters' }, 400, cors);
+
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) return jsonResponse({ error: 'unauthorized' }, 401, cors);
+
+                    const req = await env.db.prepare(
+                        `SELECT * FROM oauth_consent_requests WHERE id = ? AND consent_token = ? AND status = 'pending' AND expires_at > ?`
+                    ).bind(requestId, consentToken, Math.floor(Date.now() / 1000)).first();
+                    if (!req) return jsonResponse({ error: 'invalid_request' }, 400, cors);
+                    if (req.user_id !== user.id) return jsonResponse({ error: 'forbidden' }, 403, cors);
+
+                    // 标记拒绝
+                    await env.db.prepare(`UPDATE oauth_consent_requests SET status = 'denied' WHERE id = ?`).bind(requestId).run();
+
+                    const redirectUrl = new URL(req.redirect_uri);
+                    redirectUrl.searchParams.set('error', 'access_denied');
+                    if (req.state) redirectUrl.searchParams.set('state', req.state);
+                    return jsonResponse({ redirect_url: redirectUrl.toString() }, 200, cors);
                 }
                 if (path === "/api/oauth/verify" && method === "GET") {
                     const result = await verifyBearerToken(request, env);

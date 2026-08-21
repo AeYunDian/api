@@ -15,7 +15,7 @@ import {
     chat_userLogin,
     chat_getMobileTip,
 } from './chat_room.js';
-import { getMainPage, mobileRegex } from './utils.js';
+import { getMainPage, mobileRegex, generateToken } from './utils.js';
 import { parse, serialize } from 'cookie';
 import { exchangeOAuthToken } from './online.undz.cn.js';  // 导入 token 交换函数
 
@@ -107,60 +107,35 @@ export default {
             if (path === "/oauth/callback") {
                 const code = url.searchParams.get('code');
                 const state = url.searchParams.get('state') || '';
+
                 if (!code) {
                     return new Response('Missing code', { status: 400 });
                 }
 
-                // 构造模拟请求体（符合 OAuth 2.0 标准）
-                const body = new URLSearchParams({
-                    grant_type: 'authorization_code',
-                    code,
-                    client_id: 'app_chat',
-                    client_secret: env.CHAT_OAUTH_CLIENT_SECRET || 'db3eb5507fc643e6b47065df2863bc9b',
-                    redirect_uri: 'https://chat.undz.cn/oauth/callback',
-                    state
-                });
+                const result = await exchangeOAuthToken({
+                    code: code,
+                    clientId: 'app_chat',
+                    clientSecret: env.CHAT_OAUTH_CLIENT_SECRET || 'db3eb5507fc643e6b47065df2863bc9b',
+                    redirectUri: 'https://chat.undz.cn/oauth/callback',
+                    state: state
+                }, env);
 
-                // 构造一个假的 Request 对象，让 exchangeOAuthToken 可以解析
-                const mockRequest = new Request('https://internal/token', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: body.toString()
-                });
-
-                // 调用已导出的 token 交换函数
-                const resp = await exchangeOAuthToken(mockRequest, env);
-
-                if (resp.status !== 200) {
-                    const errorText = await resp.text();
-                    return new Response('Token exchange failed: ' + errorText, { status: 500 });
+                if (!result.success) {
+                    return new Response(
+                        'Token exchange failed: ' + (result.error_description || result.error),
+                        { status: 500 }
+                    );
                 }
 
-                const data = await resp.json();
-
-                // 设置 access_token cookie
-                const cookieOptions = {
-                    domain: '.undz.cn',
-                    path: '/',
-                    httpOnly: true,
-                    secure: true,
-                    sameSite: 'Lax',
-                    maxAge: 900 // 15 分钟，与 ACCESS_TOKEN_EXPIRES_IN 一致
-                };
-                const accessCookie = serialize('access_token', data.access_token, cookieOptions);
-
-                let refreshCookie = '';
-                if (data.refresh_token) {
-                    const refreshOptions = { ...cookieOptions, maxAge: 60 * 60 * 24 * 30 }; // 30 天
-                    refreshCookie = serialize('refresh_token', data.refresh_token, refreshOptions);
+                if (result.data.user.banned) {
+                    return new Response(
+                        `您的账号已被封禁：${result.data.user.ban_reason}`,
+                        { status: 403 }
+                    );
                 }
 
-                // 重定向到聊天室（登录成功）
                 const headers = {
-                    'Location': '/chat',
-                    'Set-Cookie': accessCookie + (refreshCookie ? '; ' + refreshCookie : '')
+                    'Location': `/chat?room=main&nick=${result.data.user.username}&code=${generateToken()}`,
                 };
                 return new Response(null, { status: 302, headers });
             }

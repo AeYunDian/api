@@ -133,7 +133,6 @@
             background: #F6EDFF;
         }
 
-        /* 移动端适配 */
         @media (max-width: 640px) {
             .container {
                 flex-direction: column;
@@ -158,28 +157,137 @@
                 text-align: center;
             }
         }
+
+        .error-msg {
+            color: #b3261e;
+            margin-top: 16px;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            color: #6750A4;
+        }
     </style>
 </head>
 
 <body>
-    <div class="container">
+    <div class="container" id="consentContainer">
         <div class="left">
             <h1>授权确认</h1>
-            <p>应用 <strong>%APP_NAME%</strong> 请求以下权限：</p>
+            <p>应用 <strong id="appName"></strong> 请求以下权限：</p>
+            <div id="errorMsg" class="error-msg"></div>
         </div>
         <div class="right">
-            <ul class="scope-list">
-                %SCOPE_LIST%
-            </ul>
+            <ul class="scope-list" id="scopeList"></ul>
             <div class="actions">
-                <a href="/api/oauth/authorize?action=deny&client_id=%CLIENT_ID%&redirect_uri=%REDIRECT_URI%&state=%STATE%&scope=%SCOPE%"
-                    class="btn btn-secondary">拒绝</a>
-                <a href="/api/oauth/authorize?action=approve&client_id=%CLIENT_ID%&redirect_uri=%REDIRECT_URI%&state=%STATE%&scope=%SCOPE%"
-                    class="btn btn-primary">同意</a>
+                <button id="denyBtn" class="btn btn-secondary">拒绝</button>
+                <button id="approveBtn" class="btn btn-primary">同意</button>
             </div>
-        </div>
 
+        </div>
     </div>
+    <script>
+        (function () {
+            const params = new URLSearchParams(window.location.search);
+            const requestId = params.get('request_id');
+            if (!requestId) {
+                document.getElementById('errorMsg').textContent = '缺少授权请求标识，请重试。';
+                return;
+            }
+
+            let consentToken = '';
+
+            // 获取授权数据
+            async function fetchConsentData() {
+                const res = await fetch('/api/oauth/consent-data?request_id=' + encodeURIComponent(requestId), {
+                    credentials: 'include'
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || '获取授权信息失败');
+                }
+                return res.json();
+            }
+
+            // 处理同意
+            async function approve() {
+                const btn = document.getElementById('approveBtn');
+                btn.disabled = true;
+                btn.textContent = '处理中...';
+                try {
+                    const res = await fetch('/api/oauth/consent/approve', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ request_id: requestId, consent_token: consentToken }),
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                    } else {
+                        document.getElementById('errorMsg').textContent = data.error || '授权失败，请重试';
+                        btn.disabled = false;
+                        btn.textContent = '同意';
+                    }
+                } catch (err) {
+                    document.getElementById('errorMsg').textContent = '网络错误，请重试';
+                    btn.disabled = false;
+                    btn.textContent = '同意';
+                }
+            }
+
+            // 处理拒绝
+            async function deny() {
+                const btn = document.getElementById('denyBtn');
+                btn.disabled = true;
+                btn.textContent = '处理中...';
+                try {
+                    const res = await fetch('/api/oauth/consent/deny', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ request_id: requestId, consent_token: consentToken }),
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                    } else {
+                        document.getElementById('errorMsg').textContent = data.error || '拒绝失败，请重试';
+                        btn.disabled = false;
+                        btn.textContent = '拒绝';
+                    }
+                } catch (err) {
+                    document.getElementById('errorMsg').textContent = '网络错误，请重试';
+                    btn.disabled = false;
+                    btn.textContent = '拒绝';
+                }
+            }
+
+            // 渲染页面
+            fetchConsentData().then(data => {
+                document.getElementById('appName').textContent = data.client_name || '未知应用';
+                const scopeList = document.getElementById('scopeList');
+                const scopes = data.scope ? data.scope.split(' ') : [];
+                if (scopes.length === 0) {
+                    const li = document.createElement('li');
+                    li.textContent = '（无权限请求）';
+                    scopeList.appendChild(li);
+                } else {
+                    scopes.forEach(s => {
+                        const li = document.createElement('li');
+                        li.textContent = s; // 可改进为友好描述
+                        scopeList.appendChild(li);
+                    });
+                }
+                consentToken = data.consent_token || '';
+                document.getElementById('approveBtn').onclick = approve;
+                document.getElementById('denyBtn').onclick = deny;
+            }).catch(err => {
+                document.getElementById('errorMsg').textContent = err.message || '加载失败';
+            });
+        })();
+    </script>
 </body>
 
 </html>
