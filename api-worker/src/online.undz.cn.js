@@ -27,7 +27,7 @@ const OAUTH_REFRESH_TOKEN_TTL = 60 * 60 * 24 * 15; // OAuth客户端刷新令牌
 const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_HASH = "SHA-256";
 const SALT_LENGTH = 16; // 字节
-const DEFAULT_OAUTH_CLIENT_SCOPE = 'openid profile email'
+const DEFAULT_OAUTH_CLIENT_SCOPE = 'openid profile email';
 const MIN_PASSWORD_LENGTH = 6;
 const MAX_PASSWORD_LENGTH = 32;
 const MIN_USERNAME_LENGTH = 4;
@@ -42,7 +42,8 @@ const YZHYZXY_USERINFO_URL = 'https://yzhyzxy.cn/oauth/userinfo';
 const YZHYZXY_REVOKE_URL = 'https://yzhyzxy.cn/api/oauth/revoke';
 const YZHYZXY_REDIRECT_URI = 'https://online.undz.cn/api/oauth/callback';
 const YZHYZXY_SCOPE = 'openid profile email';
-
+const DEFAULT_USER_DESC = '这片星空，只有流行划过……'
+const DEFAULT_USER_AVATER = 'https://online.undz.cn/default-avatar.svg'
 /**
  * Oauth 检查传入的请求是否已登录授权
  * @param {Request} request - 原始的 HTTP 请求对象
@@ -341,7 +342,10 @@ async function initDatabase(db) {
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL,
             banned INTEGER DEFAULT 0,
-            ban_reason TEXT DEFAULT ''
+            ban_reason TEXT DEFAULT '',
+            gender TEXT DEFAULT 0,
+            avatar TEXT DEFAULT '${DEFAULT_USER_AVATER}',
+            description TEXT DEFAULT '${DEFAULT_USER_DESC}'
         )`,
             ).run();
         await db
@@ -998,7 +1002,6 @@ export default {
                 await kvStore.put(`oauth_pkce:${state}`, JSON.stringify({ verifier, mode }), {
                     expirationTtl: 600
                 });
-
                 const authUrl = new URL(YZHYZXY_AUTH_URL);
                 authUrl.searchParams.set('client_id', env.YZHYZXY_CLIENT_ID);
                 authUrl.searchParams.set('response_type', 'code');
@@ -1007,8 +1010,6 @@ export default {
                 authUrl.searchParams.set('scope', YZHYZXY_SCOPE);
                 authUrl.searchParams.set('code_challenge', challenge);
                 authUrl.searchParams.set('code_challenge_method', 'S256');
-
-                // 返回 JSON，不是 HTML
                 return jsonResponse({ url: authUrl.toString() }, 200, corsHeaders(request));
             }
             if (path === "/api/oauth/callback" && method === "GET") {
@@ -1030,7 +1031,6 @@ export default {
                 const { verifier, mode } = JSON.parse(storedData);
                 await kvStore.delete(`oauth_pkce:${state}`);
 
-                // 换取 access_token（PKCE 方式）
                 const tokenBody = new URLSearchParams({
                     grant_type: 'authorization_code',
                     client_id: env.YZHYZXY_CLIENT_ID,
@@ -1049,8 +1049,6 @@ export default {
                     console.error('Token exchange failed:', tokenData);
                     return new Response('Failed to exchange token: ' + JSON.stringify(tokenData), { status: 500 });
                 }
-
-                // 获取用户信息（包含 openid、username、nickname、avatar、email）
                 const userRes = await fetch(YZHYZXY_USERINFO_URL, {
                     headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
                 });
@@ -1060,7 +1058,7 @@ export default {
                     return new Response('Failed to get userinfo', { status: 500 });
                 }
 
-                // 立即吊销 refresh_token（一次性使用）
+                // 立即吊销 refresh_token
                 if (tokenData.refresh_token) {
                     try {
                         const revokeBody = new URLSearchParams({
@@ -1101,7 +1099,7 @@ export default {
                             .first();
 
                         if (user.banned) {
-                            return new Response('账号已被封禁', { status: 403 });
+                            return new Response(null, { status: 302, headers: { 'Location': `/oauth2/account_banned?code=${generateToken()}&countdown=0x2710&ban_reason=${ban_reason}` } });
                         }
 
                         const accessToken = await signAccessToken(
@@ -1117,27 +1115,7 @@ export default {
                             serialize('refresh_token', refreshToken, cookieOptions)
                         ];
 
-                        // 弹窗版 HTML：使用 window.opener 通知主窗口，然后自动关闭
-                        const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>登录成功</title></head>
-<body>
-    <p style="text-align:center;margin-top:100px;font-size:18px;color:#1a73e8;">✅ 登录成功，窗口即将关闭...</p>
-    <script>
-        if (window.opener) {
-            window.opener.postMessage({
-                action: 'login_success',
-                provider: 'yzhyzxy',
-                user: { id: ${user.id}, username: "${user.username}", email: "${user.email}" }
-            }, '*');
-        }
-        setTimeout(function() { window.close(); }, 1500);
-    <\/script>
-</body>
-</html>
-            `;
-
+                        const html = `<!DOCTYPE html><html><body><p style="text-align:center;">登录成功，窗口即将关闭...</p><script>if (window.opener) {window.opener.postMessage({action: 'login_success',provider: 'yzhyzxy',user: { id: ${user.id}, username: "${user.username}", email: "${user.email}" }}, '*');}window.close();<\/script></body></html>`;
                         return new Response(html, {
                             status: 200,
                             headers: {
@@ -1147,45 +1125,24 @@ export default {
                         });
                     }
 
-                    // 未关联账号：跳转到注册页面
-                    const registerUrl = `/oauth2/login?tab=register&oauth_provider=yzhyzxy&openid=${openid}&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&avatar=${encodeURIComponent(avatar)}`;
-                    return new Response(null, {
-                        status: 302,
-                        headers: { 'Location': registerUrl }
-                    });
+                    return new Response(null, { status: 302, headers: { 'Location': `/oauth2/account_notlinked?code=${generateToken()}&countdown=0x2710&account_provider=${provider}` } });
+
                 }
 
                 if (mode === 'register') {
                     if (localUser) {
-                        // 已关联：跳转到登录页
-                        const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>已注册</title></head>
-<body>
-    <p style="text-align:center;margin-top:100px;font-size:18px;">该账号已注册，请登录</p>
-    <script>
-        if (window.opener) {
-            window.opener.postMessage({
-                action: 'oauth_already_registered',
-                provider: 'yzhyzxy',
-                openid: "${openid}"
-            }, '*');
-        }
-        setTimeout(function() { window.location.href = '/oauth2/login?tab=login'; }, 1500);
-    <\/script>
-</body>
-</html>
-            `;
+
+                        const html = `<!DOCTYPE html><html><body><p style="text-align:center;">此账号已注册</p><script>if (window.opener) {window.opener.postMessage({action: 'login_success',provider: 'yzhyzxy',user: { id: ${user.id}, username: "${user.username}", email: "${user.email}" }}, '*');}window.close();<\/script></body></html>`;
+
                         return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
                     }
+                    // const registerUrl = `/oauth2/login?tab=register&oauth_provider=yzhyzxy&openid=${openid}&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&avatar=${encodeURIComponent(avatar)}`;
+                    // return new Response(null, {
+                    //     status: 302,
+                    //     headers: { 'Location': registerUrl }
+                    // });
+                    return new Response(null, { status: 302, headers: { 'Location': `/oauth2/account_notlinked?code=${generateToken()}&countdown=0x2710&account_provider=${provider}` } });
 
-                    // 未注册：跳转到注册页面，自动填充信息
-                    const registerUrl = `/oauth2/login?tab=register&oauth_provider=yzhyzxy&openid=${openid}&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&avatar=${encodeURIComponent(avatar)}`;
-                    return new Response(null, {
-                        status: 302,
-                        headers: { 'Location': registerUrl }
-                    });
                 }
 
                 return new Response('Invalid mode', { status: 400 });

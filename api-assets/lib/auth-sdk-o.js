@@ -980,8 +980,8 @@ class AyAccount {
           if (!data.url) {
             throw new Error('获取授权链接失败');
           }
-          const width = 500;
-          const height = 600;
+          const width = 850;
+          const height = 900;
           const left = (window.screen.width - width) / 2;
           const top = (window.screen.height - height) / 2;
           const popup = window.open(
@@ -995,18 +995,25 @@ class AyAccount {
           }
           const handler = (event) => {
             // 安全校验：只接受来自 online.undz.cn 的消息
-            // if (event.origin !== 'https://online.undz.cn') return;
-            if (event.data && event.data.action === 'login_success' && event.data.provider === 'yzhyzxy') {
+            if (event.origin !== 'https://online.undz.cn') return;
+            if (event.data && event.data.provider === 'yzhyzxy') {
               window.removeEventListener('message', handler);
               if (popup && !popup.closed) {
                 popup.close();
               }
-              resolve({
-                action: 'login',
-                success: true,
-                code: 200,
-                user: event.data.user
-              });
+              if (event.data.action === 'login_success') {
+                resolve({
+                  action: 'login',
+                  success: true,
+                  code: 200,
+                  user: event.data.user
+                });
+              } else if (event.data.action === 'login_fail') {
+                reject(new Error('登入失败'));
+                // oauth 页面会显示错误信息，不用管
+              } else {
+                reject(new Error('未知错误'));
+              }
             }
           };
           window.addEventListener('message', handler);
@@ -1024,7 +1031,7 @@ class AyAccount {
               popup.close();
             }
             reject(new Error('登录超时，请重试'));
-          }, 300000);
+          }, 600000);
         })
         .catch(err => {
           reject(err);
