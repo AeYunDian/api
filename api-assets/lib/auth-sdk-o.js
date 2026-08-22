@@ -1,6 +1,6 @@
-'v2.0.2 AyAccountSDK';
+'v2.0.3 AyAccountSDK';
 
-const VERSION = '2.0.2';
+const VERSION = '2.0.3';
 const PRODUCE = false;
 
 // ---------- 本地南瓜种植基地 ----------//
@@ -18,6 +18,7 @@ const URLPATH = {
   'BASE': 'https://online.undz.cn',
   'API': {
     'REGISTER': '/api/ayonline/register',
+    'REGISTER_WITH_OAUTH': '/api/ayonline/register-oauth',
     'LOGIN': '/api/ayonline/login',
     'LOGOUT': '/api/ayonline/logout',
     'TEST': '/api/ayonline/test',
@@ -27,16 +28,17 @@ const URLPATH = {
     'SENDMAILCODE': '/api/ayonline/send-verification'
   },
   'MODALPAGE': {
-    'MOBILE': '/login/mobile.html',
-    'DESKTOP': '/login/index.html',
+    'LOGIN_YZH_OAUTH': '/api/auth/yzhyzxy/start?mode=login',
+    'MOBILE': '/login/v2/mobile.html',
+    'DESKTOP': '/login/v2/',
     'REGISTER': '?tab=register',
     'LOGIN': '?tab=login'
   },
   'LIBRARY': {
     'GT4': '/lib/gt4.js',
     'AYTOAST': {
-      'SCRIPT': '/login/toast.js',
-      'CSS': '/login/toast.css'
+      'SCRIPT': '/login/v2/toast.js',
+      'CSS': '/login/v2/toast.css'
     }
   }
 }
@@ -564,6 +566,24 @@ class AyAccount {
 
     return key;
   }
+  _getOrCreateIframe() {
+    if (this._iframe) {
+      return this._iframe;
+    }
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.top = '0';
+    iframe.style.left = '0';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = 'none';
+    iframe.style.zIndex = '20000000';
+    iframe.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+    this._iframe = iframe;
+    return iframe;
+  }
   #getGeeTestLang() {
     const normalized = this.lang.trim().toLowerCase().replace(/_/g, '-');
     // 精确映射表（键为小写标签，值为 GeeTest 代码）
@@ -813,6 +833,23 @@ class AyAccount {
               await delay(150);
               this.#_closeModal();
               resolve(userInfo);
+              break;
+            case 'oauth_register':
+              this.#_registerWithOAuth(data.openid, data.username, data.email, data.password, data.avatar)
+                .then((result) => {
+                  userInfo = result;
+                  iframe.contentWindow.postMessage(JSON.stringify({
+                    action: 'registerSuccess'
+                  }), '*');
+                })
+                .catch((err) => {
+                  if (!PRODUCE) console.error('OAuth 注册失败:', err);
+                  iframe.contentWindow.postMessage(JSON.stringify({
+                    action: 'registerFailure',
+                    message: err.message || '注册失败',
+                    code: err.error_code || 'unknown'
+                  }), '*');
+                });
               break;
             case 'sendEmailCode':
               this.#_sendEmailCode(data.email)
@@ -1067,8 +1104,59 @@ class AyAccount {
   * 用户登录（弹出模态框）
   * @returns {Promise<Object|null>} 成功返回用户信息，关闭返回 null
   */
-  login() {
+  login(options = {}) {
+    if (options.provider === 'yzhyzxy') {
+      return new Promise((resolve, reject) => {
+        const iframe = this._getOrCreateIframe();
+        iframe.style.display = 'block';
+        iframe.src = URLPATH.MODALPAGE.LOGIN_YZH_OAUTH;
+
+        const handler = (event) => {
+          const data = event.data;
+          if (!data || !data.action) return;
+
+          if (data.action === 'login_success' && data.provider === 'yzhyzxy') {
+            window.removeEventListener('message', handler);
+            setTimeout(() => { iframe.style.display = 'none'; }, 300);
+            resolve({
+              action: 'login',
+              success: true,
+              code: 200,
+              user: data.user
+            });
+          } else if (data.action === 'close_iframe') {
+            iframe.style.display = 'none';
+          } else if (data.action === 'oauth_need_register' || data.action === 'oauth_already_registered') {
+            // iframe 内部会自己处理跳转，无需干预
+          }
+        };
+        window.addEventListener('message', handler);
+
+        setTimeout(() => {
+          window.removeEventListener('message', handler);
+          iframe.style.display = 'none';
+          reject(new Error('登录超时，请重试'));
+        }, 300000);
+      });
+    }
     return this.#_openModal('login');
+  }
+  async #_registerWithOAuth(openid, username, email, password, avatar = '') {
+    const response = await this._request(URLPATH.API.REGISTER_WITH_OAUTH, {
+      method: 'POST',
+      body: {
+        provider: 'yzhyzxy',
+        openid: openid,
+        username: username,
+        email: email,
+        password: password,
+        avatar: avatar
+      }
+    });
+    if (!response.success) {
+      throw new Error(result.message || '注册失败');
+    }
+    return response;
   }
   /**
    * 用户登录

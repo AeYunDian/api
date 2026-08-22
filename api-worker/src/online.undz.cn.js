@@ -7,7 +7,7 @@
 
 import { SignJWT, jwtVerify } from "jose";
 import { serialize, parse } from "cookie";
-import { base64ToUtf8, generateToken, generateRandomBytes, getMainPage } from "./utils.js";
+import { base64ToUtf8, generateToken, generateRandomBytes, getMainPage, generatePKCEPair } from "./utils.js";
 import { handleVerifyCode } from "./mail_verify/verify.js";
 import { REG_TEMPLATE, handleSendVerification } from "./mail_verify/send.js";
 
@@ -36,6 +36,12 @@ const VERIFY_CODE_EXPDATA = 300;
 export const TAG_LOGGEDIN = "logged_in";
 export const TAG_NOT_LOGGEDIN = "not_logged_in";
 export const TAG_BANNED = "banned";
+const YZHYZXY_AUTH_URL = 'https://yzhyzxy.cn/oauth/authorize';
+const YZHYZXY_TOKEN_URL = 'https://yzhyzxy.cn/oauth/token';
+const YZHYZXY_USERINFO_URL = 'https://yzhyzxy.cn/oauth/userinfo';
+const YZHYZXY_REVOKE_URL = 'https://yzhyzxy.cn/api/oauth/revoke';
+const YZHYZXY_REDIRECT_URI = 'https://online.undz.cn/api/oauth/callback';
+const YZHYZXY_SCOPE = 'openid profile email';
 
 /**
  * Oauth 检查传入的请求是否已登录授权
@@ -380,6 +386,21 @@ async function initDatabase(db) {
         status TEXT DEFAULT 'pending',
         consent_token TEXT NOT NULL
     )`).run();
+        await db
+            .prepare(
+                `CREATE TABLE IF NOT EXISTS oauth_connections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            provider TEXT NOT NULL,
+            openid TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            UNIQUE(provider, openid)
+        )`
+            )
+            .run();
+        await db
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_connections_user ON oauth_connections(user_id)`)
+            .run();
         await db
             .prepare(`CREATE INDEX IF NOT EXISTS idx_consent_requests_expires ON oauth_consent_requests(expires_at)`)
             .run();
@@ -969,8 +990,207 @@ export default {
         const cors = corsHeaders(request);
 
         try {
-            // ---------- 初始化数据库（需 Admin Key） ----------
+            if (path === "/api/auth/yzhyzxy/start" && method === "GET") {
+                const { verifier, challenge } = await generatePKCEPair();
+                const state = generateToken();
+                const mode = url.searchParams.get('mode') || 'login';
 
+                await kvStore.put(`oauth_pkce:${state}`, JSON.stringify({ verifier, mode }), {
+                    expirationTtl: 600
+                });
+
+                const authUrl = new URL(YZHYZXY_AUTH_URL);
+                authUrl.searchParams.set('client_id', env.YZHYZXY_CLIENT_ID);
+                authUrl.searchParams.set('response_type', 'code');
+                authUrl.searchParams.set('redirect_uri', YZHYZXY_REDIRECT_URI);
+                authUrl.searchParams.set('state', state);
+                authUrl.searchParams.set('scope', YZHYZXY_SCOPE);
+                authUrl.searchParams.set('code_challenge', challenge);
+                authUrl.searchParams.set('code_challenge_method', 'S256');
+
+                const html = `
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="UTF-8"><title>Hold on...</title></head>
+                <body>
+                    <p style="text-align:center;margin-top:100px;font-size:18px;">Hold on...</p>
+                    <script>window.location.href = "${authUrl.toString()}";<\/script>
+                </body>
+                </html>
+                    `;
+                return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+            }
+            if (path === "/api/oauth/callback" && method === "GET") {
+                const code = url.searchParams.get('code');
+                const state = url.searchParams.get('state');
+                const error = url.searchParams.get('error');
+
+                if (error) {
+                    return new Response(`授权失败: ${error}`, { status: 400 });
+                }
+                if (!code || !state) {
+                    return new Response('Missing code or state', { status: 400 });
+                }
+
+                const storedData = await kvStore.get(`oauth_pkce:${state}`);
+                if (!storedData) {
+                    return new Response('Invalid or expired state', { status: 400 });
+                }
+                const { verifier, mode } = JSON.parse(storedData);
+                await kvStore.delete(`oauth_pkce:${state}`);
+
+                // 换取 access_token（PKCE 方式）
+                const tokenBody = new URLSearchParams({
+                    grant_type: 'authorization_code',
+                    client_id: env.YZHYZXY_CLIENT_ID,
+                    code: code,
+                    code_verifier: verifier,
+                    redirect_uri: YZHYZXY_REDIRECT_URI
+                });
+
+                const tokenRes = await fetch(YZHYZXY_TOKEN_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: tokenBody
+                });
+                const tokenData = await tokenRes.json();
+                if (!tokenData.access_token) {
+                    console.error('Token exchange failed:', tokenData);
+                    return new Response('Failed to exchange token: ' + JSON.stringify(tokenData), { status: 500 });
+                }
+
+                // 获取用户信息（包含 openid、username、nickname、avatar、email）
+                const userRes = await fetch(YZHYZXY_USERINFO_URL, {
+                    headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
+                });
+                const userData = await userRes.json();
+                if (!userData.openid) {
+                    console.error('Failed to get userinfo:', userData);
+                    return new Response('Failed to get userinfo', { status: 500 });
+                }
+
+                // 立即吊销 refresh_token（一次性使用）
+                if (tokenData.refresh_token) {
+                    try {
+                        const revokeBody = new URLSearchParams({
+                            token: tokenData.refresh_token,
+                            token_type_hint: 'refresh_token',
+                            client_id: env.YZHYZXY_CLIENT_ID,
+                            client_secret: env.YZHYZXY_CLIENT_SECRET
+                        });
+                        await fetch(YZHYZXY_REVOKE_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: revokeBody
+                        });
+                        console.log('yzhyzxy refresh_token revoked');
+                    } catch (err) {
+                        console.error('Failed to revoke yzhyzxy refresh_token:', err);
+                    }
+                }
+
+                // 4. 处理登录/注册逻辑
+                const openid = userData.openid;
+                const provider = 'yzhyzxy';
+                const username = userData.username || userData.nickname || `yz_${openid.slice(-8)}`;
+                const email = userData.email || `${openid}@yzhyzxy.local`;
+                const avatar = userData.avatar || '';
+
+                let localUser = await env.db
+                    .prepare('SELECT user_id FROM oauth_connections WHERE provider = ? AND openid = ?')
+                    .bind(provider, openid)
+                    .first();
+                if (mode === 'login') {
+                    if (localUser) {
+                        const userId = localUser.user_id;
+                        const user = await env.db
+                            .prepare('SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?')
+                            .bind(userId)
+                            .first();
+
+                        if (user.banned) {
+                            return new Response('账号已被封禁', { status: 403 });
+                        }
+                        const accessToken = await signAccessToken(
+                            { sub: user.id, username: user.username, email: user.email },
+                            env.JWT_KEY
+                        );
+                        const refreshToken = generateToken();
+                        await storeRefreshToken(kvStore, refreshToken, user.id, REFRESH_TOKEN_TTL);
+
+                        const cookieOptions = { domain: ".undz.cn", path: "/", httpOnly: true, secure: true, sameSite: "Lax", maxAge: REFRESH_TOKEN_TTL };
+                        const setCookieHeaders = [
+                            serialize('access_token', accessToken, cookieOptions),
+                            serialize('refresh_token', refreshToken, cookieOptions)
+                        ];
+
+                        return new Response(`
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body>
+                    <p style="text-align:center;margin-top:100px;font-size:18px;">Hold on...</p>
+<script>
+    if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+            action: 'login_success',
+            provider: 'yzhyzxy',
+            user: { id: ${user.id}, username: "${user.username}", email: "${user.email}" }
+        }, '*');
+    }
+    setTimeout(() => {
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ action: 'close_iframe' }, '*');
+        }
+    }, 500);
+<\/script>
+</body>
+</html>
+            `, {
+                            status: 200,
+                            headers: {
+                                'Content-Type': 'text/html; charset=utf-8',
+                                'Set-Cookie': setCookieHeaders.join(', ')
+                            }
+                        });
+                    }
+                    const registerUrl = `/oauth2/login?tab=register&oauth_provider=yzhyzxy&openid=${openid}&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&avatar=${encodeURIComponent(avatar)}`;
+                    return new Response(null, {
+                        status: 302,
+                        headers: { 'Location': registerUrl }
+                    });
+                }
+                if (mode === 'register') {
+                    if (localUser) {
+                        return new Response(`
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body>
+                    <p style="text-align:center;margin-top:100px;font-size:18px;">Hold on...</p>
+<script>
+    if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+            action: 'oauth_already_registered',
+            provider: 'yzhyzxy',
+            openid: "${openid}"
+        }, '*');
+    }
+    window.location.href = '/oauth2/login?tab=login';
+<\/script>
+</body>
+</html>
+            `, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+                    }
+                    const registerUrl = `/oauth2/login?tab=register&oauth_provider=yzhyzxy&openid=${openid}&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&avatar=${encodeURIComponent(avatar)}`;
+                    return new Response(null, {
+                        status: 302,
+                        headers: { 'Location': registerUrl }
+                    });
+                }
+
+                return new Response('Invalid mode', { status: 400 });
+            }
             if (path.startsWith("/api/ayonline/")) {
                 if (path === "/api/ayonline/oauth/revoke-client" && method === "POST") {
                     const [authStatus, user] = await checkAuth(request, env);
@@ -1077,6 +1297,7 @@ export default {
                         }, 500, cors);
                     }
                 }
+                // ---------- 初始化数据库（需 Admin Key） ----------
                 if (path === "/api/ayonline/init" && method === "POST") {
                     const authKey = request.headers.get("X-Admin-Key");
                     if (authKey !== env.KEY) {
@@ -1815,6 +2036,62 @@ export default {
                             "Set-Cookie": setCookie,
                         },
                     );
+                }
+
+                // ---------- oauth 用户注册 ----------
+                if (path === "/api/ayonline/register-oauth" && method === "POST") {
+                    const body = await request.json().catch(() => null);
+                    if (!body || !body.provider || !body.openid || !body.username || !body.email || !body.password) {
+                        return jsonResponse({ error: "Missing required fields" }, 400, cors);
+                    }
+
+                    const { provider, openid, username, email, password, avatar } = body;
+
+                    // 检查是否已被关联
+                    const existing = await env.db
+                        .prepare('SELECT user_id FROM oauth_connections WHERE provider = ? AND openid = ?')
+                        .bind(provider, openid)
+                        .first();
+                    if (existing) {
+                        return jsonResponse({ error: "This account is already linked" }, 409, cors);
+                    }
+                    // 注册用户
+                    const registerResult = await registerUser(env.db, username, email, password);
+                    if (!registerResult.success) {
+                        return jsonResponse(registerResult, registerResult.code, cors);
+                    }
+                    // 获取用户 ID
+                    const user = await env.db
+                        .prepare('SELECT id FROM online_users WHERE username = ? OR email = ?')
+                        .bind(username, email)
+                        .first();
+                    if (!user) {
+                        return jsonResponse({ error: "User not found" }, 500, cors);
+                    }
+                    // 创建关联
+                    const now = Date.now();
+                    await env.db
+                        .prepare(`INSERT INTO oauth_connections (provider, openid, user_id, created_at) VALUES (?, ?, ?, ?)`)
+                        .bind(provider, openid, user.id, now)
+                        .run();
+                    // 生成令牌并登录
+                    const accessToken = await signAccessToken(
+                        { sub: user.id, username: username, email: email },
+                        env.JWT_KEY
+                    );
+                    const refreshToken = generateToken();
+                    await storeRefreshToken(kvStore, refreshToken, user.id, REFRESH_TOKEN_TTL);
+                    const cookieOptions = { domain: ".undz.cn", path: "/", httpOnly: true, secure: true, sameSite: "Lax", maxAge: REFRESH_TOKEN_TTL };
+                    const headers = new Headers(cors);
+                    headers.append('Set-Cookie', serialize('access_token', accessToken, cookieOptions));
+                    headers.append('Set-Cookie', serialize('refresh_token', refreshToken, cookieOptions));
+
+                    return jsonResponse({
+                        success: true,
+                        action: 'register',
+                        code: 200,
+                        user: { id: user.id, username, email }
+                    }, 200, headers);
                 }
                 return new Response(
                     getMainPage("Ay Account Center", "<h1>404 Not Found</h1>",

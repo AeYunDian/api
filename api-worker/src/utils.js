@@ -138,6 +138,17 @@ export function generateToken() {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
+export async function generatePKCEPair() {
+  const verifier = generateToken();
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+  return { verifier, challenge };
+}
 export function isBase64(str) {
   assertString(str);
   const len = str.length;
