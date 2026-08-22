@@ -188,7 +188,8 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
     document.addEventListener('DOMContentLoaded', function () {
         const oauthBtn = document.getElementById('oauthYzhyzxyBtn');
         if (oauthBtn) {
-            oauthBtn.addEventListener('click', function () {
+            oauthBtn.addEventListener('click', function (e) {
+                e.preventDefault();
                 window.parent.postMessage(JSON.stringify({
                     action: 'oauth_login',
                     provider: 'yzhyzxy'

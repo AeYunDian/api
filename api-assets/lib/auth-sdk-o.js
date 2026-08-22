@@ -100,6 +100,7 @@ const BUILTIN_TRANSLATIONS = {
     'privacy_policy': '《隐私政策》',
     'cookie_policy': '《Cookie 政策》',
     'terms': '《服务条款》',
+    'btn.login.oauth.yzhyzxy': '使用 Yzhyzxy 账号登入',
     'privacy_policy.link': 'https://undz.cn/privacy_policy/zh-cn.html',
     'cookie_policy.link': 'https://undz.cn/cookie_policy/zh-cn.html',
     'terms.link': 'https://undz.cn/terms/zh-cn.html',
@@ -199,6 +200,7 @@ const BUILTIN_TRANSLATIONS = {
     'btn.login': 'Login',
     'btn.haveQuestion': 'FAQ',
     'loading': 'Loading...',
+    'btn.login.oauth.yzhyzxy': 'Login with Yzhyzxy account',
     'agreement.and1': ', ',
     'agreement.and2': 'and',
     'link.faq': 'https://online.undz.cn/login/faq/en-us.html',
@@ -295,6 +297,7 @@ const BUILTIN_TRANSLATIONS = {
     'login.usernameoremail': '用戶名/電郵',
     'login.password': '密碼',
     'btn.login': '登錄',
+    'btn.login.oauth.yzhyzxy': '使用 Yzhyzxy 賬號登錄',
     'btn.haveQuestion': '常見問題',
     'loading': '載入中...',
     'agreement.and1': '、',
@@ -980,10 +983,10 @@ class AyAccount {
           if (!data.url) {
             throw new Error('获取授权链接失败');
           }
-          const width = 850;
-          const height = 900;
-          const left = (window.screen.width - width) / 2;
-          const top = (window.screen.height - height) / 2;
+          const width = screen.availWidth / 4 * 3;
+          const height = screen.availHeight / 4 * 3;
+          const left = (screen.availWidth - width) / 2;
+          const top = (screen.availHeight - height) / 2;
           const popup = window.open(
             data.url,
             'yzhyzxy_login',

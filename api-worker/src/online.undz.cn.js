@@ -1099,7 +1099,7 @@ export default {
                             .first();
 
                         if (user.banned) {
-                            return new Response(null, { status: 302, headers: { 'Location': `/oauth2/account_banned?code=${generateToken()}&countdown=0x2710&ban_reason=${ban_reason}` } });
+                            return new Response(null, { status: 302, headers: { 'Location': `/oauth2/account_banned?code=${generateToken()}&countdown=0x2710&ban_reason=${user.ban_reason}` } });
                         }
 
                         const accessToken = await signAccessToken(
@@ -1131,17 +1131,24 @@ export default {
 
                 if (mode === 'register') {
                     if (localUser) {
+                        // const userId = localUser.user_id;
+                        // const user = await env.db
+                        //     .prepare('SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?')
+                        //     .bind(userId)
+                        //     .first();
+                        // const html = `<!DOCTYPE html><html><body><p style="text-align:center;">此账号已注册</p><script>if (window.opener) {window.opener.postMessage({action: 'login_success',provider: 'yzhyzxy',user: { id: ${user.id}, username: "${user.username}", email: "${user.email}" }}, '*');}window.close();<\/script></body></html>`;
 
-                        const html = `<!DOCTYPE html><html><body><p style="text-align:center;">此账号已注册</p><script>if (window.opener) {window.opener.postMessage({action: 'login_success',provider: 'yzhyzxy',user: { id: ${user.id}, username: "${user.username}", email: "${user.email}" }}, '*');}window.close();<\/script></body></html>`;
+                        // return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 
-                        return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+                        return new Response(null, { status: 302, headers: { 'Location': `/oauth2/?code=${generateToken()}&countdown=0x2710&account_provider=${provider}` } });
+
                     }
                     // const registerUrl = `/oauth2/login?tab=register&oauth_provider=yzhyzxy&openid=${openid}&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&avatar=${encodeURIComponent(avatar)}`;
                     // return new Response(null, {
                     //     status: 302,
                     //     headers: { 'Location': registerUrl }
                     // });
-                    return new Response(null, { status: 302, headers: { 'Location': `/oauth2/account_notlinked?code=${generateToken()}&countdown=0x2710&account_provider=${provider}` } });
+                    return new Response(null, { status: 302, headers: { 'Location': `/oauth2/invalid_request` } });
 
                 }
 
