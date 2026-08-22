@@ -352,7 +352,7 @@ async function initDatabase(db) {
                 client_secret TEXT NOT NULL,
                 name TEXT NOT NULL,
                 redirect_uris TEXT NOT NULL,
-                scope TEXT DEFAULT ${DEFAULT_OAUTH_CLIENT_SCOPE},
+                scope TEXT DEFAULT '${DEFAULT_OAUTH_CLIENT_SCOPE}',
                 trusted BOOLEAN DEFAULT 0,
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL

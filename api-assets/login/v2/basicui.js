@@ -26,13 +26,6 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
     const regAgreement = $('.regAgreement .checkbox');
     const regBtn = $('.regBtn');
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const oauthProvider = urlParams.get('oauth_provider');
-    const openid = urlParams.get('openid');
-    const username = urlParams.get('username');
-    const email = urlParams.get('email');
-    const avatar = urlParams.get('avatar');
-
     var IsDisabledOperation = false;
     var emailCodeToken = null;
     const params = new URLSearchParams(window.location.search);
@@ -180,34 +173,29 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
             }
             disableOperation()
             AyShowResult(_t('common.please_wait'), 'loading', 0);
-            const openid = this.dataset.openid;
-            const provider = this.dataset.provider;
 
-            if (openid && provider === 'yzhyzxy') {
-                // 使用 OAuth 注册
-                window.parent.postMessage(JSON.stringify({
-                    action: 'oauth_register',
-                    provider: 'yzhyzxy',
-                    openid: openid,
-                    username: getVal(regUsername),
-                    email: getVal(regEmail),
-                    password: getVal(regPassword),
-                    avatar: this.dataset.avatar || ''
-                }), '*');
-            } else {
+            window.parent.postMessage(JSON.stringify({
+                action: 'register',
+                username: getVal(regUsername),
+                email: getVal(regEmail),
+                password: getVal(regPassword),
+                code: getVal(regEmailCode),
+                token: emailCodeToken,
+            }), '*');
 
-                window.parent.postMessage(JSON.stringify({
-                    action: 'register',
-                    username: getVal(regUsername),
-                    email: getVal(regEmail),
-                    password: getVal(regPassword),
-                    code: getVal(regEmailCode),
-                    token: emailCodeToken,
-                }), '*');
-            }
         });
     }
-
+    document.addEventListener('DOMContentLoaded', function () {
+        const oauthBtn = document.getElementById('oauthYzhyzxyBtn');
+        if (oauthBtn) {
+            oauthBtn.addEventListener('click', function () {
+                window.parent.postMessage(JSON.stringify({
+                    action: 'oauth_login',
+                    provider: 'yzhyzxy'
+                }), '*');
+            });
+        }
+    });
     // ---------- 遇到问题 ----------
     document.querySelector(".haveQuestion").addEventListener("click", () => {
         const featuresHeight = window.screen.height * (7 / 10)
@@ -313,25 +301,6 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
     if (params.get('tab') === 'register') {
         document.querySelector(".register.nav-item").click();
     }
-
-    if (oauthProvider === 'yzhyzxy' && openid) {
-        if (username) {
-            const regUsername = document.getElementById('regUsername');
-            if (regUsername) regUsername.value = username;
-        }
-        if (email) {
-            const regEmail = document.getElementById('regEmail');
-            if (regEmail) regEmail.value = email;
-        }
-        // 存储 openid 到表单，注册时提交
-        const registerForm = document.querySelector('.register-form');
-        if (registerForm) {
-            registerForm.dataset.openid = openid;
-            registerForm.dataset.provider = 'yzhyzxy';
-            registerForm.dataset.avatar = avatar || '';
-        }
-    }
-
 })();
 
 

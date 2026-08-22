@@ -834,22 +834,25 @@ class AyAccount {
               this.#_closeModal();
               resolve(userInfo);
               break;
-            case 'oauth_register':
-              this.#_registerWithOAuth(data.openid, data.username, data.email, data.password, data.avatar)
-                .then((result) => {
-                  userInfo = result;
-                  iframe.contentWindow.postMessage(JSON.stringify({
-                    action: 'registerSuccess'
-                  }), '*');
-                })
-                .catch((err) => {
-                  if (!PRODUCE) console.error('OAuth 注册失败:', err);
-                  iframe.contentWindow.postMessage(JSON.stringify({
-                    action: 'registerFailure',
-                    message: err.message || '注册失败',
-                    code: err.error_code || 'unknown'
-                  }), '*');
-                });
+            case 'oauth_login':
+              if (data.provider === 'yzhyzxy') {
+                // 调用弹窗登录方法
+                this.#_loginWithOAuthPopup('yzhyzxy')
+                  .then((result) => {
+                    userInfo = result;
+                    iframe.contentWindow.postMessage(JSON.stringify({
+                      action: 'loginSuccess'
+                    }), '*');
+                  })
+                  .catch((err) => {
+                    if (!PRODUCE) console.error('OAuth 登录失败:', err);
+                    iframe.contentWindow.postMessage(JSON.stringify({
+                      action: 'loginFailure',
+                      message: err.message || '登录失败',
+                      code: err.error_code || 'unknown'
+                    }), '*');
+                  });
+              }
               break;
             case 'sendEmailCode':
               this.#_sendEmailCode(data.email)
@@ -959,6 +962,74 @@ class AyAccount {
       action: 'updateTranslations',
       payload: fullTranslation
     }), '*');
+  }
+  async #_loginWithOAuthPopup(provider) {
+    if (provider !== 'yzhyzxy') {
+      throw new Error('Unsupported provider');
+    }
+
+    return new Promise((resolve, reject) => {
+      fetch(`${URLPATH.BASE}/api/auth/yzhyzxy/start?mode=login`, {
+        credentials: 'include'
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to get auth URL');
+          return res.json();
+        })
+        .then(data => {
+          if (!data.url) {
+            throw new Error('获取授权链接失败');
+          }
+          const width = 500;
+          const height = 600;
+          const left = (window.screen.width - width) / 2;
+          const top = (window.screen.height - height) / 2;
+          const popup = window.open(
+            data.url,
+            'yzhyzxy_login',
+            `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+          );
+
+          if (!popup) {
+            throw new Error('弹窗被拦截，请允许弹窗或使用顶层跳转');
+          }
+          const handler = (event) => {
+            // 安全校验：只接受来自 online.undz.cn 的消息
+            // if (event.origin !== 'https://online.undz.cn') return;
+            if (event.data && event.data.action === 'login_success' && event.data.provider === 'yzhyzxy') {
+              window.removeEventListener('message', handler);
+              if (popup && !popup.closed) {
+                popup.close();
+              }
+              resolve({
+                action: 'login',
+                success: true,
+                code: 200,
+                user: event.data.user
+              });
+            }
+          };
+          window.addEventListener('message', handler);
+          const checkClosed = setInterval(() => {
+            if (popup.closed) {
+              clearInterval(checkClosed);
+              window.removeEventListener('message', handler);
+              reject(new Error('登录窗口已关闭'));
+            }
+          }, 500);
+          setTimeout(() => {
+            clearInterval(checkClosed);
+            window.removeEventListener('message', handler);
+            if (popup && !popup.closed) {
+              popup.close();
+            }
+            reject(new Error('登录超时，请重试'));
+          }, 300000);
+        })
+        .catch(err => {
+          reject(err);
+        });
+    });
   }
   /**
    * 关闭模态框，清理资源
@@ -1105,40 +1176,6 @@ class AyAccount {
   * @returns {Promise<Object|null>} 成功返回用户信息，关闭返回 null
   */
   login(options = {}) {
-    if (options.provider === 'yzhyzxy') {
-      return new Promise((resolve, reject) => {
-        const iframe = this._getOrCreateIframe();
-        iframe.style.display = 'block';
-        iframe.src = URLPATH.MODALPAGE.LOGIN_YZH_OAUTH;
-
-        const handler = (event) => {
-          const data = event.data;
-          if (!data || !data.action) return;
-
-          if (data.action === 'login_success' && data.provider === 'yzhyzxy') {
-            window.removeEventListener('message', handler);
-            setTimeout(() => { iframe.style.display = 'none'; }, 300);
-            resolve({
-              action: 'login',
-              success: true,
-              code: 200,
-              user: data.user
-            });
-          } else if (data.action === 'close_iframe') {
-            iframe.style.display = 'none';
-          } else if (data.action === 'oauth_need_register' || data.action === 'oauth_already_registered') {
-            // iframe 内部会自己处理跳转，无需干预
-          }
-        };
-        window.addEventListener('message', handler);
-
-        setTimeout(() => {
-          window.removeEventListener('message', handler);
-          iframe.style.display = 'none';
-          reject(new Error('登录超时，请重试'));
-        }, 300000);
-      });
-    }
     return this.#_openModal('login');
   }
   async #_registerWithOAuth(openid, username, email, password, avatar = '') {
