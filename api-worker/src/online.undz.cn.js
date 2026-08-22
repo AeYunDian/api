@@ -44,6 +44,13 @@ const YZHYZXY_REDIRECT_URI = 'https://online.undz.cn/api/oauth/callback';
 const YZHYZXY_SCOPE = 'openid profile email';
 const DEFAULT_USER_DESC = '这片星空，只有流行划过……'
 const DEFAULT_USER_AVATER = 'https://online.undz.cn/default-avatar.svg'
+const KV_PREFIX = {
+    REFRESH: 'refresh:',
+    TOKEN: 'token:',
+    USER_TOKENS: 'user_refresh_tokens:',
+    OAUTH_PKCE: 'oauth_pkce:'
+};
+
 /**
  * Oauth 检查传入的请求是否已登录授权
  * @param {Request} request - 原始的 HTTP 请求对象
@@ -846,7 +853,7 @@ async function storeRefreshToken(kv, token, userId, ttlSeconds, clientId = null)
     } else {
         value = String(userId);
     }
-    await kv.put(`refresh:${token}`, value, {
+    await kv.put(`${KV_PREFIX.REFRESH}${token}`, value, {
         expirationTtl: ttlSeconds,
     });
     await addRefreshTokenForUser(kv, userId, token);
@@ -862,7 +869,7 @@ function isVersionValid(current, required) {
     return true;
 }
 async function getUserIdFromRefreshToken(kv, token) {
-    const stored = await kv.get(`refresh:${token}`);
+    const stored = await kv.get(`${KV_PREFIX.REFRESH}${token}`);
     if (!stored) return null;
     try {
         const parsed = JSON.parse(stored);
@@ -879,14 +886,14 @@ async function getUserIdFromRefreshToken(kv, token) {
 async function deleteRefreshToken(kv, token) {
     // 先获取 userId
     const userId = await getUserIdFromRefreshToken(kv, token);
-    await kv.delete(`refresh:${token}`);
+    await kv.delete(`${KV_PREFIX.REFRESH}${token}`);
     if (userId) {
         await removeRefreshTokenFromUserList(kv, userId, token);
     }
 }
 // ---------- 用户 Refresh Token 列表管理（用于批量撤销） ----------
 async function addRefreshTokenForUser(kv, userId, token) {
-    const key = `user_refresh_tokens:${userId}`;
+    const key = `${KV_PREFIX.USER_TOKENS}${userId}`;
     const existing = await kv.get(key);
     let list = existing ? JSON.parse(existing) : [];
     if (!list.includes(token)) {
@@ -898,13 +905,13 @@ async function addRefreshTokenForUser(kv, userId, token) {
 }
 
 async function revokeAllUserRefreshTokens(kv, userId) {
-    await kv.deleteByKeyAndValue('refresh:%', String(userId));
-    await kv.delete(`user_refresh_tokens:${userId}`);
+    await kv.deleteByKeyAndValue(`${KV_PREFIX.REFRESH}%`, String(userId));
+    await kv.delete(`${KV_PREFIX.USER_TOKENS}${userId}`);
 }
 
 // 登出时单独移除某个 token
 async function removeRefreshTokenFromUserList(kv, userId, token) {
-    const key = `user_refresh_tokens:${userId}`;
+    const key = `${KV_PREFIX.USER_TOKENS}${userId}`;
     const existing = await kv.get(key);
     if (!existing) return;
     let list = JSON.parse(existing);
@@ -999,7 +1006,7 @@ export default {
                 const state = generateToken();
                 const mode = url.searchParams.get('mode') || 'login';
 
-                await kvStore.put(`oauth_pkce:${state}`, JSON.stringify({ verifier, mode }), {
+                await kvStore.put(`${KV_PREFIX.OAUTH_PKCE}${state}`, JSON.stringify({ verifier, mode }), {
                     expirationTtl: 600
                 });
                 const authUrl = new URL(YZHYZXY_AUTH_URL);
@@ -1024,12 +1031,12 @@ export default {
                     return new Response('Missing code or state', { status: 400 });
                 }
 
-                const storedData = await kvStore.get(`oauth_pkce:${state}`);
+                const storedData = await kvStore.get(`${KV_PREFIX.OAUTH_PKCE}${state}`);
                 if (!storedData) {
                     return new Response('Invalid or expired state', { status: 400 });
                 }
                 const { verifier, mode } = JSON.parse(storedData);
-                await kvStore.delete(`oauth_pkce:${state}`);
+                await kvStore.delete(`${KV_PREFIX.OAUTH_PKCE}${state}`);
 
                 const tokenBody = new URLSearchParams({
                     grant_type: 'authorization_code',
@@ -1099,7 +1106,7 @@ export default {
                             .first();
 
                         if (user.banned) {
-                            return new Response(null, { status: 302, headers: { 'Location': `/oauth2/account_banned?code=${generateToken()}&countdown=0x2710&ban_reason=${user.ban_reason}` } });
+                            return new Response(null, { status: 302, headers: { 'Location': `/oauth2/account_banned?code=${generateToken()}&countdown=0x1770&ban_reason=${user.ban_reason}` } });
                         }
 
                         const accessToken = await signAccessToken(
@@ -1125,7 +1132,7 @@ export default {
                         });
                     }
 
-                    return new Response(null, { status: 302, headers: { 'Location': `/oauth2/account_notlinked?code=${generateToken()}&countdown=0x2710&account_provider=${provider}` } });
+                    return new Response(null, { status: 302, headers: { 'Location': `/oauth2/account_notlinked?code=${generateToken()}&countdown=0x1770&account_provider=${provider}` } });
 
                 }
 
@@ -1140,7 +1147,7 @@ export default {
 
                         // return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 
-                        return new Response(null, { status: 302, headers: { 'Location': `/oauth2/?code=${generateToken()}&countdown=0x2710&account_provider=${provider}` } });
+                        return new Response(null, { status: 302, headers: { 'Location': `/oauth2/?code=${generateToken()}&countdown=0x1770&account_provider=${provider}` } });
 
                     }
                     // const registerUrl = `/oauth2/login?tab=register&oauth_provider=yzhyzxy&openid=${openid}&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&avatar=${encodeURIComponent(avatar)}`;
@@ -1175,23 +1182,23 @@ export default {
                     const deleteResult = await env.db
                         .prepare(
                             `DELETE FROM app_kv_store 
-             WHERE key LIKE 'refresh:%' 
+             WHERE key LIKE '${KV_PREFIX.REFRESH}%' 
                AND json_extract(value, '$.userId') = ? 
                AND json_extract(value, '$.clientId') = ?`
                         )
                         .bind(user.id, clientId)
                         .run();
-                    const listKey = `user_refresh_tokens:${user.id}`;
+                    const listKey = `${KV_PREFIX.USER_TOKENS}${user.id}`;
                     // 查询所有仍然有效的 refresh token（userId 匹配）
                     const remainingRows = await env.db
                         .prepare(
                             `SELECT key FROM app_kv_store 
-             WHERE key LIKE 'refresh:%' 
+             WHERE key LIKE '${KV_PREFIX.REFRESH}%' 
                AND json_extract(value, '$.userId') = ?`
                         )
                         .bind(user.id)
                         .all();
-                    const newTokenList = remainingRows.results.map(row => row.key.replace('refresh:', ''));
+                    const newTokenList = remainingRows.results.map(row => row.key.replace(KV_PREFIX.REFRESH, ''));
                     if (newTokenList.length > 0) {
                         await kvStore.put(listKey, JSON.stringify(newTokenList), {
                             expirationTtl: REFRESH_TOKEN_TTL
