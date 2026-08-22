@@ -999,12 +999,12 @@ class AyAccount {
           const handler = (event) => {
             // 安全校验：只接受来自 online.undz.cn 的消息
             if (event.origin !== 'https://online.undz.cn') return;
-            if (event.data && event.data.provider === 'yzhyzxy') {
+            if (event.data) {
               window.removeEventListener('message', handler);
               if (popup && !popup.closed) {
                 popup.close();
               }
-              if (event.data.action === 'login_success') {
+              if (event.data.action === 'login_success' && event.data.provider === 'yzhyzxy') {
                 resolve({
                   action: 'login',
                   success: true,
