@@ -1008,17 +1008,8 @@ export default {
                 authUrl.searchParams.set('code_challenge', challenge);
                 authUrl.searchParams.set('code_challenge_method', 'S256');
 
-                const html = `
-                <!DOCTYPE html>
-                <html>
-                <head><meta charset="UTF-8"><title>Hold on...</title></head>
-                <body>
-                    <p style="text-align:center;margin-top:100px;font-size:18px;">Hold on...</p>
-                    <script>window.location.href = "${authUrl.toString()}";<\/script>
-                </body>
-                </html>
-                    `;
-                return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+                // 返回 JSON，不是 HTML
+                return jsonResponse({ url: authUrl.toString() }, 200, corsHeaders(request));
             }
             if (path === "/api/oauth/callback" && method === "GET") {
                 const code = url.searchParams.get('code');
@@ -1089,7 +1080,7 @@ export default {
                     }
                 }
 
-                // 4. 处理登录/注册逻辑
+                // 处理登录/注册逻辑
                 const openid = userData.openid;
                 const provider = 'yzhyzxy';
                 const username = userData.username || userData.nickname || `yz_${openid.slice(-8)}`;
@@ -1100,6 +1091,7 @@ export default {
                     .prepare('SELECT user_id FROM oauth_connections WHERE provider = ? AND openid = ?')
                     .bind(provider, openid)
                     .first();
+
                 if (mode === 'login') {
                     if (localUser) {
                         const userId = localUser.user_id;
@@ -1111,6 +1103,7 @@ export default {
                         if (user.banned) {
                             return new Response('账号已被封禁', { status: 403 });
                         }
+
                         const accessToken = await signAccessToken(
                             { sub: user.id, username: user.username, email: user.email },
                             env.JWT_KEY
@@ -1124,29 +1117,28 @@ export default {
                             serialize('refresh_token', refreshToken, cookieOptions)
                         ];
 
-                        return new Response(`
+                        // 弹窗版 HTML：使用 window.opener 通知主窗口，然后自动关闭
+                        const html = `
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"></head>
+<head><meta charset="UTF-8"><title>登录成功</title></head>
 <body>
-                    <p style="text-align:center;margin-top:100px;font-size:18px;">Hold on...</p>
-<script>
-    if (window.parent && window.parent !== window) {
-        window.parent.postMessage({
-            action: 'login_success',
-            provider: 'yzhyzxy',
-            user: { id: ${user.id}, username: "${user.username}", email: "${user.email}" }
-        }, '*');
-    }
-    setTimeout(() => {
-        if (window.parent && window.parent !== window) {
-            window.parent.postMessage({ action: 'close_iframe' }, '*');
+    <p style="text-align:center;margin-top:100px;font-size:18px;color:#1a73e8;">✅ 登录成功，窗口即将关闭...</p>
+    <script>
+        if (window.opener) {
+            window.opener.postMessage({
+                action: 'login_success',
+                provider: 'yzhyzxy',
+                user: { id: ${user.id}, username: "${user.username}", email: "${user.email}" }
+            }, '*');
         }
-    }, 500);
-<\/script>
+        setTimeout(function() { window.close(); }, 1500);
+    <\/script>
 </body>
 </html>
-            `, {
+            `;
+
+                        return new Response(html, {
                             status: 200,
                             headers: {
                                 'Content-Type': 'text/html; charset=utf-8',
@@ -1154,34 +1146,41 @@ export default {
                             }
                         });
                     }
+
+                    // 未关联账号：跳转到注册页面
                     const registerUrl = `/oauth2/login?tab=register&oauth_provider=yzhyzxy&openid=${openid}&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&avatar=${encodeURIComponent(avatar)}`;
                     return new Response(null, {
                         status: 302,
                         headers: { 'Location': registerUrl }
                     });
                 }
+
                 if (mode === 'register') {
                     if (localUser) {
-                        return new Response(`
+                        // 已关联：跳转到登录页
+                        const html = `
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"></head>
+<head><meta charset="UTF-8"><title>已注册</title></head>
 <body>
-                    <p style="text-align:center;margin-top:100px;font-size:18px;">Hold on...</p>
-<script>
-    if (window.parent && window.parent !== window) {
-        window.parent.postMessage({
-            action: 'oauth_already_registered',
-            provider: 'yzhyzxy',
-            openid: "${openid}"
-        }, '*');
-    }
-    window.location.href = '/oauth2/login?tab=login';
-<\/script>
+    <p style="text-align:center;margin-top:100px;font-size:18px;">该账号已注册，请登录</p>
+    <script>
+        if (window.opener) {
+            window.opener.postMessage({
+                action: 'oauth_already_registered',
+                provider: 'yzhyzxy',
+                openid: "${openid}"
+            }, '*');
+        }
+        setTimeout(function() { window.location.href = '/oauth2/login?tab=login'; }, 1500);
+    <\/script>
 </body>
 </html>
-            `, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+            `;
+                        return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
                     }
+
+                    // 未注册：跳转到注册页面，自动填充信息
                     const registerUrl = `/oauth2/login?tab=register&oauth_provider=yzhyzxy&openid=${openid}&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&avatar=${encodeURIComponent(avatar)}`;
                     return new Response(null, {
                         status: 302,
