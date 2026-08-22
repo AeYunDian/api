@@ -46,7 +46,8 @@ export async function handleSendVerification(env, email, expirationTtl = 300, se
     }
 
     const mailUrl = `http://${mailDomain}:${port}/send`;
-
+    const textContent = template.replace('%CODE%', verificationCode).replace('%EXPDATA%', expirationTtl / 60).replace('%SERVICENAME%', serviceName);
+    const htmlContent = textContent.replace(/\n/g, '<br>');
     const mailResponse = await fetch(mailUrl, {
       method: 'POST',
       headers: {
@@ -56,8 +57,8 @@ export async function handleSendVerification(env, email, expirationTtl = 300, se
       body: JSON.stringify({
         to: email,
         subject: `[${serviceName}] Your Verification Code`,
-        body: template.replace('%CODE%', verificationCode).replace('%EXPDATA%', expirationTtl / 60).replace('%SERVICENAME%', serviceName),
-        html: template.replace('%CODE%', verificationCode).replace('%EXPDATA%', expirationTtl / 60).replace('%SERVICENAME%', serviceName)
+        body: textContent,
+        html: htmlContent
       })
     });
     if (mailResponse.status === 429) {

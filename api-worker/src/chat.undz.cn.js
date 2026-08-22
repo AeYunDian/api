@@ -17,7 +17,7 @@ import {
 } from './chat_room.js';
 import { getMainPage, mobileRegex, generateToken } from './utils.js';
 import { parse, serialize } from 'cookie';
-import { exchangeOAuthToken } from './online.undz.cn.js';  // 导入 token 交换函数
+import { exchangeOAuthToken, revokeRefreshToken } from './online.undz.cn.js';  // 导入 token 交换函数
 
 const corsHeaders_GO = {
     'Access-Control-Allow-Origin': '*',
@@ -119,7 +119,6 @@ export default {
                     redirectUri: 'https://chat.undz.cn/oauth/callback',
                     state: state
                 }, env);
-
                 if (!result.success) {
                     if (result.error === 'access_denied' && result.ban_reason) {
                         const banReason = result.ban_reason || '未提供具体原因';
@@ -283,7 +282,23 @@ export default {
         `;
                     return new Response(html, { headers: { 'Content-Type': 'text/html' } });
                 }
-
+                if (result.data && result.data.refresh_token) {
+                    try {
+                        const kvStore = createKvStore(env.db);
+                        await revokeRefreshToken(
+                            kvStore,
+                            result.data.refresh_token,
+                            'app_chat',
+                            env.CHAT_OAUTH_CLIENT_SECRET,
+                            env,
+                            'refresh_token'
+                        );
+                        console.log('Refresh token revoked successfully');
+                    } catch (err) {
+                        console.error('Failed to revoke refresh token:', err);
+                        // 不影响登录流程，只记录错误
+                    }
+                }
                 const redirectUrl = `/chat?room=main&nick=${encodeURIComponent(result.data.user.username)}&code=${generateToken()}${generateToken()}`;
                 return new Response(null, {
                     status: 302,

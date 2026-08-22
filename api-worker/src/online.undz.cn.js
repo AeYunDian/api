@@ -1,3 +1,4 @@
+// online.undz.cn.js
 // ============================================================
 // AY 统一身份认证中心 (online.undz.cn)
 // 功能：注册、登录、登出、验证、刷新令牌、OAUTH
@@ -14,7 +15,7 @@ import { REG_TEMPLATE, handleSendVerification } from "./mail_verify/send.js";
 import { createKvStore } from './kvWithD1.js';
 
 
-let kvStore = null;
+var kvStore = null;
 
 // ---------- 常量与配置 ----------
 const SDK_VER = "2.0.2";
@@ -178,9 +179,7 @@ const ALLOWED_ORIGINS = [
     "https://cdn.undz.cn",
     "https://online.undz.cn",
     "https://c.undz.cn",
-    "https://i0.undz.cn",
-    "https://i1.undz.cn",
-    "https://i2.undz.cn",
+    "https://console.undz.cn",
     "http://test.undz.cn:8080",
     "https://undz.cn",
     "https://io.hb.cn",
@@ -633,7 +632,8 @@ export async function exchangeOAuthToken(params, env) {
         kvStore,
         refreshToken,
         user.id,
-        OAUTH_REFRESH_TOKEN_TTL
+        OAUTH_REFRESH_TOKEN_TTL,
+        clientId
     );
 
     const scopes = (authCode.scope || '').split(' ').filter(s => s);
@@ -659,7 +659,35 @@ export async function exchangeOAuthToken(params, env) {
         }
     };
 }
+/**
+ * 撤销刷新令牌
+ * @param {object} kv - kvStore 实例
+ * @param {string} token - 要撤销的 refresh_token
+ * @param {string} clientId - 客户端 ID
+ * @param {string} clientSecret - 客户端密钥
+ * @param {Env} env - 环境变量
+ * @param {string} tokenTypeHint - 可选，'access_token' 或 'refresh_token'
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function revokeRefreshToken(kv, token, clientId, clientSecret, env, tokenTypeHint = 'refresh_token') {
+    // 如果提示是 access_token，直接返回成功
+    if (tokenTypeHint === 'access_token') {
+        return { success: true };
+    }
 
+    // 验证客户端身份
+    const client = await env.db
+        .prepare('SELECT * FROM oauth_clients WHERE client_id = ? AND client_secret = ?')
+        .bind(clientId, clientSecret)
+        .first();
+    if (!client) {
+        return { success: false, error: 'invalid_client' };
+    }
+    if (token) {
+        await deleteRefreshToken(kv, token);
+    }
+    return { success: true };
+}
 async function getOAuthClient(db, clientId) {
     const client = await db
         .prepare('SELECT * FROM oauth_clients WHERE client_id = ?')
@@ -786,8 +814,14 @@ async function authenticateUser(db, usernameOrEmail, password) {
 }
 
 // ---------- 刷新令牌 KV 操作 ----------
-async function storeRefreshToken(kv, token, userId, ttlSeconds) {
-    await kv.put(`refresh:${token}`, String(userId), {
+async function storeRefreshToken(kv, token, userId, ttlSeconds, clientId = null) {
+    let value;
+    if (clientId) {
+        value = JSON.stringify({ userId, clientId });
+    } else {
+        value = String(userId);
+    }
+    await kv.put(`refresh:${token}`, value, {
         expirationTtl: ttlSeconds,
     });
     await addRefreshTokenForUser(kv, userId, token);
@@ -803,9 +837,18 @@ function isVersionValid(current, required) {
     return true;
 }
 async function getUserIdFromRefreshToken(kv, token) {
-    const userId = await kv.get(`refresh:${token}`);
-    if (!userId) return null;
-    return parseInt(userId, 10);
+    const stored = await kv.get(`refresh:${token}`);
+    if (!stored) return null;
+    try {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed.userId === 'number') {
+            return parsed.userId;
+        }
+        return parseInt(stored, 10);
+    } catch {
+        // 不是 JSON，直接转为数字
+        return parseInt(stored, 10);
+    }
 }
 
 async function deleteRefreshToken(kv, token) {
@@ -829,22 +872,12 @@ async function addRefreshTokenForUser(kv, userId, token) {
     }
 }
 
-async function getRefreshTokensForUser(kv, userId) {
-    const key = `user_refresh_tokens:${userId}`;
-    const data = await kv.get(key);
-    return data ? JSON.parse(data) : [];
-}
-
 async function revokeAllUserRefreshTokens(kv, userId) {
-    const key = `user_refresh_tokens:${userId}`;
-    const tokens = await getRefreshTokensForUser(kv, userId);
-    for (const token of tokens) {
-        await kv.delete(`refresh:${token}`);
-    }
-    await kv.delete(key);
+    await kv.deleteByKeyAndValue('refresh:%', String(userId));
+    await kv.delete(`user_refresh_tokens:${userId}`);
 }
 
-// 登出时单独移除某个 token（可选，用于保持列表同步）
+// 登出时单独移除某个 token
 async function removeRefreshTokenFromUserList(kv, userId, token) {
     const key = `user_refresh_tokens:${userId}`;
     const existing = await kv.get(key);
@@ -939,6 +972,58 @@ export default {
             // ---------- 初始化数据库（需 Admin Key） ----------
 
             if (path.startsWith("/api/ayonline/")) {
+                if (path === "/api/ayonline/oauth/revoke-client" && method === "POST") {
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) {
+                        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+                    }
+                    const body = await request.json().catch(() => null);
+                    if (!body || !body.client_id) {
+                        return jsonResponse({ error: "Missing client_id" }, 400, cors);
+                    }
+                    const clientId = body.client_id;
+                    const client = await env.db
+                        .prepare('SELECT client_id FROM oauth_clients WHERE client_id = ?')
+                        .bind(clientId)
+                        .first();
+                    if (!client) {
+                        return jsonResponse({ error: "Invalid client_id" }, 400, cors);
+                    }
+                    const deleteResult = await env.db
+                        .prepare(
+                            `DELETE FROM app_kv_store 
+             WHERE key LIKE 'refresh:%' 
+               AND json_extract(value, '$.userId') = ? 
+               AND json_extract(value, '$.clientId') = ?`
+                        )
+                        .bind(user.id, clientId)
+                        .run();
+                    const listKey = `user_refresh_tokens:${user.id}`;
+                    // 查询所有仍然有效的 refresh token（userId 匹配）
+                    const remainingRows = await env.db
+                        .prepare(
+                            `SELECT key FROM app_kv_store 
+             WHERE key LIKE 'refresh:%' 
+               AND json_extract(value, '$.userId') = ?`
+                        )
+                        .bind(user.id)
+                        .all();
+                    const newTokenList = remainingRows.results.map(row => row.key.replace('refresh:', ''));
+                    if (newTokenList.length > 0) {
+                        await kvStore.put(listKey, JSON.stringify(newTokenList), {
+                            expirationTtl: REFRESH_TOKEN_TTL
+                        });
+                    } else {
+                        await kvStore.delete(listKey);
+                    }
+
+                    // 6. 返回成功
+                    return jsonResponse({
+                        success: true,
+                        message: `Revoked all tokens for client ${clientId}`,
+                        deleted_count: deleteResult.meta?.changes || 0
+                    }, 200, cors);
+                }
                 if (path === "/api/ayonline/register-oauth-client" && method === "POST") {
                     const [authStatus, user] = await checkAuth(request, env);
                     if (authStatus !== TAG_LOGGEDIN) {
@@ -2049,7 +2134,37 @@ export default {
                     }
                     return jsonResponse({ valid: true, user: result.user }, 200, cors);
                 }
+                if (path === "/api/oauth/revoke" && method === "POST") {
+                    const contentType = request.headers.get('Content-Type') || '';
+                    let body;
+                    if (contentType.includes('application/json')) {
+                        body = await request.json().catch(() => null);
+                    } else {
+                        const formData = await request.formData();
+                        body = {};
+                        for (const [key, value] of formData.entries()) {
+                            body[key] = value;
+                        }
+                    }
+                    if (!body) {
+                        return jsonResponse({ error: 'invalid_request' }, 400, cors);
+                    }
 
+                    const token = body.token;
+                    const tokenTypeHint = body.token_type_hint;
+                    const clientId = body.client_id;
+                    const clientSecret = body.client_secret;
+
+                    if (!clientId || !clientSecret) {
+                        return jsonResponse({ error: 'invalid_client' }, 401, cors);
+                    }
+
+                    const result = await revokeRefreshToken(kvStore, token, clientId, clientSecret, env, tokenTypeHint);
+                    if (!result.success) {
+                        return jsonResponse({ error: result.error }, 401, cors);
+                    }
+                    return jsonResponse({}, 200, cors);
+                }
                 return new Response(
                     getMainPage("Ay OAuth2.0 Center", "<h1>404 Not Found</h1>",
                         "<p>The page you are looking for cannot be found, please check and try again.</p>"),

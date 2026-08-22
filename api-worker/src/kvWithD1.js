@@ -13,6 +13,10 @@
 export function createKvStore(db) {
     return {
         /**
+         * @returns {import('@cloudflare/workers-types').D1Database} 标准Cloudflare D1
+         */
+        _db: db,
+        /**
          * 获取键值
          * @param {string} key
          * @returns {Promise<string|null>} 返回存储的字符串值，不存在或已过期返回 null
@@ -55,7 +59,75 @@ export function createKvStore(db) {
                 .prepare(`DELETE FROM app_kv_store WHERE key = ?`)
                 .bind(key)
                 .run();
-        }
+        },
+
+        /**
+         * 批量删除 key 以指定前缀开头的所有记录
+         * @param {string} prefix - key 前缀，如 'refresh:'
+         * @returns {Promise<number>} 返回被删除的行数
+         */
+        async deleteByPrefix(prefix) {
+            const result = await db
+                .prepare(`DELETE FROM app_kv_store WHERE key LIKE ?`)
+                .bind(`${prefix}%`)
+                .run();
+            return result.meta?.changes || 0;
+        },
+
+        /**
+         * 批量删除 key 以指定后缀结尾的所有记录
+         * @param {string} suffix - key 后缀，如 ':user:123'
+         * @returns {Promise<number>} 返回被删除的行数
+         */
+        async deleteBySuffix(suffix) {
+            // 使用 ESCAPE 防止通配符冲突（默认转义字符是 \）
+            // 注意：后缀匹配无法使用索引，适合小批量数据
+            const result = await db
+                .prepare(`DELETE FROM app_kv_store WHERE key LIKE ?`)
+                .bind(`%${suffix}`)
+                .run();
+            return result.meta?.changes || 0;
+        },
+
+        /**
+         * 批量删除 value 等于指定值的所有记录（谨慎使用）
+         * @param {string} value - 要匹配的 value 字符串
+         * @returns {Promise<number>} 返回被删除的行数
+         */
+        async deleteByValue(value) {
+            const result = await db
+                .prepare(`DELETE FROM app_kv_store WHERE value = ?`)
+                .bind(value)
+                .run();
+            return result.meta?.changes || 0;
+        },
+
+        /**
+         * 批量删除 key 匹配指定模式（支持 LIKE 语法）
+         * @param {string} pattern - LIKE 模式，如 'refresh:%' 或 '%:user:123'
+         * @returns {Promise<number>} 返回被删除的行数
+         */
+        async deleteByPattern(pattern) {
+            const result = await db
+                .prepare(`DELETE FROM app_kv_store WHERE key LIKE ?`)
+                .bind(pattern)
+                .run();
+            return result.meta?.changes || 0;
+        },
+        /**
+         * 批量删除 key 匹配指定模式且 value 等于指定值的记录
+         * @param {string} keyPattern - LIKE 模式，如 'refresh:%' 或 'token:%'
+         * @param {string} value - 要匹配的 value 字符串（精确相等）
+         * @returns {Promise<number>} 返回被删除的行数
+         */
+        async deleteByKeyAndValue(keyPattern, value) {
+            const result = await db
+                .prepare(`DELETE FROM app_kv_store WHERE key LIKE ? AND value = ?`)
+                .bind(keyPattern, value)
+                .run();
+            return result.meta?.changes || 0;
+        },
+
     };
 }
 
