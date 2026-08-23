@@ -80,6 +80,9 @@ export async function verifyBearerToken(request, env) {
                 id: payload.sub,
                 username: payload.username,
                 email: payload.email,
+                gender: payload.gender,
+                avatar: payload.avatar,
+                description: payload.description,
                 client_id: payload.client_id, // 哪个应用在调用
                 scope: payload.scope
             }
@@ -111,7 +114,7 @@ export async function checkAuth(request, env) {
         const userId = parseInt(payload.sub, 10);
         const user = await env.db
             .prepare(
-                "SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?",
+                "SELECT id, username, email, banned, ban_reason, gender, avatar, description FROM online_users WHERE id = ?",
             )
             .bind(userId)
             .first();
@@ -127,6 +130,9 @@ export async function checkAuth(request, env) {
                     id: user.id,
                     username: user.username,
                     email: user.email,
+                    gender: user.gender,
+                    avatar: user.avatar,
+                    description: user.description,
                     ban_reason: user.ban_reason || "",
                 },
             ];
@@ -138,6 +144,9 @@ export async function checkAuth(request, env) {
                 id: user.id,
                 username: user.username,
                 email: user.email,
+                gender: user.gender,
+                avatar: user.avatar,
+                description: user.description,
             },
         ];
     } catch (error) {
@@ -350,15 +359,15 @@ async function initDatabase(db) {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
+            banned INTEGER DEFAULT 0,
+            ban_reason TEXT DEFAULT '',
+            gender TEXT DEFAULT 'unknown',
+            avatar TEXT DEFAULT '${DEFAULT_USER_AVATAR}',
+            description TEXT DEFAULT '${DEFAULT_USER_DESC}'
             password_salt TEXT NOT NULL,
             password_hash TEXT NOT NULL,
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL,
-            banned INTEGER DEFAULT 0,
-            ban_reason TEXT DEFAULT '',
-            gender TEXT DEFAULT 0,
-            avatar TEXT DEFAULT '${DEFAULT_USER_AVATAR}',
-            description TEXT DEFAULT '${DEFAULT_USER_DESC}'
         )`,
             ).run();
         await db
@@ -438,25 +447,7 @@ async function initDatabase(db) {
             .prepare(`CREATE INDEX IF NOT EXISTS idx_email ON online_users(email)`)
             .run();
 
-        // ---------- 迁移：为 online_users 添加新列（如果缺失） ----------
-        // 获取当前表的列信息
-        const columnsResult = await db.prepare(`PRAGMA table_info(online_users)`).all();
-        const existingColumns = columnsResult.results.map(row => row.name);
 
-        // 需要确保存在的列（name, type, default）
-        const columnsToAdd = [
-            { name: 'gender', type: 'TEXT', default: '0' },
-            { name: 'avatar', type: 'TEXT', default: `'${DEFAULT_USER_AVATAR}'` },
-            { name: 'description', type: 'TEXT', default: `'${DEFAULT_USER_DESC}'` }
-        ];
-
-        for (const col of columnsToAdd) {
-            if (!existingColumns.includes(col.name)) {
-                const sql = `ALTER TABLE online_users ADD COLUMN ${col.name} ${col.type} DEFAULT ${col.default}`;
-                await db.prepare(sql).run();
-                console.log(`[Migration] Added column ${col.name} to online_users`);
-            }
-        }
         const clientExists = await db.prepare(`SELECT COUNT(*) as cnt FROM oauth_clients WHERE client_id = 'app_chat'`).first();
         if (!clientExists || clientExists.cnt === 0) {
             const now = Math.floor(Date.now() / 1000);
@@ -539,7 +530,7 @@ async function refreshAccessToken(refreshToken, clientId, clientSecret, env) {
     }
 
     const user = await env.db
-        .prepare('SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?')
+        .prepare('SELECT id, username, email, banned, ban_reason, gender, avatar, description FROM online_users WHERE id = ?')
         .bind(userId)
         .first();
     if (!user) {
@@ -563,7 +554,7 @@ async function refreshAccessToken(refreshToken, clientId, clientSecret, env) {
 
     // 生成新的 access_token
     const newAccessToken = await signAccessToken(
-        { sub: user.id, username: user.username, email: user.email },
+        { sub: user.id, username: user.username, email: user.email, gender: user.gender, avatar: user.avatar, description: user.description },
         env.JWT_KEY
     );
 
@@ -652,7 +643,7 @@ export async function exchangeOAuthToken(params, env) {
 
     // 获取用户信息
     const user = await env.db
-        .prepare('SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?')
+        .prepare('SELECT id, username, email, banned, ban_reason, gender, avatar, description FROM online_users WHERE id = ?')
         .bind(authCode.user_id)
         .first();
 
@@ -678,6 +669,9 @@ export async function exchangeOAuthToken(params, env) {
             sub: user.id,
             username: user.username,
             email: user.email,
+            gender: user.gender,
+            avatar: user.avatar,
+            description: user.description,
             client_id: clientId,
             scope: authCode.scope || client.scope
         },
@@ -810,14 +804,13 @@ async function registerUser(db, username, email, password) {
     await db
         .prepare(
             `
-    INSERT INTO online_users (username, email, password_salt, password_hash, created_at, updated_at, gender, avatar, description)
+    INSERT INTO online_users (username, email,  gender, avatar, description, password_salt, password_hash, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
         )
-        .bind(username, email, saltBase64, hashBase64, now, now,
-            '0',                      // gender
-            DEFAULT_USER_AVATAR,
-            DEFAULT_USER_DESC)
+        .bind(username, email, 'unknown', DEFAULT_USER_AVATAR,
+            DEFAULT_USER_DESC, saltBase64, hashBase64, now, now
+        )
         .run();
 
     return {
@@ -831,7 +824,7 @@ async function registerUser(db, username, email, password) {
 async function authenticateUser(db, usernameOrEmail, password) {
     const user = await db
         .prepare(
-            "SELECT id, username, email, password_salt, password_hash, banned, ban_reason FROM online_users WHERE username = ? OR email = ?",
+            "SELECT id, username, email, password_salt, password_hash, banned, ban_reason, gender, avatar, description FROM online_users WHERE username = ? OR email = ?",
         )
         .bind(usernameOrEmail, usernameOrEmail)
         .first();
@@ -870,6 +863,9 @@ async function authenticateUser(db, usernameOrEmail, password) {
             email: user.email,
             banned: user.banned,
             ban_reason: user.ban_reason || "",
+            gender: user.gender,
+            avatar: user.avatar,
+            description: user.description,
         },
     };
 }
@@ -1019,6 +1015,14 @@ async function changePassword(db, kv, userId, oldPassword, newPassword) {
 // ---------- 请求处理 ----------
 export default {
     async fetch(request, env) {
+        if (env.block === 'true') {
+            return new Response(
+                getMainPage("Ay Account Center", "<h1>503 Service Unavailable</h1>",
+                    `<p>服务器在计划内维护，预计 ${env.blocktime ? env.blocktime : '30'} 分钟后恢复，请您稍等。</p>`),
+                {
+                    status: 503, headers: { 'Content-Type': 'text/html', ...cors }
+                });
+        }
         const url = new URL(request.url);
         const path = url.pathname;
         const method = request.method;
@@ -1130,7 +1134,7 @@ export default {
                     if (localUser) {
                         const userId = localUser.user_id;
                         const user = await env.db
-                            .prepare('SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?')
+                            .prepare('SELECT id, username, email, banned, ban_reason, gender, avatar, description  FROM online_users WHERE id = ?')
                             .bind(userId)
                             .first();
 
@@ -1139,7 +1143,11 @@ export default {
                         }
 
                         const accessToken = await signAccessToken(
-                            { sub: user.id, username: user.username, email: user.email },
+                            {
+                                sub: user.id, username: user.username, email: user.email, gender: user.gender,
+                                avatar: user.avatar,
+                                description: user.description
+                            },
                             env.JWT_KEY
                         );
                         const refreshToken = generateToken();
@@ -1949,6 +1957,9 @@ export default {
                             id: payload.sub,
                             username: payload.username,
                             email: payload.email,
+                            gender: payload.gender,
+                            avatar: payload.avatar,
+                            description: payload.description,
                         },
                     }, 200, cors);
                 }
@@ -1976,7 +1987,7 @@ export default {
 
                     const user = await env.db
                         .prepare(
-                            "SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?",
+                            "SELECT id, username, email, banned, ban_reason, gender, avatar, description FROM online_users WHERE id = ?",
                         )
                         .bind(userId)
                         .first();
@@ -2004,7 +2015,11 @@ export default {
                     }
 
                     const newAccessToken = await signAccessToken(
-                        { sub: user.id, username: user.username, email: user.email },
+                        {
+                            sub: user.id, username: user.username, email: user.email, gender: user.gender,
+                            avatar: user.avatar,
+                            description: user.description
+                        },
                         env.JWT_KEY,
                     );
 
@@ -2037,8 +2052,8 @@ export default {
                     );
                 }
 
-                // ---------- oauth 用户注册 ----------
-                if (path === "/api/ayonline/register-oauth" && method === "POST") {
+                // ---------- oauth 用户注册 ---------- ======================================================================================================================== 待维护
+                if (path === "/api/ayonline/register-oauth" && method === "POST" && false) {
                     const body = await request.json().catch(() => null);
                     if (!body || !body.provider || !body.openid || !body.username || !body.email || !body.password) {
                         return jsonResponse({ error: "Missing required fields" }, 400, cors);
@@ -2092,12 +2107,6 @@ export default {
                         user: { id: user.id, username, email }
                     }, 200, headers);
                 }
-                return new Response(
-                    getMainPage("Ay Account Center", "<h1>404 Not Found</h1>",
-                        "<p>The page you are looking for cannot be found, please check and try again.</p>"),
-                    {
-                        status: 404, headers: { 'Content-Type': 'text/html', ...cors }
-                    });
             }
             if (path.startsWith("/api/oauth/")) {
                 if (path === "/api/oauth/authorize" && method === 'GET') {
@@ -2290,6 +2299,39 @@ export default {
                         return jsonResponse({ error: 'unsupported_grant_type' }, 400, cors);
                     }
                 }
+                if (path === "/api/oauth/userinfo" && method === "GET") {
+                    const result = await verifyBearerToken(request, env);
+                    if (!result.valid) {
+                        return jsonResponse({ error: result.error }, 401, cors);
+                    }
+
+                    const scopeList = (result.user.scope || '').split(' ');
+                    const hasOpenID = scopeList.includes('openid');
+                    const hasProfile = scopeList.includes('profile');
+                    const hasEmail = scopeList.includes('email');
+
+                    if (!hasOpenID || (!hasProfile && !hasEmail)) {
+                        return jsonResponse({
+                            error: 'insufficient_scope',
+                            error_description: 'Missing required scope: openid/profile or email'
+                        }, 403, cors);
+                    }
+
+                    const response = {};
+                    if (hasProfile) {
+                        response.id = result.user.id;
+                        response.username = result.user.username;
+                        if (result.user.gender !== 'unknown') {
+                            response.gender = result.user.gender;
+                        }
+                        response.avatar = result.user.avatar;
+                        response.description = result.user.description;
+                    }
+                    if (hasEmail) {
+                        response.email = result.user.email;
+                    }
+                    return jsonResponse(response, 200, cors);
+                }
                 if (path === "/api/oauth/user/profile" && method === "GET") {
                     const result = await verifyBearerToken(request, env);
                     if (!result.valid) {
@@ -2298,6 +2340,7 @@ export default {
                     const scopeList = (result.user.scope || '').split(' ');
                     if (!scopeList.includes('profile') && !scopeList.includes('openid')) {
                         return jsonResponse({
+                            message: '这个接口预计将在2026-10-01弃用，请转用 /api/oauth/userinfo 端点，具体请看文档',
                             error: 'insufficient_scope',
                             error_description: 'Missing required scope: profile or openid'
                         }, 403, cors);
@@ -2305,7 +2348,7 @@ export default {
                     return jsonResponse({
                         id: result.user.id,
                         username: result.user.username,
-                        // 此处可扩展
+                        message: '这个接口预计将在2026-10-01弃用，请转用 /api/oauth/userinfo 端点，具体请看文档',
                     }, 200, cors);
                 }
 
@@ -2317,11 +2360,13 @@ export default {
                     const scopeList = (result.user.scope || '').split(' ');
                     if (!scopeList.includes('email')) {
                         return jsonResponse({
+                            message: '这个接口预计将在2026-10-01弃用，请转用 /api/oauth/userinfo 端点，具体请看文档',
                             error: 'insufficient_scope',
                             error_description: 'Missing required scope: email'
                         }, 403, cors);
                     }
                     return jsonResponse({
+                        message: '这个接口预计将在2026-10-01弃用，请转用 /api/oauth/userinfo 端点，具体请看文档',
                         email: result.user.email
                     }, 200, cors);
                 }
