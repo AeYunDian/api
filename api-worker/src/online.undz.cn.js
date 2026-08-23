@@ -454,7 +454,7 @@ async function initDatabase(db) {
             await db.prepare(`
                 INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, scope, trusted, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `).bind('app_chat', generateToken(), '聊天助手', 'https://chat.undz.cn/oauth/callback,http://test.undz.cn:8080/callback', DEFAULT_OAUTH_CLIENT_SCOPE, 0, now, now).run();
+            `).bind('app_chat', generateToken(), '聊天助手', 'https://chat.undz.cn/oauth/callback', DEFAULT_OAUTH_CLIENT_SCOPE, 0, now, now).run();
         }
         return { success: true, message: 'Database initialized' };
     } catch (err) {

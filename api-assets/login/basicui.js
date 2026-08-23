@@ -32,31 +32,31 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
     const params = new URLSearchParams(window.location.search);
     function disableOperation() {
         IsDisabledOperation = true;
-        regUsername.disabled = true;
-        regEmail.disabled = true;
-        regPassword.disabled = true;
-        regPasswordConfirm.disabled = true;
-        regAgreement.disabled = true;
-        regBtn.disabled = true;
-        loginUsername.disabled = true;
-        loginPassword.disabled = true;
-        loginAgreement.disabled = true;
-        loginBtn.disabled = true;
-        document.querySelector(".card-close").classList.add("disabled");
+        if (regUsername) regUsername.disabled = true;
+        if (regEmail) regEmail.disabled = true;
+        if (regPassword) regPassword.disabled = true;
+        if (regPasswordConfirm) regPasswordConfirm.disabled = true;
+        if (regAgreement) regAgreement.disabled = true;
+        if (regBtn) regBtn.disabled = true;
+        if (loginUsername) loginUsername.disabled = true;
+        if (loginPassword) loginPassword.disabled = true;
+        if (loginAgreement) loginAgreement.disabled = true;
+        if (loginBtn) loginBtn.disabled = true;
+        if (closeBtn) closeBtn.classList.add("disabled");
     }
     function enableOperation() {
         IsDisabledOperation = false;
-        regUsername.disabled = false;
-        regEmail.disabled = false;
-        regPassword.disabled = false;
-        regPasswordConfirm.disabled = false;
-        regAgreement.disabled = false;
-        regBtn.disabled = false;
-        loginUsername.disabled = false;
-        loginPassword.disabled = false;
-        loginAgreement.disabled = false;
-        loginBtn.disabled = false;
-        document.querySelector(".card-close").classList.remove("disabled");
+        if (regUsername) regUsername.disabled = false;
+        if (regEmail) regEmail.disabled = false;
+        if (regPassword) regPassword.disabled = false;
+        if (regPasswordConfirm) regPasswordConfirm.disabled = false;
+        if (regAgreement) regAgreement.disabled = false;
+        if (regBtn) regBtn.disabled = false;
+        if (loginUsername) loginUsername.disabled = false;
+        if (loginPassword) loginPassword.disabled = false;
+        if (loginAgreement) loginAgreement.disabled = false;
+        if (loginBtn) loginBtn.disabled = false;
+        if (closeBtn) closeBtn.classList.remove("disabled");
     }
     // ---------- 关闭按钮 ----------
     if (closeBtn) {
