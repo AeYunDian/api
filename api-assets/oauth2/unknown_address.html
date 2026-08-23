@@ -255,34 +255,7 @@
                 </div>
             </div>
         </div>
-        <p class="md3-subtitle countdownTip">此弹窗将在&nbsp;<span class="countdown"
-                style="font-size: calc(1em + 6px);">10</span>&nbsp;
-            秒后自动关闭</p>
     </div>
-
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        var countdownTime = parseInt(urlParams.get('countdown') || '0x2710', 16);
-
-        const span_countdown = document.querySelector('.countdown');
-        if (window.opener) {
-            span_countdown.textContent = countdownTime / 1000;
-            let intervalId = setInterval(() => {
-                countdownTime -= 1000;
-
-                if (countdownTime <= 0) {
-                    span_countdown.textContent = 0;
-                    window.opener.postMessage({
-                        action: 'login_fail',
-                    }, '*');
-                    clearInterval(intervalId);
-                } else {
-                    span_countdown.textContent = countdownTime / 1000;
-                }
-            }, 1000)
-        }
-
-    </script>
 </body>
 
 </html>
