@@ -1015,7 +1015,12 @@ async function changePassword(db, kv, userId, oldPassword, newPassword) {
 // ---------- 请求处理 ----------
 export default {
     async fetch(request, env) {
+        const url = new URL(request.url);
+        const path = url.pathname;
+        const method = request.method;
         const cors = corsHeaders(request);
+        kvStore = createKvStore(env.db);
+
         if (env.block === 'true') {
             return new Response(
                 getMainPage("Ay Account Center", "<h1>503 Service Unavailable</h1>",
@@ -1024,10 +1029,7 @@ export default {
                     status: 503, headers: { 'Content-Type': 'text/html' }
                 });
         }
-        const url = new URL(request.url);
-        const path = url.pathname;
-        const method = request.method;
-        kvStore = createKvStore(env.db);
+
         if (method === "OPTIONS") {
             return handleOptions(request);
         }
