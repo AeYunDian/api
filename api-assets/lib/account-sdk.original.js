@@ -1,6 +1,17 @@
-'v2.0.3 AyAccountSDK';
+/**
+ * @file AyAccountSDK - 用户认证管理库
+ * @author AeYunDian
+ * @version 2.0.5
+ * @copyright 2026 AeYunDian. All rights reserved.
+ * @license MIT
+ */
+'v2.0.5 AyAccountSDK';
+'use strict';
+if (typeof window === 'undefined') {
+  throw new Error('AyAccountSDK requires browser environment');
+}
 
-const VERSION = '2.0.3';
+const VERSION = '2.0.5';
 const PRODUCE = false;
 
 // ---------- 本地南瓜种植基地 ----------//
@@ -12,6 +23,9 @@ const PRODUCE = false;
 //       {{}}  {{{}}}     {{}}    {{{}}}
 
 // ---------- 禁止私自采摘 ----------//
+
+const DEFAULT_WINDOW_CONFIG = { hideOauthClient: false, hideClose: false }
+
 
 const privateData = new WeakMap();
 const URLPATH = {
@@ -29,20 +43,21 @@ const URLPATH = {
   },
   'MODALPAGE': {
     'LOGIN_YZH_OAUTH': '/api/auth/yzhyzxy/start?mode=login',
-    'MOBILE': '/login/v2/mobile.html',
-    'DESKTOP': '/login/v2/',
+    'MOBILE': '/login/mobile',
+    'DESKTOP': '/login/',
     'REGISTER': '?tab=register',
     'LOGIN': '?tab=login'
   },
   'LIBRARY': {
     'GT4': '/lib/gt4.js',
     'AYTOAST': {
-      'SCRIPT': '/login/v2/toast.js',
-      'CSS': '/login/v2/toast.css'
+      'SCRIPT': '/login/toast.js',
+      'CSS': '/login/toast.css'
     }
   }
 }
 const allowedEmailDomains = [
+  'aliyun.com', // 虽然国内已不开放个人注册业务，但还是支持
   'qq.com',
   '163.com',
   '126.com',
@@ -81,7 +96,10 @@ const allowedEmailDomains = [
   'rambler.ru',
   'undz.cn',
   'io.hb.cn',
-  '2x.nz'
+  '2x.nz',
+  'edu.cn',
+  'gov.cn',
+  'yzhyzxy.cn',
 ];
 const BUILTIN_TRANSLATIONS = {
   'zh-cn': {
@@ -90,7 +108,7 @@ const BUILTIN_TRANSLATIONS = {
     'nav.reg': '&nbsp;注册&nbsp;',
     'nav.login.bartf': '94.6px',
     'nav.reg.bartf': '213.5px',
-    'link.faq': 'https://online.undz.cn/login/faq/zh-cn.html',
+    'link.faq': 'https://online.undz.cn/login/faq/zh-cn',
     'reg.username': '用户名',
     'reg.email': '邮箱',
     'reg.emailCode': '验证码',
@@ -101,9 +119,9 @@ const BUILTIN_TRANSLATIONS = {
     'cookie_policy': '《Cookie 政策》',
     'terms': '《服务条款》',
     'btn.login.oauth.yzhyzxy': '使用 Yzhyzxy 账号登入',
-    'privacy_policy.link': 'https://undz.cn/privacy_policy/zh-cn.html',
-    'cookie_policy.link': 'https://undz.cn/cookie_policy/zh-cn.html',
-    'terms.link': 'https://undz.cn/terms/zh-cn.html',
+    'privacy_policy.link': 'https://undz.cn/privacy_policy/zh-cn',
+    'cookie_policy.link': 'https://undz.cn/cookie_policy/zh-cn',
+    'terms.link': 'https://undz.cn/terms/zh-cn',
     'btn.reg': '注册',
     'login.usernameoremail': '用户名/邮箱',
     'login.password': '密码',
@@ -203,10 +221,10 @@ const BUILTIN_TRANSLATIONS = {
     'btn.login.oauth.yzhyzxy': 'Login with Yzhyzxy account',
     'agreement.and1': ', ',
     'agreement.and2': 'and',
-    'link.faq': 'https://online.undz.cn/login/faq/en-us.html',
-    'privacy_policy.link': 'https://undz.cn/privacy_policy/en-us.html',
-    'cookie_policy.link': 'https://undz.cn/cookie_policy/en-us.html',
-    'terms.link': 'https://undz.cn/terms/en-us.html',
+    'link.faq': 'https://online.undz.cn/login/faq/en-us',
+    'privacy_policy.link': 'https://undz.cn/privacy_policy/en-us',
+    'cookie_policy.link': 'https://undz.cn/cookie_policy/en-us',
+    'terms.link': 'https://undz.cn/terms/en-us',
     'error.1000': 'Invalid email format',
     'error.1001': 'Password must be between 4 and 20 characters and contain only a-z A-Z 0-9 -_=+@#$%',
     'error.1002': 'Username or email already exists',
@@ -289,10 +307,10 @@ const BUILTIN_TRANSLATIONS = {
     'privacy_policy': '《隱私政策》',
     'cookie_policy': '《Cookie 政策》',
     'terms': '《服務條款》',
-    'link.faq': 'https://online.undz.cn/login/faq/zh-hk.html',
-    'privacy_policy.link': 'https://undz.cn/privacy_policy/zh-hk.html',
-    'cookie_policy.link': 'https://undz.cn/cookie_policy/zh-hk.html',
-    'terms.link': 'https://undz.cn/terms/zh-hk.html',
+    'link.faq': 'https://online.undz.cn/login/faq/zh-hk',
+    'privacy_policy.link': 'https://undz.cn/privacy_policy/zh-hk',
+    'cookie_policy.link': 'https://undz.cn/cookie_policy/zh-hk',
+    'terms.link': 'https://undz.cn/terms/zh-hk',
     'btn.reg': '註冊',
     'login.usernameoremail': '用戶名/電郵',
     'login.password': '密碼',
@@ -774,7 +792,7 @@ class AyAccount {
      * @param {string} mode 仅用于日志或后续扩展，实际业务由 iframe 内消息决定
      * @returns {Promise<Object|null>} 返回用户信息或 null
      */
-  #_openModal(mode) {
+  #_openModal(mode, config = DEFAULT_WINDOW_CONFIG) {
     if (this._iframe) {
       throw new Error(this._t('error.modal_already_open') || 'Modal already open');
     }
@@ -814,6 +832,7 @@ class AyAccount {
 
       const handler = async (event) => {
         if (event.source !== iframe.contentWindow) return;
+        if (event.origin !== 'https://online.undz.cn') return;
         try {
           let data = event.data;
           if (typeof data === 'string' && data.startsWith('{')) {
@@ -942,9 +961,12 @@ class AyAccount {
 
       this._messageHandler = handler;
       window.addEventListener('message', handler);
-
       document.body.appendChild(iframediv);
       iframediv.appendChild(iframe);
+      iframe.contentWindow.postMessage(JSON.stringify({
+        action: 'configWindow',
+        config: config
+      }), '*');
     });
   }
   _sendTranslationsToIframe() {
@@ -1069,20 +1091,11 @@ class AyAccount {
   }
   /**
    * 用户注册（弹出模态框）
+   * @param {Object} 默认窗口配置 - hideOauthClient hideClose
    * @returns {Promise<Object|null>} 成功返回用户信息，关闭返回 null
    */
-  register() {
-    return this.#_openModal('register');
-  }
-  /**
- * 隐藏关闭
- */
-  hideClose() {
-    if (this._iframe.contentWindow.postMessage) {
-      this._iframe.contentWindow.postMessage(JSON.stringify({
-        action: 'hideClose'
-      }), '*');
-    }
+  register(config = DEFAULT_WINDOW_CONFIG) {
+    return this.#_openModal('register', config);
   }
   /**
    * 发送邮箱验证码
@@ -1091,7 +1104,7 @@ class AyAccount {
    */
   async #_sendEmailCode(email) {
     // 校验邮箱域名
-    const allowed = allowedEmailDomains.some(domain => email.endsWith('@' + domain));
+    const allowed = allowedEmailDomains.some(domain => email.endsWith(domain)); // 考虑什么 *.163.com 等情况
     if (!allowed) {
       throw new Error(this._t('error.1026'));
     }
@@ -1183,27 +1196,11 @@ class AyAccount {
   }
   /**
   * 用户登录（弹出模态框）
+  * @param {Object} 默认窗口配置 - hideOauthClient hideClose
   * @returns {Promise<Object|null>} 成功返回用户信息，关闭返回 null
   */
-  login(options = {}) {
-    return this.#_openModal('login');
-  }
-  async #_registerWithOAuth(openid, username, email, password, avatar = '') {
-    const response = await this._request(URLPATH.API.REGISTER_WITH_OAUTH, {
-      method: 'POST',
-      body: {
-        provider: 'yzhyzxy',
-        openid: openid,
-        username: username,
-        email: email,
-        password: password,
-        avatar: avatar
-      }
-    });
-    if (!response.success) {
-      throw new Error(result.message || '注册失败');
-    }
-    return response;
+  login(config = DEFAULT_WINDOW_CONFIG) {
+    return this.#_openModal('login', config);
   }
   /**
    * 用户登录

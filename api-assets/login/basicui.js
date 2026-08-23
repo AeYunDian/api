@@ -25,7 +25,7 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
     const regPasswordConfirm = $('#regPasswordConfirm');
     const regAgreement = $('.regAgreement .checkbox');
     const regBtn = $('.regBtn');
-
+    const closeBtn = document.querySelector(".card-close");
     var IsDisabledOperation = false;
     var emailCodeToken = null;
     const params = new URLSearchParams(window.location.search);
@@ -58,10 +58,13 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
         document.querySelector(".card-close").classList.remove("disabled");
     }
     // ---------- 关闭按钮 ----------
-    document.querySelector(".card-close").addEventListener("click", () => {
-        if (IsDisabledOperation) return;
-        window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*");
-    });
+    if (closeBtn) {
+        closeBtn.addEventListener("click", () => {
+            if (IsDisabledOperation) return;
+            window.parent.postMessage(JSON.stringify({ action: "closeWindow" }), "*");
+        });
+    }
+
     document.querySelector(".active-bar").style.transform = `translateX(${_t('nav.login.bartf')})`;
     // ---------- Tab 切换 ----------
     document.querySelector(".register.nav-item").addEventListener("click", () => {
@@ -173,6 +176,7 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
             }
             disableOperation()
             AyShowResult(_t('common.please_wait'), 'loading', 0);
+
             window.parent.postMessage(JSON.stringify({
                 action: 'register',
                 username: getVal(regUsername),
@@ -181,9 +185,21 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                 code: getVal(regEmailCode),
                 token: emailCodeToken,
             }), '*');
+
         });
     }
-
+    document.addEventListener('DOMContentLoaded', function () {
+        const oauthBtn = document.getElementById('oauthYzhyzxyBtn');
+        if (oauthBtn) {
+            oauthBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                window.parent.postMessage(JSON.stringify({
+                    action: 'oauth_login',
+                    provider: 'yzhyzxy'
+                }), '*');
+            });
+        }
+    });
     // ---------- 遇到问题 ----------
     document.querySelector(".haveQuestion").addEventListener("click", () => {
         const featuresHeight = window.screen.height * (7 / 10)
@@ -216,9 +232,6 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
 
         if (typeof data === 'object' && data.action) {
             switch (data.action) {
-                case 'hideClose':
-                    document.querySelector(".card-close").style.display = 'none';
-                    break;
                 case 'sendEmailCodeSuccess':
                     emailCodeToken = data.token;
                     AyCloseToast();
@@ -280,6 +293,17 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                     break;
                 case 'beforeClose':
                     document.querySelector("div.app")?.classList.remove("show");
+                    break;
+                case 'configWindow':
+                    if (data.config) {
+                        if (data.config.hideClose) {
+                            if (closeBtn) closeBtn.remove();
+                        }
+                        if (data.config.hideOauthClient) {
+                            const oauthBtn = document.querySelector('.oauth-provider-btn')
+                            if (oauthBtn) oauthBtn.remove();
+                        }
+                    }
                     break;
                 default: break;
             }

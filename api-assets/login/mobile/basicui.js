@@ -218,9 +218,6 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
         // 处理对象
         if (typeof data === 'object' && data.action) {
             switch (data.action) {
-                case 'hideClose':
-                    document.querySelector(".card-close").style.display = 'none';
-                    break;
                 case 'sendEmailCodeSuccess':
                     emailCodeToken = data.token;
                     AyCloseToast();
@@ -311,6 +308,17 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                     document.querySelector("div.app")?.classList.remove("app-enter");
                     document.querySelector("div.app")?.classList.add("app-leave");
                     break;
+                case 'configWindow':
+                    if (data.config) {
+                        if (data.config.hideClose) {
+                            if (closeBtn) closeBtn.remove();
+                        }
+                        if (data.config.hideOauthClient) {
+                            const oauthBtn = document.querySelector('.oauth-provider-btn')
+                            if (oauthBtn) oauthBtn.remove();
+                        }
+                    }
+                    break;
                 default: break;
             }
         }
@@ -319,6 +327,18 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
     if (params.get('tab') === 'register') {
         document.querySelector('.cm').click();
     }
+    document.addEventListener('DOMContentLoaded', function () {
+        const oauthBtn = document.getElementById('oauthYzhyzxyBtn');
+        if (oauthBtn) {
+            oauthBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                window.parent.postMessage(JSON.stringify({
+                    action: 'oauth_login',
+                    provider: 'yzhyzxy'
+                }), '*');
+            });
+        }
+    });
 })();
 function _t(key) {
     if (i18nData && typeof i18nData === 'object' && key in i18nData) {

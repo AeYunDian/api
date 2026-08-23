@@ -43,7 +43,7 @@ const YZHYZXY_REVOKE_URL = 'https://yzhyzxy.cn/api/oauth/revoke';
 const YZHYZXY_REDIRECT_URI = 'https://online.undz.cn/api/oauth/callback';
 const YZHYZXY_SCOPE = 'openid profile email';
 const DEFAULT_USER_DESC = '这片星空，只有流行划过……'
-const DEFAULT_USER_AVATER = 'https://online.undz.cn/default-avatar.svg'
+const DEFAULT_USER_AVATAR = 'https://online.undz.cn/default-avatar.svg'
 const KV_PREFIX = {
     REFRESH: 'refresh:',
     TOKEN: 'token:',
@@ -147,11 +147,13 @@ export async function checkAuth(request, env) {
     }
 }
 const allowedEmailDomains = [
+    'aliyun.com', // 虽然国内已不开放个人注册业务，但还是支持
     'qq.com',
     '163.com',
     '126.com',
     'foxmail.com',
     'sina.com',
+    'sina.cn',
     'sohu.com',
     '139.com',
     '189.cn',
@@ -162,6 +164,7 @@ const allowedEmailDomains = [
     'vip.qq.com',
     'vip.163.com',
     'vip.sina.com',
+    'vip.sina.cn',
     'gmail.com',
     'outlook.com',
     'hotmail.com',
@@ -183,7 +186,10 @@ const allowedEmailDomains = [
     'rambler.ru',
     'undz.cn',
     'io.hb.cn',
-    '2x.nz'
+    '2x.nz',
+    'edu.cn',
+    'gov.cn',
+    'yzhyzxy.cn',
 ];
 // 允许跨域的子服务域名（白名单）
 const ALLOWED_ORIGINS = [
@@ -351,7 +357,7 @@ async function initDatabase(db) {
             banned INTEGER DEFAULT 0,
             ban_reason TEXT DEFAULT '',
             gender TEXT DEFAULT 0,
-            avatar TEXT DEFAULT '${DEFAULT_USER_AVATER}',
+            avatar TEXT DEFAULT '${DEFAULT_USER_AVATAR}',
             description TEXT DEFAULT '${DEFAULT_USER_DESC}'
         )`,
             ).run();
@@ -431,6 +437,26 @@ async function initDatabase(db) {
         await db
             .prepare(`CREATE INDEX IF NOT EXISTS idx_email ON online_users(email)`)
             .run();
+
+        // ---------- 迁移：为 online_users 添加新列（如果缺失） ----------
+        // 获取当前表的列信息
+        const columnsResult = await db.prepare(`PRAGMA table_info(online_users)`).all();
+        const existingColumns = columnsResult.results.map(row => row.name);
+
+        // 需要确保存在的列（name, type, default）
+        const columnsToAdd = [
+            { name: 'gender', type: 'TEXT', default: '0' },
+            { name: 'avatar', type: 'TEXT', default: `'${DEFAULT_USER_AVATAR}'` },
+            { name: 'description', type: 'TEXT', default: `'${DEFAULT_USER_DESC}'` }
+        ];
+
+        for (const col of columnsToAdd) {
+            if (!existingColumns.includes(col.name)) {
+                const sql = `ALTER TABLE online_users ADD COLUMN ${col.name} ${col.type} DEFAULT ${col.default}`;
+                await db.prepare(sql).run();
+                console.log(`[Migration] Added column ${col.name} to online_users`);
+            }
+        }
         const clientExists = await db.prepare(`SELECT COUNT(*) as cnt FROM oauth_clients WHERE client_id = 'app_chat'`).first();
         if (!clientExists || clientExists.cnt === 0) {
             const now = Math.floor(Date.now() / 1000);
@@ -784,11 +810,14 @@ async function registerUser(db, username, email, password) {
     await db
         .prepare(
             `
-    INSERT INTO online_users (username, email, password_salt, password_hash, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO online_users (username, email, password_salt, password_hash, created_at, updated_at, gender, avatar, description)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
         )
-        .bind(username, email, saltBase64, hashBase64, now, now)
+        .bind(username, email, saltBase64, hashBase64, now, now,
+            '0',                      // gender
+            DEFAULT_USER_AVATAR,
+            DEFAULT_USER_DESC)
         .run();
 
     return {
@@ -1377,7 +1406,7 @@ export default {
                             cors,
                         );
                     }
-                    if (!allowedEmailDomains.some(domain => body.email.endsWith('@' + domain))) return jsonResponse({
+                    if (!allowedEmailDomains.some(domain => body.email.endsWith(domain))) return jsonResponse({
                         action: 'register',
                         error: 'Invalid email',
                         error_code: 1000

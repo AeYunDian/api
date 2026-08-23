@@ -183,6 +183,8 @@
   <div class="toolbar">
     <button id="btnInit" class="primary">⚡ 初始化 SDK</button>
     <button id="btnLogin">🚪 打开登录</button>
+    <button id="btnLoginWithNotOauth">🚪 打开登录（隐藏Oauth客户端）</button>
+    <button id="btnLoginWithNotCloseBtn">🚪 打开登录（隐藏关闭）</button>
     <button id="btnRegister">📝 打开注册</button>
     <button id="btnClose">✖ 关闭模态框</button>
     <button id="btnTest">📡 测试服务器</button>
@@ -217,8 +219,7 @@
     <span class="empty">点击按钮，结果将显示在这里…</span>
   </div>
 
-  <!-- 引入 SDK (开源版) -->
-  <script src="https://online.undz.cn/lib/auth-sdk-o.js"></script>
+  <script src="/lib/account-sdk.min.js"></script>
 
   <script>
     (function () {
@@ -229,6 +230,8 @@
 
       const btnInit = document.getElementById('btnInit');
       const btnLogin = document.getElementById('btnLogin');
+      const btnLoginWithNotOauth = document.getElementById('btnLoginWithNotOauth');
+      const btnLoginWithNotCloseBtn = document.getElementById('btnLoginWithNotCloseBtn');
       const btnRegister = document.getElementById('btnRegister');
       const btnClose = document.getElementById('btnClose');
       const btnTest = document.getElementById('btnTest');
@@ -328,7 +331,34 @@
             showError(err);
           });
       });
-
+      btnLoginWithNotCloseBtn.addEventListener('click', function () {
+        if (!ensureAccount()) return;
+        account.login({ hideClose: true })
+          .then(userInfo => {
+            if (userInfo) {
+              showResult(`✅ 登录成功，用户信息：\n${JSON.stringify(userInfo, null, 2)}`, 'success');
+            } else {
+              showResult('ℹ️ 用户关闭了登录窗口（未完成登录）', 'info');
+            }
+          })
+          .catch(err => {
+            showError(err);
+          });
+      });
+      btnLoginWithNotOauth.addEventListener('click', function () {
+        if (!ensureAccount()) return;
+        account.login({ hideOauthClient: true })
+          .then(userInfo => {
+            if (userInfo) {
+              showResult(`✅ 登录成功，用户信息：\n${JSON.stringify(userInfo, null, 2)}`, 'success');
+            } else {
+              showResult('ℹ️ 用户关闭了登录窗口（未完成登录）', 'info');
+            }
+          })
+          .catch(err => {
+            showError(err);
+          });
+      });
       // 3. 注册
       btnRegister.addEventListener('click', function () {
         if (!ensureAccount()) return;
