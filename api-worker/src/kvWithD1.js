@@ -22,12 +22,13 @@ export function createKvStore(db) {
          * @returns {Promise<string|null>} 返回存储的字符串值，不存在或已过期返回 null
          */
         async get(key) {
+            const timestamp = Math.floor(new Date().getTime() / 1000);
             const result = await db
                 .prepare(
                     `SELECT value FROM app_kv_store 
-                     WHERE key = ? AND expires_at > CAST(strftime('%s', 'now') AS INTEGER)`
+                     WHERE key = ? AND expires_at > ?`
                 )
-                .bind(key)
+                .bind(key, timestamp)
                 .first();
             return result ? result.value : null;
         },
@@ -40,6 +41,7 @@ export function createKvStore(db) {
          */
         async put(key, value, options = {}) {
             const ttl = options.expirationTtl || 128 * 86400;
+
             const expiresAt = Math.floor(Date.now() / 1000) + ttl;
             await db
                 .prepare(
@@ -80,8 +82,6 @@ export function createKvStore(db) {
          * @returns {Promise<number>} 返回被删除的行数
          */
         async deleteBySuffix(suffix) {
-            // 使用 ESCAPE 防止通配符冲突（默认转义字符是 \）
-            // 注意：后缀匹配无法使用索引，适合小批量数据
             const result = await db
                 .prepare(`DELETE FROM app_kv_store WHERE key LIKE ?`)
                 .bind(`%${suffix}`)
@@ -149,9 +149,10 @@ export async function initKvTable(db) {
     await db
         .prepare(`CREATE INDEX IF NOT EXISTS idx_kv_expires ON app_kv_store(expires_at)`)
         .run();
-    // 清理已过期的数据
+    const timestamp = Math.floor(new Date().getTime() / 1000);
     await db
-        .prepare(`DELETE FROM app_kv_store WHERE expires_at < strftime('%s', 'now')`)
+        .prepare(`DELETE FROM app_kv_store WHERE expires_at < ?`)
+        .bind(timestamp)
         .run();
 }
 
@@ -160,7 +161,9 @@ export async function initKvTable(db) {
  * @param {import('@cloudflare/workers-types').D1Database} db
  */
 export async function cleanExpiredKv(db) {
+    const timestamp = Math.floor(new Date().getTime() / 1000);
     await db
-        .prepare(`DELETE FROM app_kv_store WHERE expires_at < strftime('%s', 'now')`)
+        .prepare(`DELETE FROM app_kv_store WHERE expires_at < ?`)
+        .bind(timestamp)
         .run();
 }
