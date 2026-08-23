@@ -1,17 +1,17 @@
 /**
  * @file AyAccountSDK - 用户认证管理库
  * @author AeYunDian
- * @version 2.0.5
+ * @version 2.0.6
  * @copyright 2026 AeYunDian. All rights reserved.
  * @license MIT
  */
-'v2.0.5 AyAccountSDK';
+'v2.0.6 AyAccountSDK';
 'use strict';
 if (typeof window === 'undefined') {
     throw new Error('AyAccountSDK requires browser environment');
 }
 
-const VERSION = '2.0.5';
+const VERSION = '2.0.6';
 const PRODUCE = true;
 
 // ---------- 本地南瓜种植基地 ----------//
@@ -156,7 +156,6 @@ const BUILTIN_TRANSLATIONS = {
         'error.1024': '您已取消验证',
         'error.1025': '验证码错误',
         'error.1026': '不支持的邮箱域名',
-
         'error.1027': '发送验证码过于频繁',
         'error.1028': '请求发送时失败',
         'error.1029': '请填写邮箱',
@@ -164,7 +163,12 @@ const BUILTIN_TRANSLATIONS = {
         'error.1031': '邮件服务器不可用',
         'error.1032': '发送邮件失败',
         'error.1033': '发件服务器出现内部错误',
-
+        'error.1034': '获取授权链接失败',
+        'error.1035': '弹窗被拦截，请允许弹窗跳转',
+        'error.1036': '登入失败',
+        'error.1037': '未知错误',
+        'error.1038': '登陆视窗已关闭',
+        'error.1039': '登录超时，请重试',
         'common.send_email_code_success': '发送验证码成功',
         'common.send_email_code_failure': '发送验证码失败',
         'error.modal_already_open': '登录窗口已打开，请勿重复操作',
@@ -258,6 +262,12 @@ const BUILTIN_TRANSLATIONS = {
         'error.1031': 'Email server unavailable',
         'error.1032': 'Failed to send email',
         'error.1033': 'Internal error in the sending server',
+        "error.1034": "Failed to obtain authorization link.",
+        "error.1035": "Popup blocked. Please allow popups.",
+        "error.1036": "Login failed.",
+        "error.1037": "Unknown error.",
+        "error.1038": "Login window has been closed.",
+        "error.1039": "Login timed out. Please try again.",
         'error.modal_already_open': 'Login modal is already open, please do not repeat',
         'error.aytoast_not_found': 'The AyToast component failed to load, please reload.',
         'common.network_error': 'Network request failed, please check your connection',
@@ -353,6 +363,12 @@ const BUILTIN_TRANSLATIONS = {
         'error.1031': '郵件伺服器無法使用',
         'error.1032': 'Failed to send email',
         'error.1033': '發送伺服器內部錯誤',
+        "error.1034": "獲取授權連結失敗",
+        "error.1035": "彈窗被攔截，請允許彈窗跳轉",
+        "error.1036": "登入失敗",
+        "error.1037": "未知錯誤",
+        "error.1038": "登入視窗已關閉",
+        "error.1039": "登入超時，請重試",
         'error.modal_already_open': '登錄視窗已打開，請勿重複操作',
         'error.aytoast_not_found': 'AyToast 組件未成功加載，請你重載',
         'common.network_error': '網絡請求失敗，請檢查網絡',
@@ -989,21 +1005,23 @@ class AyAccount {
         }), '*');
     }
     async #_loginWithOAuthPopup(provider) {
+        const self = this;
+
         if (provider !== 'yzhyzxy') {
             throw new Error('Unsupported provider');
         }
 
         return new Promise((resolve, reject) => {
-            fetch(`${URLPATH.BASE}/api/auth/yzhyzxy/start?mode=login`, {
+            fetch(`${URLPATH.BASE}${URLPATH.MODALPAGE.LOGIN_YZH_OAUTH}`, {
                 credentials: 'include'
             })
                 .then(res => {
-                    if (!res.ok) throw new Error('Failed to get auth URL');
+                    if (!res.ok) throw new Error(self._t('error.1034'));
                     return res.json();
                 })
                 .then(data => {
                     if (!data.url) {
-                        throw new Error('获取授权链接失败');
+                        throw new Error(self._t('error.1034'));
                     }
                     const width = screen.availWidth / 4 * 3;
                     const height = screen.availHeight / 4 * 3;
@@ -1016,7 +1034,7 @@ class AyAccount {
                     );
 
                     if (!popup) {
-                        throw new Error('弹窗被拦截，请允许弹窗或使用顶层跳转');
+                        throw new Error(self._t('error.1035'));
                     }
                     const handler = (event) => {
                         // 安全校验：只接受来自 online.undz.cn 的消息
@@ -1034,10 +1052,10 @@ class AyAccount {
                                     user: event.data.user
                                 });
                             } else if (event.data.action === 'login_fail') {
-                                reject(new Error('登入失败'));
+                                reject(new Error(self._t('error.1036')));
                                 // oauth 页面会显示错误信息，不用管
                             } else {
-                                reject(new Error('未知错误'));
+                                reject(new Error(self._t('error.1037')));
                             }
                         }
                     };
@@ -1046,7 +1064,7 @@ class AyAccount {
                         if (popup.closed) {
                             clearInterval(checkClosed);
                             window.removeEventListener('message', handler);
-                            reject(new Error('登录窗口已关闭'));
+                            reject(new Error(self._t('error.1038')));
                         }
                     }, 500);
                     setTimeout(() => {
@@ -1055,7 +1073,7 @@ class AyAccount {
                         if (popup && !popup.closed) {
                             popup.close();
                         }
-                        reject(new Error('登录超时，请重试'));
+                        reject(new Error(self._t('error.1039')));
                     }, 600000);
                 })
                 .catch(err => {
