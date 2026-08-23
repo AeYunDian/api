@@ -1021,7 +1021,7 @@ export default {
                 getMainPage("Ay Account Center", "<h1>503 Service Unavailable</h1>",
                     `<p>服务器在计划内维护，预计 ${env.blocktime ? env.blocktime : '30'} 分钟后恢复，请您稍等。</p>`),
                 {
-                    status: 503, headers: { 'Content-Type': 'text/html', ...cors }
+                    status: 503, headers: { 'Content-Type': 'text/html' }
                 });
         }
         const url = new URL(request.url);
