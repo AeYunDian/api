@@ -363,11 +363,11 @@ async function initDatabase(db) {
             ban_reason TEXT DEFAULT '',
             gender TEXT DEFAULT 'unknown',
             avatar TEXT DEFAULT '${DEFAULT_USER_AVATAR}',
-            description TEXT DEFAULT '${DEFAULT_USER_DESC}'
+            description TEXT DEFAULT '${DEFAULT_USER_DESC}',
             password_salt TEXT NOT NULL,
             password_hash TEXT NOT NULL,
             created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
         )`,
             ).run();
         await db
