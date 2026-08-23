@@ -24,7 +24,7 @@ const PRODUCE = false;
 
 // ---------- 禁止私自采摘 ----------//
 
-const DEFAULT_WINDOW_CONFIG = { hideOauthClient: false, hideClose: false }
+const DEFAULT_WINDOW_CONFIG = { hideOauthClient: false, hideClose: false };
 
 
 const privateData = new WeakMap();
@@ -847,6 +847,10 @@ class AyAccount {
                 action: 'updateTranslations',
                 payload: translationMap
               }), '*');
+              iframe.contentWindow.postMessage(JSON.stringify({
+                action: 'configWindow',
+                config: config
+              }), '*');
               break;
             case 'closeWindow':
               iframe.contentWindow.postMessage(JSON.stringify({
@@ -963,10 +967,6 @@ class AyAccount {
       window.addEventListener('message', handler);
       document.body.appendChild(iframediv);
       iframediv.appendChild(iframe);
-      iframe.contentWindow.postMessage(JSON.stringify({
-        action: 'configWindow',
-        config: config
-      }), '*');
     });
   }
   _sendTranslationsToIframe() {

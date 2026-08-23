@@ -25,6 +25,7 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
     const regPasswordConfirm = $('#regPasswordConfirm');
     const regAgreement = $('.regAgreement .checkbox');
     const regBtn = $('.regBtn');
+    const oauthBtn = document.querySelector('.oauth-provider-btn')
     const closeBtn = document.querySelector(".card-close");
     var IsDisabledOperation = false;
     var emailCodeToken = null;
@@ -189,7 +190,6 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
         });
     }
     document.addEventListener('DOMContentLoaded', function () {
-        const oauthBtn = document.getElementById('oauthYzhyzxyBtn');
         if (oauthBtn) {
             oauthBtn.addEventListener('click', function (e) {
                 e.preventDefault();
@@ -300,8 +300,9 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                             if (closeBtn) closeBtn.remove();
                         }
                         if (data.config.hideOauthClient) {
-                            const oauthBtn = document.querySelector('.oauth-provider-btn')
                             if (oauthBtn) oauthBtn.remove();
+                        } else {
+                            if (oauthBtn) oauthBtn.style.display = '';
                         }
                     }
                     break;

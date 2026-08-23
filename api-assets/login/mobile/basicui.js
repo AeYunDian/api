@@ -29,7 +29,7 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
     const params = new URLSearchParams(window.location.search);
 
     var IsDisabledOperation = false;
-
+    const oauthBtn = document.querySelector('.oauth-provider-btn')
     const outcard = document.getElementById('outcard');
     const closeBtn = document.querySelector('.card-close');
     var emailCodeToken = null;
@@ -314,8 +314,9 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                             if (closeBtn) closeBtn.remove();
                         }
                         if (data.config.hideOauthClient) {
-                            const oauthBtn = document.querySelector('.oauth-provider-btn')
                             if (oauthBtn) oauthBtn.remove();
+                        } else {
+                            if (oauthBtn) oauthBtn.style.display = '';
                         }
                     }
                     break;

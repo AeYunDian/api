@@ -126,7 +126,7 @@
         (function () {
             const urlParams = new URLSearchParams(window.location.search);
             const redirectUrl = urlParams.get('redirect_url');
-            const targetUrl = redirectUrl || 'https://undz.cn/';
+            const targetUrl = redirectUrl || '/oauth/unknown_address?countdown=0x2710';
             const subtitle = document.querySelector(".md3-subtitle");
             const card = document.querySelector(".md3-card");
             const loadingIcon = document.querySelector(".loading-icon");
@@ -165,29 +165,6 @@
                         setTimeout(check, 200);
                     };
                     check();
-                });
-            }
-
-            function waitForIframeAndHideClose(account) {
-                return new Promise((resolve) => {
-                    const handler = (event) => {
-                        try {
-                            let data = event.data;
-                            if (typeof data === 'string' && data.startsWith('{')) {
-                                data = JSON.parse(data);
-                            }
-                            if (data && data.action === 'isReady') {
-                                account.hideClose();
-                                window.removeEventListener('message', handler);
-                                resolve();
-                            }
-                        } catch (e) { }
-                    };
-                    window.addEventListener('message', handler);
-                    setTimeout(() => {
-                        window.removeEventListener('message', handler);
-                        resolve();
-                    }, 5000);
                 });
             }
 
@@ -243,8 +220,7 @@
                         window.location.href = targetUrl;
                         return;
                     }
-                    const loginPromise = account.login();
-                    await waitForIframeAndHideClose(account);
+                    const loginPromise = account.login({ hideOauthClient: true, hideClose: true });
                     const result = await loginPromise;
                     document.body.style.backgroundColor = "";
                     card.classList.remove("fade-out");

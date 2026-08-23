@@ -21,16 +21,6 @@ const corsHeaders_GPO = {
 
 export default {
   async scheduled(controller, env) {
-    // try {
-    //   await env.db.exec(`
-    //             DELETE FROM oauth_consent_requests 
-    //             WHERE expires_at < UNIXEPOCH() 
-    //             OR status != 'pending'
-    //         `);
-    //   console.log(`Cleaned up expired consent requests`);
-    // } catch (error) {
-    //   console.error('Failed to clean consent requests:', error);
-    // }
     await cleanExpiredKv(env.db);
   },
 
@@ -84,37 +74,63 @@ export default {
         return await chatundzcn.fetch(request, env);
       }
 
-      if (hostname === 'kv.undz.cn' && url.pathname === '/initdb') {
-        const authKey = request.headers.get("X-Admin-Key");
-        if (authKey !== env.KEY) {
-          return new Response(JSON.stringify({ error: "Unauthorized" }), {
-            status: 401,
-            headers: {
-              "Content-Type": "application/json",
-            }
-          });
-        }
-        try {
-          await initKvTable(env.db);
-          return new Response(JSON.stringify({ success: true, message: "Database initialized" }), {
-            status: 200,
-            headers: {
-              "Content-Type": "application/json",
-            }
-          });
-        } catch (err) {
-          console.error('Init failed:', err);
-          return new Response(JSON.stringify({
-            error: 'Database initialization failed',
-            detail: err.message,
-            stack: err.stack
-          }),
-            {
-              status: 500,
+      if (hostname === 'kv.undz.cn') {
+        if (url.pathname === '/runtask') {
+          try {
+            await cleanExpiredKv(env.db);
+            return new Response(JSON.stringify({ success: true, message: "task runed" }), {
+              status: 200,
               headers: {
                 "Content-Type": "application/json",
               }
             });
+          } catch (err) {
+            console.error('Init failed:', err);
+            return new Response(JSON.stringify({
+              error: 'Task run failed',
+              detail: err.message,
+              stack: err.stack
+            }),
+              {
+                status: 500,
+                headers: {
+                  "Content-Type": "application/json",
+                }
+              });
+          }
+        }
+        if (url.pathname === '/initdb') {
+          const authKey = request.headers.get("X-Admin-Key");
+          if (authKey !== env.KEY) {
+            return new Response(JSON.stringify({ error: "Unauthorized" }), {
+              status: 401,
+              headers: {
+                "Content-Type": "application/json",
+              }
+            });
+          }
+          try {
+            await initKvTable(env.db);
+            return new Response(JSON.stringify({ success: true, message: "Database initialized" }), {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+              }
+            });
+          } catch (err) {
+            console.error('Init failed:', err);
+            return new Response(JSON.stringify({
+              error: 'Database initialization failed',
+              detail: err.message,
+              stack: err.stack
+            }),
+              {
+                status: 500,
+                headers: {
+                  "Content-Type": "application/json",
+                }
+              });
+          }
         }
       }
       // 班级文章服务
