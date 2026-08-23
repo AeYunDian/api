@@ -1015,6 +1015,7 @@ async function changePassword(db, kv, userId, oldPassword, newPassword) {
 // ---------- 请求处理 ----------
 export default {
     async fetch(request, env) {
+        const cors = corsHeaders(request);
         if (env.block === 'true') {
             return new Response(
                 getMainPage("Ay Account Center", "<h1>503 Service Unavailable</h1>",
@@ -1031,7 +1032,7 @@ export default {
             return handleOptions(request);
         }
 
-        const cors = corsHeaders(request);
+
 
         try {
             if (path === "/api/auth/yzhyzxy/start" && method === "GET") {
