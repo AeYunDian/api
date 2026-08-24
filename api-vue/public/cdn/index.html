@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AyJsCDN · 极速代理</title>
+    <!-- 自托管字体：通过代理加载 @fontsource 包 -->
+    <link rel="stylesheet" href="/npm/@fontsource/noto-sans-hk@5.0.0/index.min.css">
+    <link rel="stylesheet" href="/npm/@fontsource/fira-code@5.0.0/index.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans HK', 'Fira Code', 'Microsoft JhengHei', sans-serif;
+            background: #f5f7fa;
+            color: #1e293b;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 960px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 50px 40px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e6eaef;
+            transition: box-shadow 0.2s;
+        }
+
+        .container:hover {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+        }
+
+        /* ---------- 头部 ---------- */
+        .header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 32px;
+            border-bottom: 1px solid #eef2f6;
+            padding-bottom: 20px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand h1 {
+            font-size: 2.2rem;
+            font-weight: 600;
+            color: #0963a9;
+            /* 主题色 */
+            letter-spacing: -0.5px;
+        }
+
+        .brand .tag {
+            font-size: 0.85rem;
+            font-weight: 400;
+            color: #64748b;
+            background: #eef2f6;
+            padding: 2px 14px;
+            border-radius: 30px;
+        }
+
+        .nav a {
+            color: #475569;
+            text-decoration: none;
+            font-size: 0.95rem;
+            padding: 6px 12px;
+            border-radius: 8px;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav a:hover {
+            background: #eef6fc;
+            color: #0963a9;
+        }
+
+        /* ---------- 主内容 ---------- */
+        .hero {
+            margin-bottom: 28px;
+        }
+
+        .hero h2 {
+            font-size: 2.6rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: #0b1a2b;
+            margin-bottom: 8px;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: #475569;
+            max-width: 650px;
+        }
+
+        .hero p .highlight {
+            background: #e5f0fa;
+            color: #0963a9;
+            padding: 0 8px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        /* ---------- 使用说明 ---------- */
+        .usage {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin: 24px 0 32px 0;
+            border-left: 4px solid #0963a9;
+        }
+
+        .usage code {
+            font-family: 'Fira Code', 'Noto Sans HK', 'Microsoft JhengHei', monospace;
+            background: #e9edf2;
+            padding: 2px 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #1e293b;
+        }
+
+        .usage .example-url {
+            display: inline-block;
+            background: #ffffff;
+            padding: 8px 16px;
+            border-radius: 10px;
+            border: 1px solid #dde3e9;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            color: #0963a9;
+            margin-top: 6px;
+            word-break: break-all;
+        }
+
+        /* ---------- 示例网格 ---------- */
+        .examples h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #0b1a2b;
+            margin-bottom: 16px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .grid a {
+            display: block;
+            background: #f8fafc;
+            padding: 14px 18px;
+            border-radius: 12px;
+            text-decoration: none;
+            color: #1e293b;
+            font-weight: 500;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+            font-size: 0.95rem;
+        }
+
+        .grid a:hover {
+            background: #ffffff;
+            border-color: #0963a9;
+            box-shadow: 0 4px 12px rgba(9, 99, 169, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .grid a .lib {
+            display: block;
+            font-weight: 400;
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 4px;
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* ---------- 底部 ---------- */
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e9edf2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        .footer .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .footer .status .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #22c55e;
+            border-radius: 50%;
+        }
+
+        .footer a {
+            color: #64748b;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            color: #0963a9;
+        }
+
+        /* ---------- 响应式 ---------- */
+        @media (max-width: 640px) {
+            .container {
+                padding: 30px 18px;
+            }
+
+            .brand h1 {
+                font-size: 1.8rem;
+            }
+
+            .hero h2 {
+                font-size: 2rem;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .nav {
+                margin-top: 8px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <div class="brand">
+                <h1>AyJsCDN</h1>
+                <span class="tag">代理 · 加速</span>
+            </div>
+            <nav class="nav">
+                <a href="//undz.cn/project/">其他软件</a>
+                <a href="//undz.cn">主页</a>
+            </nav>
+        </header>
+
+        <!-- 主介绍 -->
+        <div class="hero">
+            <h2>为 jsDelivr 提供国内加速</h2>
+            <p>
+                将 <span class="highlight">cdn.jsdelivr.net</span> 替换为
+                <span class="highlight">cdn.undz.cn</span>，即刻享受 Cloudflare 边缘节点带来的快速加载。
+            </p>
+        </div>
+
+        <!-- 使用示例 -->
+        <div class="usage">
+            <div style="font-weight:500; margin-bottom:6px;">使用方法</div>
+            <div style="font-size:0.95rem; color:#334155;">
+                原链接：
+                <code style="word-wrap: break-word;">https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js</code>
+                <br>
+                代理链接：
+                <span class="example-url">https://cdn.undz.cn/npm/vue@3/dist/vue.global.js</span>
+            </div>
+        </div>
+
+        <!-- 常用库示例 -->
+        <div class="examples">
+            <h3>常用库快速访问</h3>
+            <div class="grid">
+                <a href="/npm/vue@3/dist/vue.global.js">
+                    Vue 3
+                    <span class="lib">/npm/vue@3/...</span>
+                </a>
+                <a href="/npm/lodash@4/lodash.min.js">
+                    Lodash
+                    <span class="lib">/npm/lodash@4/...</span>
+                </a>
+                <a href="/npm/axios@1/dist/axios.min.js">
+                    Axios
+                    <span class="lib">/npm/axios@1/...</span>
+                </a>
+                <a href="/npm/dayjs@1/dayjs.min.js">
+                    Day.js
+                    <span class="lib">/npm/dayjs@1/...</span>
+                </a>
+                <a href="/gh/jquery/jquery@3/dist/jquery.min.js">
+                    jQuery (GitHub)
+                    <span class="lib">/gh/jquery/...</span>
+                </a>
+                <a href="/npm/prettier@3/standalone.js">
+                    Prettier
+                    <span class="lib">/npm/prettier@3/...</span>
+                </a>
+            </div>
+            <p style="margin-top:16px; font-size:0.9rem; color:#64748b;">
+                点击即可查看文件内容。
+            </p>
+        </div>
+
+        <footer class="footer">
+            <div class="status">
+                <span class="dot"></span>
+                <span>服务状态 · 正常</span>
+            </div>
+            <div>
+                Powered by <a href="https://cloudflare.com" target="_blank">Cloudflare</a>
+                <span style="margin:0 8px;">·</span>
+            </div>
+        </footer>
+    </div>
+</body>
+
+</html>

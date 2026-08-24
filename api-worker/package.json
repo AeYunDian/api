@@ -1,7 +1,7 @@
 {
   "name": "api",
   "version": "1.0.0",
-  "description": "undz api router",
+  "description": "AyApiCenter",
   "main": "src/index.js",
   "scripts": {
     "dev": "wrangler dev src/index.js",

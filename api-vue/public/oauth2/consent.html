@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>授权确认 - AyOauth2Center</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f4f2f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background: #FEF7FF;
+            border-radius: 28px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05), 0 12px 24px rgba(103, 80, 164, 0.10);
+            max-width: 820px;
+            width: 100%;
+            padding: 48px 40px 32px;
+            border: 1px solid #EADDF2;
+            display: flex;
+            flex-direction: row;
+            gap: 40px;
+        }
+
+        .left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: start;
+        }
+
+        .left h1 {
+            font-size: 28px;
+            font-weight: 500;
+            color: #1D1B20;
+            margin-bottom: 12px;
+        }
+
+        .left p {
+            font-size: 16px;
+            color: #49454F;
+            line-height: 1.6;
+        }
+
+        .right {
+            flex: 1.2;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: #FBF8FE;
+            border-radius: 20px;
+            padding: 24px 28px;
+            border: 1px solid #E6E0E9;
+        }
+
+        .right .scope-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 24px 0;
+        }
+
+        .right .scope-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid #EADDF2;
+            font-size: 15px;
+            color: #1D1B20;
+            display: flex;
+            align-items: center;
+        }
+
+        .right .scope-list li::before {
+            content: "•";
+            font-size: 18px;
+            color: #6750A4;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+
+        .right .scope-list li:last-child {
+            border-bottom: none;
+        }
+
+        .actions {
+            display: flex;
+            gap: 16px;
+            justify-content: flex-end;
+            margin-top: 16px;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+            box-shadow: none;
+        }
+
+        .btn {
+            padding: 10px 32px;
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.2s, box-shadow 0.2s, opacity 0.2s;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+        }
+
+        .btn-primary {
+            background: #6750A4;
+            color: #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #4F378A;
+            box-shadow: 0 2px 6px rgba(103, 80, 164, 0.3);
+        }
+
+        .btn-secondary {
+            color: #6750A4;
+            border: 1px solid #6750A4;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #F6EDFF;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                flex-direction: column;
+                padding: 32px 24px;
+                gap: 24px;
+            }
+
+            .left h1 {
+                font-size: 24px;
+            }
+
+            .right {
+                padding: 20px;
+            }
+
+            .actions {
+                justify-content: center;
+            }
+
+            .btn {
+                flex: 1;
+                text-align: center;
+            }
+        }
+
+        .error-msg {
+            color: #b3261e;
+            margin-top: 16px;
+        }
+
+        .loading {
+            text-align: center;
+            color: #6750A4;
+        }
+
+        .reload-actions {
+            display: none;
+            justify-content: center;
+            margin-top: 16px;
+        }
+
+        .reload-actions .btn {
+            min-width: 120px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" id="consentContainer">
+        <div class="left">
+            <h1>授权确认</h1>
+            <p>应用 <strong id="appName">未知</strong> 请求以下权限：</p>
+            <div id="errorMsg" class="error-msg"></div>
+        </div>
+        <div class="right">
+            <ul class="scope-list" id="scopeList"></ul>
+            <div class="actions" id="actionButtons">
+                <button id="denyBtn" class="btn btn-secondary">拒绝</button>
+                <button id="approveBtn" class="btn btn-primary">同意</button>
+            </div>
+            <div class="reload-actions" id="reloadActions">
+                <button id="reloadBtn" class="btn btn-primary">重载</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            function showReload() {
+                document.getElementById('actionButtons').style.display = 'none';
+                document.getElementById('reloadActions').style.display = 'flex';
+            }
+            document.getElementById('reloadBtn').addEventListener('click', function () {
+                window.location.href = window.location.href + (window.location.href.includes('?') ? '&' : '?') +
+                    '_t=' + Date.now();
+            });
+            const approveBtn = document.getElementById('approveBtn');
+            const denyBtn = document.getElementById('denyBtn');
+            function disableButtons() {
+                approveBtn.disabled = true;
+                denyBtn.disabled = true;
+            }
+
+            function enableButtons() {
+                approveBtn.disabled = false;
+                denyBtn.disabled = false;
+            }
+            disableButtons();
+            const params = new URLSearchParams(window.location.search);
+            const requestId = params.get('request_id');
+            if (!requestId) {
+                document.getElementById('errorMsg').textContent = '缺少授权请求标识，请重试。';
+                showReload();
+                return;
+            }
+            let consentToken = '';
+            const scopeMap = {
+                'openid': '获取您的身份标识 (OpenID)',
+                'profile': '获取您的个人资料 (昵称、头像等)',
+                'email': '获取您的电子邮箱地址',
+                'phone': '获取您的手机号码',
+                'address': '获取您的地址信息',
+            };
+            function getScopeDescription(scope) {
+                return scopeMap[scope] || scope;
+            }
+
+            async function fetchConsentData() {
+                const res = await fetch('/api/oauth/consent-data?request_id=' + encodeURIComponent(requestId), {
+                    credentials: 'include'
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || '获取授权信息失败');
+                }
+                return res.json();
+            }
+            async function approve() {
+                disableButtons();
+                approveBtn.textContent = '处理中...';
+                try {
+                    const res = await fetch('/api/oauth/consent/approve', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ request_id: requestId, consent_token: consentToken }),
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                    } else {
+                        document.getElementById('errorMsg').textContent = data.error || '授权失败，请重试';
+                        showReload();
+                    }
+                } catch (err) {
+                    document.getElementById('errorMsg').textContent = '网络错误，请重试';
+                    showReload();
+                }
+            }
+            async function deny() {
+                disableButtons();
+                denyBtn.textContent = '处理中...';
+                try {
+                    const res = await fetch('/api/oauth/consent/deny', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ request_id: requestId, consent_token: consentToken }),
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                    } else {
+                        document.getElementById('errorMsg').textContent = data.error || '拒绝失败，请重试';
+                        showReload();
+                    }
+                } catch (err) {
+                    document.getElementById('errorMsg').textContent = '网络错误，请重试';
+                    showReload();
+                }
+            }
+
+            // 渲染页面
+            fetchConsentData().then(data => {
+                document.getElementById('appName').textContent = data.client_name || '未知应用';
+                const scopeList = document.getElementById('scopeList');
+                const scopes = data.scope ? data.scope.split(' ') : [];
+                if (scopes.length === 0) {
+                    const li = document.createElement('li');
+                    li.textContent = '（无权限请求）';
+                    scopeList.appendChild(li);
+                } else {
+                    scopes.forEach(s => {
+                        const li = document.createElement('li');
+                        li.textContent = getScopeDescription(s);
+                        scopeList.appendChild(li);
+                    });
+                }
+                consentToken = data.consent_token || '';
+                approveBtn.onclick = approve;
+                denyBtn.onclick = deny;
+                enableButtons();
+            }).catch(err => {
+                document.getElementById('errorMsg').textContent = err.message || '加载失败';
+                showReload();
+            });
+        })();
+    </script>
+</body>
+
+</html>

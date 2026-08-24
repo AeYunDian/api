@@ -1,0 +1,126 @@
+@import url("https://cdn.undz.cn/npm/typeface-roboto@1.1.13/index.css");
+main {
+  height: calc(100vh - 54px);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  font-family:
+    "Roboto",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  transition:
+    background-color 0.25s,
+    color 0.25s;
+  color: var(--color-text);
+  background-color: var(--color-body);
+  color-scheme: var(--color-scheme);
+}
+html {
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+
+:root {
+  --site-config-color-body: #fff;
+  --site-config-color-index-page-background: #fff;
+  --site-config-color-index-page-feature-background: #fff;
+  --site-config-color-index-page-logo-mask-background: linear-gradient(
+    -45deg,
+    #8baff8 50%,
+    #84e0ff 50%
+  );
+  --site-config-color-index-page-second-text-color: rgba(60, 60, 60, 0.7);
+  --site-config-color-index-page-divider-color: #ddd;
+  --site-config-card-border-radius: 12px;
+  --site-config-code-example-border-radius: 8px;
+  --site-config-color-bar: #fff;
+  --site-config-color-text: #555;
+  --site-config-color-sub-text: #888;
+  --site-config-color-border: rgba(0, 0, 0, 0.12);
+  --site-config-color-shadow: #eee;
+  --site-config-color-introduce-border: #6750a4;
+  --site-config-color-primary: #6750a4;
+  --site-config-color-link: #536525;
+  --site-config-color-type: #536525;
+  --site-config-color-loading-bar: #6750a4;
+  --site-config-color-side-bar: #6750a4;
+  --site-config-color-side-bar-active-background: #e8def8;
+  --site-config-color-app-bar: #6750a4;
+  --site-config-color-nav-button-hover-background: rgba(0, 0, 0, 0.08);
+  --site-config-color-mobile-cell-hover: #6750a4;
+  --site-config-color-pc-language-active: #6750a4;
+  --site-config-color-pc-language-active-background: #e8def8;
+  --site-config-color-mobile-language-active: #6750a4;
+  --site-config-color-mobile-language-active-background: #e8def8;
+  --site-config-color-pc-theme-active: #6750a4;
+  --site-config-color-pc-theme-active-background: #e8def8;
+  --site-config-color-mobile-theme-active: #6750a4;
+  --site-config-color-mobile-theme-active-background: #e8def8;
+  --site-config-color-mobile-body: #fef7ff;
+  --site-config-color-hl-background: #fafafa;
+  --site-config-color-hl-code: #58727e;
+  --site-config-color-hl-border: #f3f3f3;
+  --site-config-color-hl-group-a: #7c7c7c;
+  --site-config-color-hl-group-b: #6750a4;
+  --site-config-color-hl-group-c: #7d5260;
+  --site-config-color-hl-group-d: #b3261e;
+  --site-config-color-hl-group-e: #7d5260;
+  --site-config-color-hl-group-f: #7d5260;
+  --site-config-color-hl-group-g: #7d5260;
+  --site-config-color-hl-group-h: #633b48;
+  --site-config-color-hl-group-i: #633b48;
+}
+html.dark {
+  --site-config-color-body: #050505;
+  --site-config-color-index-page-background: #1e1e1e;
+  --site-config-color-index-page-feature-background: #303030;
+  --site-config-color-index-page-logo-mask-background: linear-gradient(
+    -45deg,
+    #729dfc 50%,
+    #6859f4 50%
+  );
+  --site-config-color-index-page-second-text-color: rgba(255, 255, 255, 0.75);
+  --site-config-color-index-page-divider-color: rgba(84, 84, 84, 0.8);
+  --site-config-card-border-radius: 12px;
+  --site-config-code-example-border-radius: 8px;
+  --site-config-color-bar: #1e1e1e;
+  --site-config-color-text: #fff;
+  --site-config-color-sub-text: #aaa;
+  --site-config-color-border: #333;
+  --site-config-color-shadow: #090909;
+  --site-config-color-introduce-border: #555;
+  --site-config-color-primary: #d0bcff;
+  --site-config-color-link: #bacf83;
+  --site-config-color-type: #bacf83;
+  --site-config-color-loading-bar: #d0bcff;
+  --site-config-color-side-bar: #d0bcff;
+  --site-config-color-side-bar-active-background: #4a4458;
+  --site-config-color-app-bar: #211f26;
+  --site-config-color-nav-button-hover-background: rgba(255, 255, 255, 0.08);
+  --site-config-color-mobile-cell-hover: #d0bcff;
+  --site-config-color-pc-language-active: #d0bcff;
+  --site-config-color-pc-language-active-background: #4a4458;
+  --site-config-color-mobile-language-active: #d0bcff;
+  --site-config-color-mobile-language-active-background: #4a4458;
+  --site-config-color-pc-theme-active: #d0bcff;
+  --site-config-color-pc-theme-active-background: #4a4458;
+  --site-config-color-mobile-theme-active: #d0bcff;
+  --site-config-color-mobile-theme-active-background: #4a4458;
+  --site-config-color-mobile-body: #141218;
+  --site-config-color-hl-background: #272727;
+  --site-config-color-hl-code: #fff;
+  --site-config-color-hl-border: #272727;
+  --site-config-color-hl-group-a: #7c7c7c;
+  --site-config-color-hl-group-b: #d0bcff;
+  --site-config-color-hl-group-c: #efb8c8;
+  --site-config-color-hl-group-d: #f2b8b5;
+  --site-config-color-hl-group-e: #efb8c8;
+  --site-config-color-hl-group-f: #efb8c8;
+  --site-config-color-hl-group-g: #efb8c8;
+  --site-config-color-hl-group-h: #efb8c8;
+  --site-config-color-hl-group-i: #efb8c8;
+}

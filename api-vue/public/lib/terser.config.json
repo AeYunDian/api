@@ -1,0 +1,25 @@
+{
+    "compress": {
+        "passes": 4,
+        "unsafe_arrows": true,
+        "ecma": 2015,
+        "global_defs": {
+            "PRODUCE": true
+        }
+    },
+    "mangle": {
+        "reserved": [
+            "AyAccount",
+            "createAyAccount"
+        ]
+    },
+    "keep_classnames": true,
+    "keep_fnames": true,
+    "wrap": "window",
+    "sourceMap": true,
+    "format": {
+        "ascii_only": true,
+        "comments": false,
+        "preamble": "/**\n * @file AyAccountSDK - 用户认证管理库\n * @author AeYunDian\n * @version 2.0.6\n * @copyright 2026 AeYunDian. All rights reserved.\n * @license MIT\n */\n"
+    }
+}
