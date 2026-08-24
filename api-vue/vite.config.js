@@ -32,7 +32,8 @@ export default defineConfig({
     })
   ],
   build: {
-    outDir: '../api-assets'
+    outDir: '../api-assets',
+    emptyOutDir: true
   },
   resolve: {
     alias: {

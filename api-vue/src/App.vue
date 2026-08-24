@@ -1,27 +1,35 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, onBeforeUnmount } from 'vue'
 import { RouterView } from 'vue-router'
 import { initSdk } from './account-sdk'
 import { useRouter } from 'vue-router'
 import { useThemeStore } from '@/stores/theme'
 import '@/assets/base.css'
 
+const router = useRouter();
+const themeStore = useThemeStore();
 
+function toggleTheme() {
+  themeStore.setTheme(themeStore.currentTheme === 'light' ? 'dark' : 'light');
+}
+
+function handleStorage(e) {
+  if (e.key === 'theme' && e.newValue) {
+    themeStore.setTheme(e.newValue);
+  }
+}
 onMounted(() => {
+  themeStore.initializeTheme();
   try {
     initSdk('ayaccountcenter_1601', 'zh-cn');
   } catch (error) {
     console.error('SDK 初始化失败', error);
   }
+  window.addEventListener('storage', handleStorage);
 })
-
-
-const router = useRouter();
-const themeStore = useThemeStore();
-themeStore.initializeTheme();
-function toggleTheme() {
-  themeStore.setTheme(themeStore.currentTheme === 'light' ? 'dark' : 'light');
-}
+onBeforeUnmount(() => {
+  window.removeEventListener('storage', handleStorage);
+});
 </script>
 
 <template>

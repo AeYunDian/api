@@ -11,6 +11,7 @@ async function checkAndRedirect() {
     try {
         const verifyRes = await sdk.verify()
         if (verifyRes.valid && verifyRes.user?.id && verifyRes.user?.username) {
+            if (typeof sdk.close === 'function') { await sdk.close() }
             router.push('/user-panel/account-overview')
             return true
         }

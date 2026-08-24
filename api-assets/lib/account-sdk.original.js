@@ -1,17 +1,17 @@
 /**
  * @file AyAccountSDK - 用户认证管理库
  * @author AeYunDian
- * @version 2.0.6
+ * @version 2.0.7
  * @copyright 2026 AeYunDian. All rights reserved.
  * @license MIT
  */
-'v2.0.6 AyAccountSDK';
+'v2.0.7 AyAccountSDK';
 'use strict';
 if (typeof window === 'undefined') {
   throw new Error('AyAccountSDK requires browser environment');
 }
 
-const VERSION = '2.0.6';
+const VERSION = '2.0.7';
 const PRODUCE = false;
 
 // ---------- 本地南瓜种植基地 ----------//
@@ -612,6 +612,7 @@ class AyAccount {
     iframe.style.top = '0';
     iframe.style.left = '0';
     iframe.style.width = '100%';
+    iframe.style.colorScheme = 'light';
     iframe.style.height = '100%';
     iframe.style.border = 'none';
     iframe.style.zIndex = '20000000';
