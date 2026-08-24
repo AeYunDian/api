@@ -835,6 +835,7 @@ class AyAccount {
       iframe.style.width = "100%";
       iframe.style.height = "100%";
       iframe.style.border = "none";
+      iframe.style.colorScheme = 'light';
       iframe.style.zIndex = "20000000";
       iframe.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
       iframe.style.opacity = "1";
