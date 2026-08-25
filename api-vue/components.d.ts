@@ -20,10 +20,12 @@ declare module 'vue' {
     VarCard: typeof import('@varlet/ui')['_CardComponent']
     VarCell: typeof import('@varlet/ui')['_CellComponent']
     VarDivider: typeof import('@varlet/ui')['_DividerComponent']
-    VarEllipsis: typeof import('@varlet/ui')['_EllipsisComponent']
+    VarForm: typeof import('@varlet/ui')['_FormComponent']
     VarIcon: typeof import('@varlet/ui')['_IconComponent']
     VarImage: typeof import('@varlet/ui')['_ImageComponent']
     VarInput: typeof import('@varlet/ui')['_InputComponent']
+    VarList: typeof import('@varlet/ui')['_ListComponent']
+    VarLoading: typeof import('@varlet/ui')['_LoadingComponent']
     VarSelect: typeof import('@varlet/ui')['_SelectComponent']
     VarSpace: typeof import('@varlet/ui')['_SpaceComponent']
   }

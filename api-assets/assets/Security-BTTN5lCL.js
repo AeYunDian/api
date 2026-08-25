@@ -1,1 +1,0 @@
-import{N as e,c as t,d as n}from"./runtime-core.esm-bundler-DP29QBal.js";var r={__name:`Security`,setup(r){return(r,i)=>(e(),n(`div`,null,[...i[0]||=[t(`h2`,null,`安全中心`,-1),t(`p`,null,`功能待更新`,-1)]]))}};export{r as default};

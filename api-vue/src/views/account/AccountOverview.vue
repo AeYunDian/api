@@ -62,6 +62,7 @@ function maskEmail(email) {
                     <p v-if="user.username">用户名：{{ user?.username }}</p>
                     <p v-if="user.email">邮箱：{{ maskEmail(user?.email) }}</p>
                     <p v-if="user.description" class="description">简介：{{ user?.description }}</p>
+                    <p v-if="user.created_at">注册时间：{{ new Date(user.created_at).toLocaleString() }}</p>
                 </div>
 
             </var-space>

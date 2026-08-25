@@ -1,6 +1,6 @@
 // views/UserPanel.vue
 <script setup>
-import { onMounted, onUnmounted, ref, provide, inject } from 'vue';
+import { onMounted, onUnmounted, ref, provide, inject, computed } from 'vue';
 
 import { useRouter, useRoute, RouterView } from 'vue-router';
 import { Dialog } from '@varlet/ui'
@@ -13,7 +13,18 @@ let intervalId = null;
 const user = ref(null);
 const channel = inject('channel');
 const sdk = inject('sdk');
+const isMobile = computed(() => { return window.innerWidth < 768; })
 provide('user', user);
+const refreshUser = async () => {
+    const { valid, data } = await checkLogin();
+    if (valid && data?.user) {
+        user.value = data.user;
+        return data.user;
+    }
+    return null;
+};
+
+provide('refreshUser', refreshUser);
 async function checkLogin() {
     try {
         const res = await sdk.verify();
@@ -99,7 +110,8 @@ function openConsole() {
         <var-card class="card var-elevation--10">
             <template #default>
                 <div class="panel-layout">
-                    <div class="sidebar">
+                    <div v-if="isMobile">s</div>
+                    <div class="sidebar" v-else>
                         <var-cell title="账号概览" :border="true" @click="switchScreens('/account-overview')" v-ripple
                             :class="{ active: route.path === '/user-panel/account-overview' }">
                             <template #icon>
@@ -189,14 +201,14 @@ function openConsole() {
 
 .main-content {
     flex: 1;
-    padding: 24px 32px;
+    padding: 0 32px;
     overflow-y: auto;
 }
 
 .panel-layout {
     display: flex;
     height: 100%;
-    min-height: 300px;
+    min-height: 75vh;
 }
 
 .sidebar {
@@ -217,6 +229,7 @@ function openConsole() {
     width: 100%;
     box-sizing: border-box;
     padding: 20px;
+    overflow-y: auto;
 }
 
 .card {
@@ -224,8 +237,11 @@ function openConsole() {
     transition-timing-function: cubic-bezier(0.45, 0.19, 0.06, 0.89);
     width: 80%;
     background: var(--card-background);
-    height: 80%;
+    /* height: 80%; */
     padding: 24px;
+    height: auto;
+    max-height: 85vh;
+    overflow: auto;
 }
 
 .bg-orbs {

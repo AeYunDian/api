@@ -1,0 +1,1 @@
+import{P as e,c as t,d as n}from"./runtime-core.esm-bundler-DIUDPsVO.js";var r={__name:`LinkAccount`,setup(r){return(r,i)=>(e(),n(`div`,null,[...i[0]||=[t(`h2`,null,`第三方账号绑定`,-1),t(`p`,null,`功能待更新`,-1)]]))}};export{r as default};

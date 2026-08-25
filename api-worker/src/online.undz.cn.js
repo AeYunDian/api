@@ -962,9 +962,9 @@ async function storeRefreshToken(
 ) {
     let value;
     if (clientId) {
-        value = JSON.stringify({ userId, clientId });
+        value = JSON.stringify({ userId, clientId, createdAt: Math.floor(Date.now() / 1000) });
     } else {
-        value = String(userId);
+        value = JSON.stringify({ userId, createdAt: Math.floor(Date.now() / 1000) });
     }
     await kv.put(`${KV_PREFIX.REFRESH}${token}`, value, {
         expirationTtl: ttlSeconds,
@@ -986,7 +986,7 @@ async function getUserIdFromRefreshToken(kv, token) {
     if (!stored) return null;
     try {
         const parsed = JSON.parse(stored);
-        if (parsed && typeof parsed.userId === "number") {
+        if (parsed && typeof parsed.userId === 'number') {
             return parsed.userId;
         }
         return parseInt(stored, 10);
@@ -1400,17 +1400,80 @@ export default {
                         cors,
                     );
                 }
+                if (path === "/api/ayonline/revoke-oauth-tokens" && method === "POST") {
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) {
+                        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+                    }
+
+                    // 删除所有包含 clientId 的 refresh token
+                    const result = await env.db
+                        .prepare(
+                            `DELETE FROM app_kv_store 
+             WHERE key LIKE ? 
+             AND value LIKE ?`
+                        )
+                        .bind(
+                            `${KV_PREFIX.REFRESH}%`,
+                            `%"userId":${user.sub}%` // 精确到 userId
+                            // 但还需要确保 value 中有 clientId 字段
+                        )
+                        .run();
+
+                    // 更精确：仅删除 JSON 中包含 clientId 的记录
+                    // 由于 D1 支持 json_extract 更好，但如果你不想用，可以先查询后过滤
+                    // 这里采用两步法（先查询再删除）避免 json_extract
+                    const rows = await env.db
+                        .prepare(
+                            `SELECT key FROM app_kv_store 
+             WHERE key LIKE ? 
+             AND value LIKE ?`
+                        )
+                        .bind(
+                            `${KV_PREFIX.REFRESH}%`,
+                            `%"userId":${user.sub}%`
+                        )
+                        .all();
+
+                    let deletedCount = 0;
+                    for (const row of rows.results || []) {
+                        // 在 JS 中解析并检查是否有 clientId
+                        const val = await kvStore.get(row.key);
+                        if (val) {
+                            try {
+                                const parsed = JSON.parse(val);
+                                if (parsed && parsed.clientId) {
+                                    await kvStore.delete(row.key);
+                                    deletedCount++;
+                                }
+                            } catch { }
+                        }
+                    }
+
+                    return jsonResponse({
+                        success: true,
+                        message: `${deletedCount} OAuth refresh tokens revoked`
+                    }, 200, cors);
+                }
                 if (path === "/api/ayonline/revoke-all-devices" && method === "POST") {
                     const [authStatus, user] = await checkAuth(request, env);
                     if (authStatus !== TAG_LOGGEDIN) {
                         return jsonResponse({ error: "Unauthorized" }, 401, cors);
                     }
-                    // 使用 deleteByKeyAndValue 批量删除
-                    const deletedCount = await kvStore.deleteByKeyAndValue(
-                        `${KV_PREFIX.REFRESH}%`,
-                        String(user.sub)
-                    );
-                    // 清除用户 token 列表
+                    const result = await env.db
+                        .prepare(
+                            `DELETE FROM app_kv_store 
+             WHERE key LIKE ? 
+             AND value LIKE ?`
+                        )
+                        .bind(
+                            `${KV_PREFIX.REFRESH}%`,
+                            `%"userId":${user.sub}%`
+                        )
+                        .run();
+
+
+                    const deletedCount = result.meta?.changes || 0;
                     await kvStore.delete(`${KV_PREFIX.USER_TOKENS}${user.sub}`);
                     // 清除当前设备的 Cookie
                     const clearOptions = {
@@ -1421,17 +1484,15 @@ export default {
                         sameSite: "None",
                         maxAge: 0,
                     };
-                    const clearHeaders = [
-                        serialize("access_token", "", clearOptions),
-                        serialize("refresh_token", "", clearOptions),
-                    ];
 
                     return jsonResponse({
                         success: true,
-                        message: `All devices logged out (${deletedCount} tokens revoked)`
+                        message: `All devices logged out (${deletedCount} tokens revoked)`,
+                        deletedCount: deletedCount
                     }, 200, {
                         ...cors,
-                        "Set-Cookie": clearHeaders,
+                        "Set-Cookie": serialize("access_token", "", clearOptions),
+                        "Set-Cookie": serialize("refresh_token", "", clearOptions),
                     });
                 }
                 if (path === "/api/ayonline/device-count" && method === "GET") {
@@ -1443,12 +1504,51 @@ export default {
                     const result = await env.db
                         .prepare(
                             `SELECT COUNT(*) as count FROM app_kv_store 
-             WHERE key LIKE ? AND value = ? AND expires_at > ?`
+         WHERE key LIKE ? 
+         AND value LIKE ? 
+         AND expires_at > ?`
                         )
-                        .bind(`${KV_PREFIX.REFRESH}%`, String(user.sub), Math.floor(Date.now() / 1000))
+                        .bind(
+                            `${KV_PREFIX.REFRESH}%`,
+                            `%"userId":${user.sub}%`,
+                            Math.floor(Date.now() / 1000)
+                        )
                         .first();
-
                     return jsonResponse({ count: result.count || 0 }, 200, cors);
+                }
+                if (path === "/api/ayonline/revoke-oauth-app" && method === "POST") {
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) {
+                        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+                    }
+                    const body = await request.json().catch(() => null);
+                    if (!body || !body.client_id) {
+                        return jsonResponse({ error: "Missing client_id" }, 400, cors);
+                    }
+                    const clientId = body.client_id;
+                    const client = await env.db
+                        .prepare("SELECT client_id FROM oauth_clients WHERE client_id = ?")
+                        .bind(clientId)
+                        .first();
+                    if (!client) {
+                        return jsonResponse({ error: "Invalid client_id" }, 400, cors);
+                    }
+                    const result = await env.db
+                        .prepare(
+                            `DELETE FROM app_kv_store 
+             WHERE key LIKE ? 
+             AND value LIKE ?`
+                        )
+                        .bind(
+                            `${KV_PREFIX.REFRESH}%`,
+                            `%"userId":${user.sub},"clientId":"${clientId}"%`
+                        )
+                        .run();
+                    const deletedCount = result.meta?.changes || 0;
+                    return jsonResponse({
+                        success: true,
+                        message: `Revoked ${deletedCount} tokens for client ${clientId}`
+                    }, 200, cors);
                 }
                 if (path === "/api/ayonline/update-profile" && method === "POST") {
                     const [authStatus, user] = await checkAuth(request, env);
@@ -1558,52 +1658,61 @@ export default {
                     if (authStatus !== TAG_LOGGEDIN) {
                         return jsonResponse({ error: "Unauthorized" }, 401, cors);
                     }
-
-                    // 查询所有 OAuth refresh token（包含 clientId 的 JSON）
-                    // 由于 value 存储的是 JSON 字符串，需要解析，这里用 SQL 的 json_extract
-                    // 但 D1 的 json_extract 支持有限，用 LIKE + 正则匹配的方式
-                    // 或者先查询所有，在 JS 中解析（考虑到数据量不大）
-                    const timestamp = Math.floor(Date.now() / 1000);
+                    const now = Math.floor(Date.now() / 1000);
                     const rows = await env.db
                         .prepare(
-                            `SELECT key, value FROM app_kv_store 
+                            `SELECT key, value, expires_at FROM app_kv_store 
              WHERE key LIKE ? AND expires_at > ?`
                         )
-                        .bind(`${KV_PREFIX.REFRESH}%`, timestamp)
+                        .bind(`${KV_PREFIX.REFRESH}%`, now)
                         .all();
-
-                    const clientTokenMap = {};
+                    const clientMap = {};
                     for (const row of rows.results || []) {
                         try {
                             const parsed = JSON.parse(row.value);
                             if (parsed && parsed.userId === user.sub && parsed.clientId) {
                                 const clientId = parsed.clientId;
-                                clientTokenMap[clientId] = (clientTokenMap[clientId] || 0) + 1;
+                                if (!clientMap[clientId]) {
+                                    clientMap[clientId] = { count: 0, firstCreatedAt: null };
+                                }
+                                clientMap[clientId].count++;
+                                if (parsed.createdAt) {
+                                    const createdAt = parsed.createdAt;
+                                    if (clientMap[clientId].firstCreatedAt === null || createdAt < clientMap[clientId].firstCreatedAt) {
+                                        clientMap[clientId].firstCreatedAt = createdAt;
+                                    }
+                                }
                             }
                         } catch {
-                            // 不是 JSON，忽略（普通登录 token）
                         }
                     }
 
-                    const clientIds = Object.keys(clientTokenMap);
+                    const clientIds = Object.keys(clientMap);
                     if (clientIds.length === 0) {
                         return jsonResponse({ apps: [] }, 200, cors);
                     }
 
                     const placeholders = clientIds.map(() => '?').join(',');
                     const clients = await env.db
-                        .prepare(`SELECT client_id, name, scope, trusted, created_at FROM oauth_clients WHERE client_id IN (${placeholders})`)
+                        .prepare(
+                            `SELECT client_id, name, scope, trusted, created_at 
+             FROM oauth_clients 
+             WHERE client_id IN (${placeholders})`
+                        )
                         .bind(...clientIds)
                         .all();
-
-                    const result = (clients.results || []).map(client => ({
-                        client_id: client.client_id,
-                        name: client.name,
-                        scope: client.scope,
-                        trusted: client.trusted === 1,
-                        created_at: client.created_at,
-                        token_count: clientTokenMap[client.client_id] || 0
-                    }));
+                    const result = (clients.results || []).map(client => {
+                        const stat = clientMap[client.client_id];
+                        return {
+                            client_id: client.client_id,
+                            name: client.name,
+                            scope: client.scope,
+                            trusted: client.trusted === 1,
+                            created_at: client.created_at,
+                            authorized_at: stat?.firstCreatedAt || null,
+                            token_count: stat?.count || 0,
+                        };
+                    });
 
                     return jsonResponse({ apps: result }, 200, cors);
                 }

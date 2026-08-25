@@ -52,3 +52,20 @@ export function revokeAllDevices() {
 export function getOAuthApps() {
     return request('oauth-apps');
 }
+
+/**
+ * 撤销所有 OAuth 授权设备的刷新令牌
+ * 仅撤销通过 OAuth 2.0 授权流程签发的 token，不影响普通登录设备
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export async function revokeOAuthTokens() {
+    return request('revoke-oauth-tokens', {
+        method: 'POST',
+    });
+}
+export async function revokeOAuthApp(clientId) {
+    return request('revoke-oauth-app', {
+        method: 'POST',
+        body: JSON.stringify({ client_id: clientId }),
+    });
+}
