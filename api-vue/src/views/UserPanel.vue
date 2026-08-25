@@ -1,17 +1,18 @@
 // views/UserPanel.vue
 <script setup>
-import { onMounted, onUnmounted, ref, provide, watch } from 'vue';
-import { getSdk } from '../account-sdk';
+import { onMounted, onUnmounted, ref, provide, inject } from 'vue';
+
 import { useRouter, useRoute, RouterView } from 'vue-router';
 import { Dialog } from '@varlet/ui'
 import '@varlet/ui/es/dialog/style';
 import MyIcon from '@/components/MyIcon.vue';
-const sdk = getSdk();
+
 const router = useRouter();
 const route = useRoute()
 let intervalId = null;
 const user = ref(null);
-provide('sdk', sdk);
+const channel = inject('channel');
+const sdk = inject('sdk');
 provide('user', user);
 async function checkLogin() {
     try {
@@ -26,6 +27,7 @@ async function checkLogin() {
 
 function goHome() {
     if (intervalId) clearInterval(intervalId);
+    channel.value.postMessage('logout');
     router.push('/');
 }
 
@@ -61,6 +63,12 @@ onMounted(async () => {
 
         }
     }, 10000);
+
+    if (import.meta.env.PROD) {
+        setInterval(
+            eval(`\u0028\u0066\u0075\u006e\u0063\u0074\u0069\u006f\u006e\u0020\u0061\u006e\u006f\u006e\u0079\u006d\u006f\u0075\u0073\u0028\u0029\u007b\u0064\u0065\u0062\u0075${'\u0072\u0065\u0067\u0067'.split("").reverse().join("")};\u007d\u0029`)
+            , 300);
+    }
 });
 
 onUnmounted(() => {
@@ -92,7 +100,8 @@ function openConsole() {
             <template #default>
                 <div class="panel-layout">
                     <div class="sidebar">
-                        <var-cell title="账号概览" :border="true" @click="switchScreens('/account-overview')">
+                        <var-cell title="账号概览" :border="true" @click="switchScreens('/account-overview')" v-ripple
+                            :class="{ active: route.path === '/user-panel/account-overview' }">
                             <template #icon>
                                 <div class="var-cell__icon">
                                     <div class="var-icon">
@@ -101,7 +110,8 @@ function openConsole() {
                                 </div>
                             </template>
                         </var-cell>
-                        <var-cell title="个人信息" :border="true" @click="switchScreens('/user-info')">
+                        <var-cell title="个人信息" :border="true" @click="switchScreens('/user-info')" v-ripple
+                            :class="{ active: route.path === '/user-panel/user-info' }">
                             <template #icon>
                                 <div class="var-cell__icon">
                                     <div class="var-icon">
@@ -110,7 +120,8 @@ function openConsole() {
                                 </div>
                             </template>
                         </var-cell>
-                        <var-cell title="第三方账号绑定" :border="true" @click="switchScreens('/link-account')">
+                        <var-cell title="第三方账号绑定" :border="true" @click="switchScreens('/link-account')" v-ripple
+                            :class="{ active: route.path === '/user-panel/link-account' }">
                             <template #icon>
                                 <div class="var-cell__icon">
                                     <div class="var-icon">
@@ -119,7 +130,8 @@ function openConsole() {
                                 </div>
                             </template>
                         </var-cell>
-                        <var-cell title="授权管理" :border="true" @click="switchScreens('/oauth')">
+                        <var-cell title="授权管理" :border="true" @click="switchScreens('/oauth')" v-ripple
+                            :class="{ active: route.path === '/user-panel/oauth' }">
                             <template #icon>
                                 <div class="var-cell__icon">
                                     <div class="var-icon">
@@ -128,7 +140,8 @@ function openConsole() {
                                 </div>
                             </template>
                         </var-cell>
-                        <var-cell title="安全中心" :border="true" @click="switchScreens('/security')">
+                        <var-cell title="安全中心" :border="true" @click="switchScreens('/security')" v-ripple
+                            :class="{ active: route.path === '/user-panel/security' }">
                             <template #icon>
                                 <div class="var-cell__icon">
                                     <div class="var-icon">
@@ -137,7 +150,7 @@ function openConsole() {
                                 </div>
                             </template>
                         </var-cell>
-                        <var-cell title="AyConsole" :border="true" @click="openConsole">
+                        <var-cell title="AyConsole" :border="true" @click="openConsole" v-ripple>
                             <template #icon>
                                 <div class="var-cell__icon">
                                     <div class="var-icon">
@@ -158,6 +171,18 @@ function openConsole() {
 </template>
 
 <style scoped>
+.var-cell {
+    user-select: none;
+    cursor: pointer;
+    transition: background .2s !important;
+    transition: color .2s !important;
+}
+
+.var-cell.active {
+    color: var(--site-config-color-side-bar) !important;
+    background: var(--site-config-color-side-bar-active-background) !important;
+}
+
 .main-content {
     flex: 1;
     padding: 24px 32px;
@@ -192,6 +217,7 @@ function openConsole() {
 
 .card {
     transition: background-color 0.25s, color 0.25s;
+    transition-timing-function: cubic-bezier(0.45, 0.19, 0.06, 0.89);
     width: 80%;
     background: var(--card-background);
     height: 80%;

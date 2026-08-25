@@ -6,10 +6,9 @@ import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
 const sdk = inject('sdk');
 const user = inject('user');
-
+const channel = inject('channel');
 const router = useRouter();
 async function logout() {
-    // Varlet 的 Dialog 回调真神奇
     const action = await Dialog({
         title: '确认',
         message: '您确认要登出？'
@@ -17,6 +16,7 @@ async function logout() {
     if (action === 'confirm') {
         try {
             await sdk.logout();
+            channel.value.postMessage('logout');
             Snackbar.success({
                 content: "已登出",
                 duration: 1000,

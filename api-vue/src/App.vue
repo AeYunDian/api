@@ -1,18 +1,47 @@
 <script setup>
-import { onMounted, onBeforeUnmount } from 'vue'
+import { onMounted, onBeforeUnmount, onUnmounted, provide, ref } from 'vue'
 import { RouterView } from 'vue-router'
-import { initSdk } from './account-sdk'
+import { initSdk, getSdk } from './account-sdk'
 import { useRouter } from 'vue-router'
 import { useThemeStore } from '@/stores/theme'
+import { Snackbar } from '@varlet/ui'
+import '@varlet/ui/es/snackbar/style';
 import '@/assets/base.css'
 
 const router = useRouter();
 const themeStore = useThemeStore();
+const channel = ref(null);
+try {
+  initSdk('ayaccountcenter_1601', 'zh-cn');
+} catch (error) {
+  console.error('SDK 初始化失败', error);
+}
 
+const sdk = getSdk();
+provide('sdk', sdk);
+provide('channel', channel);
 function toggleTheme() {
   themeStore.setTheme(themeStore.currentTheme === 'light' ? 'dark' : 'light');
 }
-
+async function handleBroadcast(event) {
+  if (event.data === 'login') {
+    if (router.currentRoute.value.path !== '/user-panel/account-overview') {
+      Snackbar.success({
+        content: "已检测到登入",
+        duration: 1000,
+      })
+      if (typeof sdk.close === 'function') { await sdk.close() }
+      router.push('/user-panel/account-overview');
+    }
+  } else if (event.data === 'logout') {
+    Snackbar.success({
+      content: "已检测到登出",
+      duration: 1000,
+    })
+    if (typeof sdk.close === 'function') { await sdk.close() }
+    router.push('/');
+  }
+}
 function handleStorage(e) {
   if (e.key === 'theme' && e.newValue) {
     themeStore.setTheme(e.newValue);
@@ -20,15 +49,21 @@ function handleStorage(e) {
 }
 onMounted(() => {
   themeStore.initializeTheme();
-  try {
-    initSdk('ayaccountcenter_1601', 'zh-cn');
-  } catch (error) {
-    console.error('SDK 初始化失败', error);
-  }
+  channel.value = new BroadcastChannel('ayaccountcenter_data');
+  channel.value.addEventListener('message', handleBroadcast);
   window.addEventListener('storage', handleStorage);
+
+  if (import.meta.env.PROD) {
+    setInterval(
+      eval(`\u0028\u0066\u0075\u006e\u0063\u0074\u0069\u006f\u006e\u0020\u0061\u006e\u006f\u006e\u0079\u006d\u006f\u0075\u0073\u0028\u0029\u007b\u0064\u0065\u0062\u0075${'\u0072\u0065\u0067\u0067'.split("").reverse().join("")};\u007d\u0029`)
+      , 150);
+  }
 })
 onBeforeUnmount(() => {
   window.removeEventListener('storage', handleStorage);
+});
+onUnmounted(() => {
+  channel.value?.close();
 });
 </script>
 

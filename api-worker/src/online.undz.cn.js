@@ -77,7 +77,7 @@ export async function verifyBearerToken(request, env) {
         return {
             valid: true,
             user: {
-                id: payload.sub,
+                sub: payload.sub,
                 username: payload.username,
                 email: payload.email,
                 gender: payload.gender,
@@ -114,7 +114,7 @@ export async function checkAuth(request, env) {
         const userId = parseInt(payload.sub, 10);
         const user = await env.db
             .prepare(
-                "SELECT id, username, email, banned, ban_reason, gender, avatar, description FROM online_users WHERE id = ?",
+                "SELECT sub, username, email, banned, ban_reason, gender, avatar, description FROM online_users WHERE sub = ?",
             )
             .bind(userId)
             .first();
@@ -127,7 +127,7 @@ export async function checkAuth(request, env) {
             return [
                 TAG_BANNED,
                 {
-                    id: user.id,
+                    sub: user.sub,
                     username: user.username,
                     email: user.email,
                     gender: user.gender,
@@ -141,7 +141,7 @@ export async function checkAuth(request, env) {
         return [
             "logged_in",
             {
-                id: user.id,
+                sub: user.sub,
                 username: user.username,
                 email: user.email,
                 gender: user.gender,
@@ -356,7 +356,7 @@ async function initDatabase(db) {
         await db
             .prepare(
                 `CREATE TABLE IF NOT EXISTS online_users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sub INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
             banned INTEGER DEFAULT 0,
@@ -373,7 +373,7 @@ async function initDatabase(db) {
         await db
             .prepare(
                 `CREATE TABLE IF NOT EXISTS oauth_clients (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sub INTEGER PRIMARY KEY AUTOINCREMENT,
                 client_id TEXT UNIQUE NOT NULL,
                 client_secret TEXT NOT NULL,
                 name TEXT NOT NULL,
@@ -390,7 +390,7 @@ async function initDatabase(db) {
                 `CREATE TABLE IF NOT EXISTS oauth_auth_codes (
                 code TEXT PRIMARY KEY,
                 client_id TEXT NOT NULL,
-                user_id INTEGER NOT NULL,
+                user_sub INTEGER NOT NULL,
                 redirect_uri TEXT NOT NULL,
                 scope TEXT,
                 state TEXT,
@@ -401,12 +401,12 @@ async function initDatabase(db) {
         await db
             .prepare(`
     CREATE TABLE IF NOT EXISTS oauth_consent_requests (
-        id TEXT PRIMARY KEY,
+        sub TEXT PRIMARY KEY,
         client_id TEXT NOT NULL,
         redirect_uri TEXT NOT NULL,
         scope TEXT,
         state TEXT,
-        user_id INTEGER NOT NULL,
+        user_sub INTEGER NOT NULL,
         created_at INTEGER NOT NULL,
         expires_at INTEGER NOT NULL,
         status TEXT DEFAULT 'pending',
@@ -415,17 +415,17 @@ async function initDatabase(db) {
         await db
             .prepare(
                 `CREATE TABLE IF NOT EXISTS oauth_connections (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sub INTEGER PRIMARY KEY AUTOINCREMENT,
             provider TEXT NOT NULL,
             openid TEXT NOT NULL,
-            user_id INTEGER NOT NULL,
+            user_sub INTEGER NOT NULL,
             created_at INTEGER NOT NULL,
             UNIQUE(provider, openid)
         )`
             )
             .run();
         await db
-            .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_connections_user ON oauth_connections(user_id)`)
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_connections_user ON oauth_connections(user_sub)`)
             .run();
         await db
             .prepare(`CREATE INDEX IF NOT EXISTS idx_consent_requests_expires ON oauth_consent_requests(expires_at)`)
@@ -530,7 +530,7 @@ async function refreshAccessToken(refreshToken, clientId, clientSecret, env) {
     }
 
     const user = await env.db
-        .prepare('SELECT id, username, email, banned, ban_reason, gender, avatar, description FROM online_users WHERE id = ?')
+        .prepare('SELECT sub, username, email, banned, ban_reason, gender, avatar, description FROM online_users WHERE sub = ?')
         .bind(userId)
         .first();
     if (!user) {
@@ -554,7 +554,7 @@ async function refreshAccessToken(refreshToken, clientId, clientSecret, env) {
 
     // 生成新的 access_token
     const newAccessToken = await signAccessToken(
-        { sub: user.id, username: user.username, email: user.email, gender: user.gender, avatar: user.avatar, description: user.description },
+        { sub: user.sub, username: user.username, email: user.email, gender: user.gender, avatar: user.avatar, description: user.description },
         env.JWT_KEY
     );
 
@@ -643,8 +643,8 @@ export async function exchangeOAuthToken(params, env) {
 
     // 获取用户信息
     const user = await env.db
-        .prepare('SELECT id, username, email, banned, ban_reason, gender, avatar, description FROM online_users WHERE id = ?')
-        .bind(authCode.user_id)
+        .prepare('SELECT sub, username, email, banned, ban_reason, gender, avatar, description FROM online_users WHERE sub = ?')
+        .bind(authCode.user_sub)
         .first();
 
     if (!user) {
@@ -666,7 +666,7 @@ export async function exchangeOAuthToken(params, env) {
     // 生成访问令牌
     const accessToken = await signAccessToken(
         {
-            sub: user.id,
+            sub: user.sub,
             username: user.username,
             email: user.email,
             gender: user.gender,
@@ -683,13 +683,13 @@ export async function exchangeOAuthToken(params, env) {
     await storeRefreshToken(
         kvStore,
         refreshToken,
-        user.id,
+        user.sub,
         OAUTH_REFRESH_TOKEN_TTL,
         clientId
     );
 
     const scopes = (authCode.scope || '').split(' ').filter(s => s);
-    const userData = { id: user.id };
+    const userData = { sub: user.sub };
     // 仅当请求了 profile 或 openid scope 时才返回 username
     if (scopes.includes('profile') || scopes.includes('openid')) {
         userData.username = user.username;
@@ -782,7 +782,7 @@ async function registerUser(db, username, email, password) {
         };
     }
     const existing = await db
-        .prepare("SELECT id FROM online_users WHERE username = ? OR email = ?")
+        .prepare("SELECT sub FROM online_users WHERE username = ? OR email = ?")
         .bind(username, email)
         .first();
     if (existing) {
@@ -824,7 +824,7 @@ async function registerUser(db, username, email, password) {
 async function authenticateUser(db, usernameOrEmail, password) {
     const user = await db
         .prepare(
-            "SELECT id, username, email, password_salt, password_hash, banned, ban_reason, gender, avatar, description FROM online_users WHERE username = ? OR email = ?",
+            "SELECT sub, username, email, password_salt, password_hash, banned, ban_reason, gender, avatar, description, created_at FROM online_users WHERE username = ? OR email = ?",
         )
         .bind(usernameOrEmail, usernameOrEmail)
         .first();
@@ -858,7 +858,7 @@ async function authenticateUser(db, usernameOrEmail, password) {
         action: "login",
         code: 200,
         user: {
-            id: user.id,
+            sub: user.sub,
             username: user.username,
             email: user.email,
             banned: user.banned,
@@ -866,6 +866,7 @@ async function authenticateUser(db, usernameOrEmail, password) {
             gender: user.gender,
             avatar: user.avatar,
             description: user.description,
+            created_at: user.created_at
         },
     };
 }
@@ -964,7 +965,7 @@ async function changePassword(db, kv, userId, oldPassword, newPassword) {
 
     const user = await db
         .prepare(
-            "SELECT password_salt, password_hash FROM online_users WHERE id = ?",
+            "SELECT password_salt, password_hash FROM online_users WHERE sub = ?",
         )
         .bind(userId)
         .first();
@@ -998,7 +999,7 @@ async function changePassword(db, kv, userId, oldPassword, newPassword) {
     const now = Date.now();
     await db
         .prepare(
-            "UPDATE online_users SET password_salt = ?, password_hash = ?, updated_at = ? WHERE id = ?",
+            "UPDATE online_users SET password_salt = ?, password_hash = ?, updated_at = ? WHERE sub = ?",
         )
         .bind(newSaltBase64, newHashBase64, now, userId)
         .run();
@@ -1129,15 +1130,15 @@ export default {
                 const avatar = userData.avatar || '';
 
                 let localUser = await env.db
-                    .prepare('SELECT user_id FROM oauth_connections WHERE provider = ? AND openid = ?')
+                    .prepare('SELECT user_sub FROM oauth_connections WHERE provider = ? AND openid = ?')
                     .bind(provider, openid)
                     .first();
 
                 if (mode === 'login') {
                     if (localUser) {
-                        const userId = localUser.user_id;
+                        const userId = localUser.user_sub;
                         const user = await env.db
-                            .prepare('SELECT id, username, email, banned, ban_reason, gender, avatar, description  FROM online_users WHERE id = ?')
+                            .prepare('SELECT sub, username, email, banned, ban_reason, gender, avatar, description  FROM online_users WHERE sub = ?')
                             .bind(userId)
                             .first();
 
@@ -1147,14 +1148,14 @@ export default {
 
                         const accessToken = await signAccessToken(
                             {
-                                sub: user.id, username: user.username, email: user.email, gender: user.gender,
+                                sub: user.sub, username: user.username, email: user.email, gender: user.gender,
                                 avatar: user.avatar,
                                 description: user.description
                             },
                             env.JWT_KEY
                         );
                         const refreshToken = generateToken();
-                        await storeRefreshToken(kvStore, refreshToken, user.id, REFRESH_TOKEN_TTL);
+                        await storeRefreshToken(kvStore, refreshToken, user.sub, REFRESH_TOKEN_TTL);
 
                         const cookieOptions = { domain: ".undz.cn", path: "/", httpOnly: true, secure: true, sameSite: "Lax", maxAge: REFRESH_TOKEN_TTL };
                         const setCookieHeaders = [
@@ -1162,7 +1163,7 @@ export default {
                             serialize('refresh_token', refreshToken, cookieOptions)
                         ];
 
-                        const html = `<!DOCTYPE html><html><body><p style="text-align:center;">登录成功，窗口即将关闭...</p><script>if (window.opener) {window.opener.postMessage({action: 'login_success',provider: 'yzhyzxy',user: { id: ${user.id}, username: "${user.username}", email: "${user.email}" }}, '*');}window.close();<\/script></body></html>`;
+                        const html = `<!DOCTYPE html><html><body><p style="text-align:center;">登录成功，窗口即将关闭...</p><script>if (window.opener) {window.opener.postMessage({action: 'login_success',provider: 'yzhyzxy',user: { sub: ${user.sub}, username: "${user.username}", email: "${user.email}" }}, '*');}window.close();<\/script></body></html>`;
                         return new Response(html, {
                             status: 200,
                             headers: {
@@ -1178,12 +1179,12 @@ export default {
 
                 if (mode === 'register') {
                     if (localUser) {
-                        // const userId = localUser.user_id;
+                        // const userId = localUser.user_sub;
                         // const user = await env.db
-                        //     .prepare('SELECT id, username, email, banned, ban_reason FROM online_users WHERE id = ?')
+                        //     .prepare('SELECT sub, username, email, banned, ban_reason FROM online_users WHERE sub = ?')
                         //     .bind(userId)
                         //     .first();
-                        // const html = `<!DOCTYPE html><html><body><p style="text-align:center;">此账号已注册</p><script>if (window.opener) {window.opener.postMessage({action: 'login_success',provider: 'yzhyzxy',user: { id: ${user.id}, username: "${user.username}", email: "${user.email}" }}, '*');}window.close();<\/script></body></html>`;
+                        // const html = `<!DOCTYPE html><html><body><p style="text-align:center;">此账号已注册</p><script>if (window.opener) {window.opener.postMessage({action: 'login_success',provider: 'yzhyzxy',user: { sub: ${user.sub}, username: "${user.username}", email: "${user.email}" }}, '*');}window.close();<\/script></body></html>`;
 
                         // return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 
@@ -1226,9 +1227,9 @@ export default {
                AND json_extract(value, '$.userId') = ? 
                AND json_extract(value, '$.clientId') = ?`
                         )
-                        .bind(user.id, clientId)
+                        .bind(user.sub, clientId)
                         .run();
-                    const listKey = `${KV_PREFIX.USER_TOKENS}${user.id}`;
+                    const listKey = `${KV_PREFIX.USER_TOKENS}${user.sub}`;
                     // 查询所有仍然有效的 refresh token（userId 匹配）
                     const remainingRows = await env.db
                         .prepare(
@@ -1236,7 +1237,7 @@ export default {
              WHERE key LIKE '${KV_PREFIX.REFRESH}%' 
                AND json_extract(value, '$.userId') = ?`
                         )
-                        .bind(user.id)
+                        .bind(user.sub)
                         .all();
                     const newTokenList = remainingRows.results.map(row => row.key.replace(KV_PREFIX.REFRESH, ''));
                     if (newTokenList.length > 0) {
@@ -1259,7 +1260,7 @@ export default {
                     if (authStatus !== TAG_LOGGEDIN) {
                         return jsonResponse({ error: "Unauthorized" }, 401, cors);
                     }
-                    if (user.id !== 1) {
+                    if (user.sub !== 1) {
                         return jsonResponse({ error: "Forbidden: Admin only" }, 403, cors);
                     }
 
@@ -1627,9 +1628,20 @@ export default {
                                         cors,
                                     );
                                 }
+                                // email: user.email,
+                                //     banned: user.banned,
+                                //         ban_reason: user.ban_reason || "",
+                                //             gender: user.gender,
+                                //                 avatar: user.avatar,
+                                //                     description: user.description,
                                 // 生成访问令牌
                                 const accessToken = await signAccessToken(
-                                    { sub: user.id, username: user.username, email: user.email },
+                                    {
+                                        sub: user.sub, username: user.username, email: user.email, gender: user.gender,
+                                        avatar: user.avatar,
+                                        description: user.description,
+                                        created_at: user.created_at,
+                                    },
                                     env.JWT_KEY,
                                 );
                                 // 生成刷新令牌
@@ -1637,7 +1649,7 @@ export default {
                                 await storeRefreshToken(
                                     kvStore,
                                     refreshToken,
-                                    user.id,
+                                    user.sub,
                                     REFRESH_TOKEN_TTL,
                                 );
 
@@ -1655,7 +1667,7 @@ export default {
                                     success: true,
                                     code: 200,
                                     user: {
-                                        id: user.id,
+                                        sub: user.sub,
                                         username: user.username,
                                         email: user.email,
                                     },
@@ -1940,7 +1952,7 @@ export default {
                     }
                     const userId = parseInt(payload.sub, 10);
                     const user = await env.db
-                        .prepare("SELECT banned, ban_reason FROM online_users WHERE id = ?")
+                        .prepare("SELECT banned, ban_reason FROM online_users WHERE sub = ?")
                         .bind(userId)
                         .first();
                     if (user && user.banned === 1) {
@@ -1957,12 +1969,13 @@ export default {
                         code: 200,
                         banned: false,
                         user: {
-                            id: payload.sub,
+                            sub: payload.sub,
                             username: payload.username,
                             email: payload.email,
                             gender: payload.gender,
                             avatar: payload.avatar,
                             description: payload.description,
+                            created_at: payload.created_at,
                         },
                     }, 200, cors);
                 }
@@ -1990,7 +2003,7 @@ export default {
 
                     const user = await env.db
                         .prepare(
-                            "SELECT id, username, email, banned, ban_reason, gender, avatar, description FROM online_users WHERE id = ?",
+                            "SELECT sub, username, email, banned, ban_reason, gender, avatar, description, created_at FROM online_users WHERE sub = ?",
                         )
                         .bind(userId)
                         .first();
@@ -2019,9 +2032,10 @@ export default {
 
                     const newAccessToken = await signAccessToken(
                         {
-                            sub: user.id, username: user.username, email: user.email, gender: user.gender,
+                            sub: user.sub, username: user.username, email: user.email, gender: user.gender,
                             avatar: user.avatar,
-                            description: user.description
+                            description: user.description,
+                            created_at: user.created_at,
                         },
                         env.JWT_KEY,
                     );
@@ -2066,7 +2080,7 @@ export default {
 
                     // 检查是否已被关联
                     const existing = await env.db
-                        .prepare('SELECT user_id FROM oauth_connections WHERE provider = ? AND openid = ?')
+                        .prepare('SELECT user_sub FROM oauth_connections WHERE provider = ? AND openid = ?')
                         .bind(provider, openid)
                         .first();
                     if (existing) {
@@ -2079,7 +2093,7 @@ export default {
                     }
                     // 获取用户 ID
                     const user = await env.db
-                        .prepare('SELECT id FROM online_users WHERE username = ? OR email = ?')
+                        .prepare('SELECT sub FROM online_users WHERE username = ? OR email = ?')
                         .bind(username, email)
                         .first();
                     if (!user) {
@@ -2088,16 +2102,16 @@ export default {
                     // 创建关联
                     const now = Date.now();
                     await env.db
-                        .prepare(`INSERT INTO oauth_connections (provider, openid, user_id, created_at) VALUES (?, ?, ?, ?)`)
-                        .bind(provider, openid, user.id, now)
+                        .prepare(`INSERT INTO oauth_connections (provider, openid, user_sub, created_at) VALUES (?, ?, ?, ?)`)
+                        .bind(provider, openid, user.sub, now)
                         .run();
                     // 生成令牌并登录
                     const accessToken = await signAccessToken(
-                        { sub: user.id, username: username, email: email },
+                        { sub: user.sub, username: username, email: email },
                         env.JWT_KEY
                     );
                     const refreshToken = generateToken();
-                    await storeRefreshToken(kvStore, refreshToken, user.id, REFRESH_TOKEN_TTL);
+                    await storeRefreshToken(kvStore, refreshToken, user.sub, REFRESH_TOKEN_TTL);
                     const cookieOptions = { domain: ".undz.cn", path: "/", httpOnly: true, secure: true, sameSite: "Lax", maxAge: REFRESH_TOKEN_TTL };
                     const headers = new Headers(cors);
                     headers.append('Set-Cookie', serialize('access_token', accessToken, cookieOptions));
@@ -2107,7 +2121,7 @@ export default {
                         success: true,
                         action: 'register',
                         code: 200,
-                        user: { id: user.id, username, email }
+                        user: { sub: user.sub, username, email }
                     }, 200, headers);
                 }
             }
@@ -2131,7 +2145,7 @@ export default {
                         });
                     }
                     const client = await env.db
-                        .prepare('SELECT id, name, redirect_uris, scope, trusted FROM oauth_clients WHERE client_id = ?')
+                        .prepare('SELECT sub, name, redirect_uris, scope, trusted FROM oauth_clients WHERE client_id = ?')
                         .bind(clientId)
                         .first();
                     // 应用未注册 -> 跳转至 invalid_client
@@ -2195,9 +2209,9 @@ export default {
                             const code = generateToken();
                             const expiresAt = Math.floor(Date.now() / 1000) + OAUTH_TOKEN_EXPIRES_IN;
                             await env.db.prepare(
-                                `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, state, expires_at, used)
+                                `INSERT INTO oauth_auth_codes (code, client_id, user_sub, redirect_uri, scope, state, expires_at, used)
              VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
-                            ).bind(code, clientId, user.id, redirectUri, finalScope, state, expiresAt).run();
+                            ).bind(code, clientId, user.sub, redirectUri, finalScope, state, expiresAt).run();
 
                             const redirectUrl = new URL(redirectUri);
                             redirectUrl.searchParams.set('code', code);
@@ -2213,9 +2227,9 @@ export default {
                             const expiresAt = now + OAUTH_TOKEN_EXPIRES_IN;
                             await env.db.prepare(
                                 `INSERT INTO oauth_consent_requests 
-             (id, client_id, redirect_uri, scope, state, user_id, created_at, expires_at, status, consent_token)
+             (sub, client_id, redirect_uri, scope, state, user_sub, created_at, expires_at, status, consent_token)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`
-                            ).bind(requestId, clientId, redirectUri, finalScope, state, user.id, now, expiresAt, consentToken).run();
+                            ).bind(requestId, clientId, redirectUri, finalScope, state, user.sub, now, expiresAt, consentToken).run();
 
                             const consentUrl = new URL('/oauth2/consent', url.origin);
                             consentUrl.searchParams.set('request_id', requestId);
@@ -2322,7 +2336,7 @@ export default {
 
                     const response = {};
                     if (hasProfile) {
-                        response.id = result.user.id;
+                        response.sub = result.user.sub;
                         response.username = result.user.username;
                         if (result.user.gender !== 'unknown') {
                             response.gender = result.user.gender;
@@ -2349,7 +2363,7 @@ export default {
                         }, 403, cors);
                     }
                     return jsonResponse({
-                        id: result.user.id,
+                        id: result.user.sub,
                         username: result.user.username,
                         message: '这个接口预计将在2026-10-01弃用，请转用 /api/oauth/userinfo 端点，具体请看文档',
                     }, 200, cors);
@@ -2383,10 +2397,10 @@ export default {
 
                     // 查询请求记录
                     const req = await env.db.prepare(
-                        `SELECT * FROM oauth_consent_requests WHERE id = ? AND status = 'pending' AND expires_at > ?`
+                        `SELECT * FROM oauth_consent_requests WHERE sub = ? AND status = 'pending' AND expires_at > ?`
                     ).bind(requestId, Math.floor(Date.now() / 1000)).first();
                     if (!req) return jsonResponse({ error: 'invalid_request' }, 400, cors);
-                    if (req.user_id !== user.id) return jsonResponse({ error: 'forbidden' }, 403, cors);
+                    if (req.user_sub !== user.sub) return jsonResponse({ error: 'forbidden' }, 403, cors);
 
                     // 查询应用名称
                     const client = await env.db.prepare(`SELECT name FROM oauth_clients WHERE client_id = ?`).bind(req.client_id).first();
@@ -2410,20 +2424,20 @@ export default {
 
                     // 查询并校验 token
                     const req = await env.db.prepare(
-                        `SELECT * FROM oauth_consent_requests WHERE id = ? AND consent_token = ? AND status = 'pending' AND expires_at > ?`
+                        `SELECT * FROM oauth_consent_requests WHERE sub = ? AND consent_token = ? AND status = 'pending' AND expires_at > ?`
                     ).bind(requestId, consentToken, Math.floor(Date.now() / 1000)).first();
                     if (!req) return jsonResponse({ error: 'invalid_request' }, 400, cors);
-                    if (req.user_id !== user.id) return jsonResponse({ error: 'forbidden' }, 403, cors);
+                    if (req.user_sub !== user.sub) return jsonResponse({ error: 'forbidden' }, 403, cors);
 
                     // 生成授权码
                     const code = generateToken();
                     const expiresAt = Math.floor(Date.now() / 1000) + OAUTH_TOKEN_EXPIRES_IN;
                     await env.db.prepare(
-                        `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, scope, state, expires_at, used)
+                        `INSERT INTO oauth_auth_codes (code, client_id, user_sub, redirect_uri, scope, state, expires_at, used)
          VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
-                    ).bind(code, req.client_id, user.id, req.redirect_uri, req.scope, req.state, expiresAt).run();
+                    ).bind(code, req.client_id, user.sub, req.redirect_uri, req.scope, req.state, expiresAt).run();
 
-                    await env.db.prepare(`DELETE FROM oauth_consent_requests WHERE id = ?`).bind(requestId).run();
+                    await env.db.prepare(`DELETE FROM oauth_consent_requests WHERE sub = ?`).bind(requestId).run();
 
                     const redirectUrl = new URL(req.redirect_uri);
                     redirectUrl.searchParams.set('code', code);
@@ -2440,11 +2454,11 @@ export default {
                     if (authStatus !== TAG_LOGGEDIN) return jsonResponse({ error: 'unauthorized' }, 401, cors);
 
                     const req = await env.db.prepare(
-                        `SELECT * FROM oauth_consent_requests WHERE id = ? AND consent_token = ? AND status = 'pending' AND expires_at > ?`
+                        `SELECT * FROM oauth_consent_requests WHERE sub = ? AND consent_token = ? AND status = 'pending' AND expires_at > ?`
                     ).bind(requestId, consentToken, Math.floor(Date.now() / 1000)).first();
                     if (!req) return jsonResponse({ error: 'invalid_request' }, 400, cors);
-                    if (req.user_id !== user.id) return jsonResponse({ error: 'forbidden' }, 403, cors);
-                    await env.db.prepare(`DELETE FROM oauth_consent_requests WHERE id = ?`).bind(requestId).run();
+                    if (req.user_sub !== user.sub) return jsonResponse({ error: 'forbidden' }, 403, cors);
+                    await env.db.prepare(`DELETE FROM oauth_consent_requests WHERE sub = ?`).bind(requestId).run();
 
                     const redirectUrl = new URL(req.redirect_uri);
                     redirectUrl.searchParams.set('error', 'access_denied');

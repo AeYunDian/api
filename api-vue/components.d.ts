@@ -23,4 +23,7 @@ declare module 'vue' {
     VarImage: typeof import('@varlet/ui')['_ImageComponent']
     VarSpace: typeof import('@varlet/ui')['_SpaceComponent']
   }
+  export interface GlobalDirectives {
+    vRipple: typeof import('@varlet/ui')['_RippleComponent']
+  }
 }

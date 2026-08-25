@@ -1,7 +1,8 @@
 <script setup>
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted, inject } from 'vue';
 import { getSdk } from '../account-sdk'
 import { useRouter } from 'vue-router'
+const channel = inject('channel');
 const sdk = getSdk()
 const router = useRouter()
 let intervalId = null
@@ -12,6 +13,7 @@ async function checkAndRedirect() {
         const verifyRes = await sdk.verify()
         if (verifyRes.valid && verifyRes.user?.id && verifyRes.user?.username) {
             if (typeof sdk.close === 'function') { await sdk.close() }
+            channel.value.postMessage('login');
             router.push('/user-panel/account-overview')
             return true
         }
@@ -24,6 +26,7 @@ async function login() {
     try {
         const loginRes = await sdk.login()
         if (loginRes?.user?.id && loginRes?.user?.username) {
+            channel.value.postMessage('login');
             router.push('/user-panel/account-overview')
         }
     } catch (err) {
@@ -43,6 +46,7 @@ onMounted(async () => {
     try {
         const loginRes = await sdk.login()
         if (loginRes?.user?.id && loginRes?.user?.username) {
+            channel.value.postMessage('login');
             router.push('/user-panel/account-overview')
         }
     } catch (err) {
