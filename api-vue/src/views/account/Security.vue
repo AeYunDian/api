@@ -46,9 +46,10 @@ async function handleRevokeAll() {
         if (confirm2 === 'confirm') {
             try {
                 await revokeAllDevices();
+                await sdk.logout();
                 Snackbar.success('所有设备已退出');
-                router.push('/');
                 channel.value.postMessage('logout');
+                router.push('/');
             } catch (error) {
                 Dialog({
                     title: '操作失败',
