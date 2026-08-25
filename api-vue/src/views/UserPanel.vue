@@ -171,6 +171,10 @@ function openConsole() {
 </template>
 
 <style scoped>
+.var-card:deep(.var-card__container>.var-card__content) {
+    height: 100%;
+}
+
 .var-cell {
     user-select: none;
     cursor: pointer;
@@ -191,7 +195,7 @@ function openConsole() {
 
 .panel-layout {
     display: flex;
-    height: 450px;
+    height: 100%;
     min-height: 300px;
 }
 

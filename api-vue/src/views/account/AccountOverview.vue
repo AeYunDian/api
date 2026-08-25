@@ -50,10 +50,21 @@ function maskEmail(email) {
 
 <template>
     <div>
+        <h2>账号概览</h2>
         <template v-if="user">
-            <h2>账号概览</h2>
-            <p v-if="user.username">用户名：{{ user?.username }}</p>
-            <p v-if="user.email">邮箱：{{ maskEmail(user?.email) }}</p>
+            <var-space style="align-items: center;" class="info-content">
+                <div v-if="user.avatar">
+                    <var-avatar
+                        :src="user.avatar === 'https://online.undz.cn/default-avatar.svg' ? '/default-avatar.svg' : user.avatar"
+                        color="transparent" />
+                </div>
+                <div style="width: 100%;">
+                    <p v-if="user.username">用户名：{{ user?.username }}</p>
+                    <p v-if="user.email">邮箱：{{ maskEmail(user?.email) }}</p>
+                    <p v-if="user.description" class="description">简介：{{ user?.description }}</p>
+                </div>
+
+            </var-space>
         </template>
         <p v-else>加载中...</p>
         <var-divider />
@@ -62,3 +73,21 @@ function maskEmail(email) {
         <var-button @click="logout" style="float: inline-end;">退出登录</var-button>
     </div>
 </template>
+<style scoped>
+:deep(.info-content > :nth-child(2)) {
+    width: 80%;
+}
+
+.description {
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+@media (min-width: 768px) {
+    .description {
+        width: 80%;
+    }
+}
+</style>

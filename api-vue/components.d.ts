@@ -15,12 +15,16 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     VarAppBar: typeof import('@varlet/ui')['_AppBarComponent']
+    VarAvatar: typeof import('@varlet/ui')['_AvatarComponent']
     VarButton: typeof import('@varlet/ui')['_ButtonComponent']
     VarCard: typeof import('@varlet/ui')['_CardComponent']
     VarCell: typeof import('@varlet/ui')['_CellComponent']
     VarDivider: typeof import('@varlet/ui')['_DividerComponent']
+    VarEllipsis: typeof import('@varlet/ui')['_EllipsisComponent']
     VarIcon: typeof import('@varlet/ui')['_IconComponent']
     VarImage: typeof import('@varlet/ui')['_ImageComponent']
+    VarInput: typeof import('@varlet/ui')['_InputComponent']
+    VarSelect: typeof import('@varlet/ui')['_SelectComponent']
     VarSpace: typeof import('@varlet/ui')['_SpaceComponent']
   }
   export interface GlobalDirectives {
