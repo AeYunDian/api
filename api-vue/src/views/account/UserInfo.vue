@@ -2,6 +2,7 @@
 import { inject, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Dialog, Snackbar } from '@varlet/ui'
+import { formatTime } from '@/utils/format';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
 import { updateProfile } from '@/utils/api';
@@ -52,7 +53,6 @@ watch(
         const changed =
             usernameInput.value !== (user.value.username ?? '') ||
             avatarInput.value !== (user.value.avatar ?? '') ||
-            emailInput.value !== (user.value.email ?? '') ||
             genderInput.value !== (user.value.gender ?? '') ||
             descriptionInput.value !== (user.value.description ?? '');
         isModified.value = changed;
@@ -64,7 +64,6 @@ async function handleSave() {
     const payload = {};
     if (usernameInput.value !== user.value?.username) payload.username = usernameInput.value;
     if (avatarInput.value !== user.value?.avatar) payload.avatar = avatarInput.value;
-    if (emailInput.value !== user.value?.email) payload.email = emailInput.value;
     if (genderInput.value !== user.value?.gender) payload.gender = genderInput.value;
     if (descriptionInput.value !== user.value?.description) payload.description = descriptionInput.value;
 
@@ -168,10 +167,16 @@ async function pasteWithClipboard(refvalue) {
                 <div v-if="user.avatar" class="avatar">
                     <var-input placeholder="头像URL" v-if="user.avatar" v-model="avatarInput"
                         style="margin-right: 25px;" />
-                    <var-avatar :src="user.avatar" color="transparent" />
+                    <var-avatar :src="user.avatar" color="transparent" style="flex-shrink: 0;" />
                 </div>
 
-                <var-input placeholder="邮箱" v-if="user.email" v-model="emailInput" />
+                <var-input placeholder="邮箱" v-if="user.email" v-model="emailInput" readonly>
+                    <template #append-icon>
+                        <var-button @click="Snackbar.error('未实现')" text>
+                            <my-icon icon="exchange" />
+                        </var-button>
+                    </template>
+                </var-input>
 
                 <var-input placeholder="UID" v-if="user.sub" v-model="uidInput" readonly>
                     <template #append-icon>
@@ -199,7 +204,7 @@ async function pasteWithClipboard(refvalue) {
                     </template>
                 </var-input>
 
-                <p v-if="user.created_at">注册时间：{{ new Date(user.created_at).toLocaleString() }}</p>
+                <p v-if="user.created_at">注册时间：{{ formatTime(user.created_at) }}</p>
                 <var-button @click="handleSave" :loading="loading" :disabled="!isModified"
                     style="float: inline-end;">保存</var-button>
             </div>

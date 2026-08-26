@@ -2,7 +2,7 @@
 import { onMounted, onBeforeUnmount, onUnmounted, provide, ref, computed } from 'vue'
 import { RouterView } from 'vue-router'
 import { initSdk, getSdk } from './account-sdk'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useThemeStore } from '@/stores/theme'
 import { Snackbar } from '@varlet/ui'
 import '@varlet/ui/es/snackbar/style';
@@ -10,6 +10,7 @@ import '@/assets/base.css'
 import { useWindowSize } from '@vueuse/core';
 const { width } = useWindowSize();
 const isMobile = computed(() => width.value < 768);
+const route = useRoute();
 const router = useRouter();
 const themeStore = useThemeStore();
 const channel = ref(null);
@@ -74,8 +75,8 @@ onUnmounted(() => {
 <template>
     <var-app-bar color="primary" text-color="#fff" style="height: 54px;">
         <template #left>
-            <div v-if="isMobile"><var-button @click="leftPopup = true;" text><my-icon icon="menu"
-                        size="1em + 8px" /></var-button></div>
+            <div v-if="isMobile && route.path.startsWith('/user-panel/')"><var-button @click="leftPopup = true;"
+                    text><my-icon icon="menu" size="1em + 8px" /></var-button></div>
             <div style="margin-left: 15px; user-select: none;" @click="router.push('/')">
                 <span class="app-bar-title">AyAccountCenter</span>
             </div>

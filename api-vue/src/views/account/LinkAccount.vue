@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, inject } from 'vue';
 import { Dialog, Snackbar } from '@varlet/ui';
+import { formatTime } from '@/utils/format';
 import { getBindings, unbindProvider, getBindUrl } from '@/utils/api';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
@@ -66,15 +67,18 @@ async function handleBind(providerId) {
             if (event.origin !== 'https://online.undz.cn') return;
             const data = event.data;
             if (data?.action === 'bind_success') {
+                if (timer) clearInterval(timer);
                 window.removeEventListener('message', handler);
                 popup.close();
                 Snackbar.success(`${provider.name} 绑定成功`);
                 fetchBindings();
             } else if (data?.action === 'bind_failed') {
+                if (timer) clearInterval(timer);
                 window.removeEventListener('message', handler);
                 popup.close();
                 Snackbar.error(data.error === 'not_logged_in' ? '请先登录' : '绑定失败，该账号已被其他用户绑定');
             } else if (data?.action === 'bind_already') {
+                if (timer) clearInterval(timer);
                 window.removeEventListener('message', handler);
                 popup.close();
                 Snackbar.info('该账号已绑定');
@@ -116,13 +120,17 @@ async function handleUnbind(providerId) {
         });
     }
 }
+
+onMounted(async () => {
+    await fetchBindings();
+})
 </script>
 
 <template>
     <div>
         <h2>第三方账号绑定</h2>
         <p style="color: var(--card-content-color); margin-bottom: 16px;">
-            绑定第三方账号后，您可以使用它们快速登录，无需记忆密码。
+            绑定第三方账号后，您可以使用它们进行快速登录。
         </p>
 
         <var-loading v-if="loading" type="circle" />
@@ -138,16 +146,15 @@ async function handleUnbind(providerId) {
                                 <div>
                                     <div style="font-weight: 500;">{{ provider.name }}</div>
                                     <div
-                                        style="font-size: 13px; color: var(--card-content-color); display: flex; align-items: center;">
+                                        style="font-size: 13px; color: var(--card-content-color); display: flex; align-items: center; word-break: keep-all;">
                                         <template v-if="isBound(provider.id)">
                                             <my-icon icon="check-circle-outline"
                                                 style="margin-inline-end: 5px; color: var(--color-success);" />
                                             已绑定
                                             <span v-if="getBinding(provider.id)?.created_at"
-                                                style="margin-inline-start: 10px;">
-                                                绑定时间： {{ new Date(getBinding(provider.id).created_at *
-                                                    1000).toLocaleDateString() }}
-                                            </span>
+                                                style="margin-inline-start: 10px;">绑定时间：{{
+                                                    formatTime(getBinding(provider.id)?.created_at) }}</span>
+
                                         </template>
                                         <template v-else>
                                             <my-icon icon="minus-circle"
@@ -158,11 +165,11 @@ async function handleUnbind(providerId) {
                                 </div>
                             </div>
                             <div>
-                                <var-button v-if="isBound(provider.id)" type="danger" size="small" text
+                                <var-button v-if="isBound(provider.id)" type="danger"
                                     @click="handleUnbind(provider.id)">
                                     解绑
                                 </var-button>
-                                <var-button v-else type="primary" size="small" @click="handleBind(provider.id)">
+                                <var-button v-else type="primary" @click="handleBind(provider.id)">
                                     绑定
                                 </var-button>
                             </div>

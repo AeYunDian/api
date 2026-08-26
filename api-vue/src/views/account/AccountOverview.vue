@@ -2,6 +2,7 @@
 import { inject } from 'vue';
 import { useRouter } from 'vue-router';
 import { Dialog, Snackbar } from '@varlet/ui'
+import { formatTime } from '@/utils/format';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
 const sdk = inject('sdk');
@@ -54,23 +55,18 @@ function maskEmail(email) {
         <template v-if="user">
             <var-space style="align-items: center;" class="info-content">
                 <div v-if="user.avatar">
-                    <var-avatar
-                        :src="user.avatar === 'https://online.undz.cn/default-avatar.svg' ? '/default-avatar.svg' : user.avatar"
-                        color="transparent" />
+                    <var-avatar :src="user.avatar" color="transparent" style="flex-shrink: 0;" />
                 </div>
                 <div style="width: 100%;">
                     <p v-if="user.username">用户名：{{ user?.username }}</p>
                     <p v-if="user.email">邮箱：{{ maskEmail(user?.email) }}</p>
                     <p v-if="user.description" class="description">简介：{{ user?.description }}</p>
-                    <p v-if="user.created_at">注册时间：{{ new Date(user.created_at).toLocaleString() }}</p>
+                    <p v-if="user.created_at">注册时间：{{ formatTime(user.created_at) }}</p>
                 </div>
 
             </var-space>
         </template>
         <p v-else>加载中...</p>
-        <var-divider />
-        <h2>第三方账号绑定</h2>
-        <p>功能待更新</p>
         <var-button @click="logout" style="float: inline-end;">退出登录</var-button>
     </div>
 </template>
