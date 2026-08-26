@@ -1,11 +1,12 @@
 <script setup>
-import { inject, ref, watch } from 'vue';
+import { inject, ref, watch, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Dialog, Snackbar } from '@varlet/ui'
 import { formatTime } from '@/utils/format';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
-import { updateProfile } from '@/utils/api';
+import { isEmailDomainAllowed } from '@/utils/validators';
+import { updateProfile, request } from '@/utils/api';
 const sdk = inject('sdk');
 const user = inject('user');
 const refreshUser = inject('refreshUser');
@@ -18,7 +19,105 @@ const uidInput = ref('');
 const genderInput = ref('');
 const loading = ref(false);
 const isModified = ref(false);
+// 邮箱修改对话框相关
+const showChangeEmailDialog = ref(false);
+const newEmail = ref('');
+const emailCode = ref('');
+const emailToken = ref('');
+const emailSending = ref(false);
+const emailChanging = ref(false);
+const emailCountdown = ref(0);
+let emailTimer = null;
 
+// 发送验证码
+async function sendEmailCode() {
+    if (!newEmail.value || !newEmail.value.includes('@')) {
+        Snackbar.warning('请输入有效的邮箱地址');
+        return;
+    }
+    if (!isEmailDomainAllowed(newEmail.value)) {
+        Snackbar.warning('该邮箱域名不在支持列表中，请更换邮箱');
+        return;
+    }
+    emailSending.value = true;
+    try {
+        const res = await request('send-verification', {
+            method: 'POST',
+            body: { email: newEmail.value }
+        });
+        emailToken.value = res.token;
+        Snackbar.success('验证码已发送，请查收邮件');
+        // 开始倒计时
+        emailCountdown.value = 60;
+        if (emailTimer) clearInterval(emailTimer);
+        emailTimer = setInterval(() => {
+            emailCountdown.value--;
+            if (emailCountdown.value <= 0) {
+                clearInterval(emailTimer);
+                emailTimer = null;
+            }
+        }, 1000);
+    } catch (error) {
+        Snackbar.error(error.message || '发送失败');
+    } finally {
+        emailSending.value = false;
+    }
+}
+
+// 确认修改邮箱
+async function confirmChangeEmail() {
+    if (!newEmail.value || !newEmail.value.includes('@')) {
+        Snackbar.warning('请输入有效的邮箱地址');
+        return;
+    }
+    if (!isEmailDomainAllowed(newEmail.value)) {
+        Snackbar.warning('该邮箱域名不在支持列表中，请更换邮箱');
+        return;
+    }
+    if (!emailCode.value || emailCode.value.length !== 6) {
+        Snackbar.warning('请输入6位验证码');
+        return;
+    }
+    if (!emailToken.value) {
+        Snackbar.warning('请先获取验证码');
+        return;
+    }
+
+    emailChanging.value = true;
+    try {
+        await updateProfile({
+            email: newEmail.value,
+            code: emailCode.value,
+            token: emailToken.value
+        });
+        if (refreshUser) {
+            await refreshUser();
+        }
+        Snackbar.success('邮箱修改成功');
+        showChangeEmailDialog.value = false;
+        // 重置状态
+        newEmail.value = '';
+        emailCode.value = '';
+        emailToken.value = '';
+        if (emailTimer) {
+            clearInterval(emailTimer);
+            emailTimer = null;
+            emailCountdown.value = 0;
+        }
+    } catch (error) {
+        Dialog({
+            title: '修改失败',
+            message: error.message || '请重试'
+        });
+    } finally {
+        emailChanging.value = false;
+    }
+}
+
+
+onUnmounted(() => {
+    if (emailTimer) clearInterval(emailTimer);
+});
 watch(
     () => user.value,
     (newUser) => {
@@ -29,7 +128,7 @@ watch(
             avatarInput.value = newUser.avatar;
         }
         if (newUser?.email) {
-            emailInput.value = newUser.email;
+            emailInput.value = maskEmail(newUser.email);
         }
         if (newUser?.description) {
             descriptionInput.value = newUser.description;
@@ -59,6 +158,20 @@ watch(
     },
     { deep: true }
 );
+function maskEmail(email) {
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+        return email;
+    }
+    const atIndex = email.indexOf('@');
+    const username = email.slice(0, atIndex);
+    const domain = email.slice(atIndex);
+    if (username.length <= 3) {
+        return email;
+    }
+    const prefix = username.slice(0, 2);
+    const suffix = username.slice(-1);
+    return prefix + '****' + suffix + domain;
+}
 async function handleSave() {
     // 收集有变化的字段
     const payload = {};
@@ -157,6 +270,28 @@ async function pasteWithClipboard(refvalue) {
 </script>
 
 <template>
+    <var-dialog v-model:show="showChangeEmailDialog" title="修改邮箱">
+        <div style="padding: 0 24px 16px;">
+            <p style="color: var(--color-text-secondary); margin-bottom: 16px;">
+                请输入您的新邮箱地址，验证码将发送到该邮箱。
+            </p>
+            <var-input placeholder="请输入新邮箱" v-model="newEmail" type="email" style="width: 100%;" />
+            <var-button type="primary" :loading="emailSending" :disabled="emailCountdown > 0 || !newEmail"
+                @click="sendEmailCode" style="flex-shrink: 0; margin-top: 10px;" block>
+                {{ emailCountdown > 0 ? `${emailCountdown}s` : '获取验证码' }}
+            </var-button>
+            <var-input placeholder="请输入6位验证码" v-model="emailCode" style="width: 100%;" maxlength="6" />
+
+        </div>
+        <template #actions>
+            <div class="var-dialog__actions">
+                <var-button type="primary" @click="showChangeEmailDialog = false" text>取消</var-button>
+                <var-button type="primary" :loading="emailChanging" @click="confirmChangeEmail" text>
+                    确认修改
+                </var-button>
+            </div>
+        </template>
+    </var-dialog>
     <div>
         <h2>个人信息</h2>
         <template v-if="user">
@@ -172,7 +307,7 @@ async function pasteWithClipboard(refvalue) {
 
                 <var-input placeholder="邮箱" v-if="user.email" v-model="emailInput" readonly>
                     <template #append-icon>
-                        <var-button @click="Snackbar.error('未实现')" text>
+                        <var-button @click="showChangeEmailDialog = true" text>
                             <my-icon icon="exchange" />
                         </var-button>
                     </template>

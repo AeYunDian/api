@@ -1642,15 +1642,51 @@ export default {
                     if (!body || typeof body !== 'object') {
                         return jsonResponse({ error: "Invalid request body" }, 400, cors);
                     }
+                    if (body.email) {
+                        const { code, token } = body;
+                        if (!code || !token) {
+                            return jsonResponse({
+                                error: "Email change requires verification code and token",
+                                error_code: 1007
+                            }, 400, cors);
+                        }
+                        if (!allowedEmailDomains.some(domain => body.email.endsWith(domain))) {
+                            return jsonResponse({
+                                error: 'Unsupported email domain',
+                                error_code: 1026
+                            }, 400, cors);
+                        }
+                        // 验证验证码
+                        const verifyResult = await handleVerifyCode(code, token, env);
+                        if (!verifyResult.valid) {
+                            return jsonResponse({
+                                error: verifyResult.error || 'Invalid or expired verification code',
+                                error_code: 1025
+                            }, 400, cors);
+                        }
 
+                        // 检查邮箱是否已被使用
+                        const existing = await env.db
+                            .prepare("SELECT sub FROM online_users WHERE email = ? AND sub != ?")
+                            .bind(body.email, user.sub)
+                            .first();
+                        if (existing) {
+                            return jsonResponse({
+                                error: "Email already exists",
+                                error_code: 1002
+                            }, 409, cors);
+                        }
+                    }
                     // 允许更新的字段白名单
-                    const allowedFields = ['username', 'email', 'gender', 'avatar', 'description'];
+                    const allowedFields = ['username', 'gender', 'avatar', 'description', 'email'];
                     const updates = {};
                     for (const field of allowedFields) {
                         if (body[field] !== undefined) {
                             updates[field] = body[field];
                         }
                     }
+                    delete body.code;
+                    delete body.token;
                     if (Object.keys(updates).length === 0) {
                         return jsonResponse({ error: "No valid fields to update" }, 400, cors);
                     }
@@ -1665,6 +1701,7 @@ export default {
                             return jsonResponse({ error: "Email already exists", error_code: 1002 }, 409, cors);
                         }
                     }
+
                     if (updates.username) {
                         const existing = await env.db
                             .prepare("SELECT sub FROM online_users WHERE username = ? AND sub != ?")

@@ -6,7 +6,7 @@ const APP_ID = import.meta.env.VITE_APP_ID;
 /**
  * 通用 fetch 包装器
  */
-async function request(endpoint, options = {}) {
+export async function request(endpoint, options = {}) {
     const url = `${BASE_URL}/api/ayonline/${endpoint}`;
 
     // 合并请求头，自动添加必需的头

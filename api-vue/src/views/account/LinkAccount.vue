@@ -142,7 +142,8 @@ onMounted(async () => {
                         <div
                             style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 4px 0;">
                             <div style="display: flex; align-items: center; gap: 12px;">
-                                <var-avatar v-if="provider.icon" :src="provider.icon" size="32px" color="transparent" />
+                                <var-avatar v-if="provider.icon" :src="provider.icon" size="32px" color="transparent"
+                                    style="flex-shrink: 0;" />
                                 <div>
                                     <div style="font-weight: 500;">{{ provider.name }}</div>
                                     <div
