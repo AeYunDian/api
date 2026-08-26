@@ -31,7 +31,6 @@ provide('refreshUser', refreshUser);
 async function checkLogin() {
     try {
         const res = await sdk.verify();
-        console.log(res)
         return { valid: !!res.valid, data: res };
     } catch (error) {
         console.error('[验证失败]', error);
