@@ -1,22 +1,22 @@
 import { cleanExpiredKv, initKvTable } from './kvWithD1.js';
 
-import { triggerWorkflow } from './trigger_workflow.js';
+// import { triggerWorkflow } from './trigger_workflow.js';
 
 import apiUndzCn from './api.undz.cn.js';
-import chatUndzCn from './chat.undz.cn.js'
+import chatUndzCn from './chat.undz.cn.js';
 import cdnUndzCn from './cdn.undz.cn.js';
 import i0UndzCn from './i0.undz.cn.js';
 import i1UndzCn from './i1.undz.cn.js';
 import i2UndzCn from './i2.undz.cn.js';
 import onlineUndzCn from './online.undz.cn.js';
 import consoleUndzCn from './console.undz.cn.js';
-import chatUndzCn from './chat.undz.cn.js';
 // import shundzcn from './sh.undz.cn.js'
-const corsHeaders_GPO = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-};
+
+// const corsHeaders_GPO = {
+//     'Access-Control-Allow-Origin': '*',
+//     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+//     'Access-Control-Allow-Headers': 'Content-Type',
+// };
 
 // const mobileRegex = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|windows phone|phone|webos|kindle|tablet/i;
 
