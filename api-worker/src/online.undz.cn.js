@@ -629,7 +629,7 @@ async function refreshAccessToken(refreshToken, clientId, clientSecret, env) {
         data: {
             access_token: newAccessToken,
             token_type: "Bearer",
-            expires_in: 900,
+            expires_in: 600,
             scope: client.scope,
         },
     };
@@ -771,7 +771,7 @@ export async function exchangeOAuthToken(params, env) {
         data: {
             access_token: accessToken,
             token_type: "Bearer",
-            expires_in: 900,
+            expires_in: 600,
             refresh_token: refreshToken,
             scope: authCode.scope || client.scope,
             user: userData,
