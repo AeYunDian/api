@@ -6,14 +6,17 @@ import { useRouter, useRoute, RouterView } from 'vue-router';
 import { Dialog } from '@varlet/ui'
 import '@varlet/ui/es/dialog/style';
 import MyIcon from '@/components/MyIcon.vue';
-
+import { useWindowSize } from '@vueuse/core';
 const router = useRouter();
 const route = useRoute()
 let intervalId = null;
 const user = ref(null);
+const leftPopup = inject('leftPopup');
 const channel = inject('channel');
 const sdk = inject('sdk');
-const isMobile = computed(() => { return window.innerWidth < 768; })
+
+const { width } = useWindowSize();
+const isMobile = computed(() => width.value < 768);
 provide('user', user);
 const refreshUser = async () => {
     const { valid, data } = await checkLogin();
@@ -100,18 +103,87 @@ function openConsole() {
 }
 </script>
 <template>
-    <div class="bg-orbs">
+    <div class="bg-orbs" v-if="!isMobile">
         <div class="orb orb-1"></div>
         <div class="orb orb-2"></div>
         <div class="orb orb-3"></div>
         <div class="orb orb-4"></div>
     </div>
-    <div class="panel-container">
+
+    <var-popup v-if="isMobile" position="left" v-model:show="leftPopup">
+        <div class="left-popup">
+            <var-cell title="账号概览" :border="true" @click="leftPopup = false; switchScreens('/account-overview')"
+                v-ripple :class="{ active: route.path === '/user-panel/account-overview' }">
+                <template #icon>
+                    <div class="var-cell__icon">
+                        <div class="var-icon">
+                            <my-icon icon="application" />
+                        </div>
+                    </div>
+                </template>
+            </var-cell>
+            <var-cell title="个人信息" :border="true" @click="leftPopup = false; switchScreens('/user-info')" v-ripple
+                :class="{ active: route.path === '/user-panel/user-info' }">
+                <template #icon>
+                    <div class="var-cell__icon">
+                        <div class="var-icon">
+                            <my-icon icon="account-circle" />
+                        </div>
+                    </div>
+                </template>
+            </var-cell>
+            <var-cell title="第三方账号绑定" :border="true" @click="leftPopup = false; switchScreens('/link-account');"
+                v-ripple :class="{ active: route.path === '/user-panel/link-account' }">
+                <template #icon>
+                    <div class="var-cell__icon">
+                        <div class="var-icon">
+                            <my-icon icon="apache-kafka" />
+                        </div>
+                    </div>
+                </template>
+            </var-cell>
+            <var-cell title="授权管理" :border="true" @click="leftPopup = false; switchScreens('/oauth')" v-ripple
+                :class="{ active: route.path === '/user-panel/oauth' }">
+                <template #icon>
+                    <div class="var-cell__icon">
+                        <div class="var-icon">
+                            <my-icon icon="account-secure" />
+                        </div>
+                    </div>
+                </template>
+            </var-cell>
+            <var-cell title="安全中心" :border="true" @click="leftPopup = false; switchScreens('/security')" v-ripple
+                :class="{ active: route.path === '/user-panel/security' }">
+                <template #icon>
+                    <div class="var-cell__icon">
+                        <div class="var-icon">
+                            <my-icon icon="secure" />
+                        </div>
+                    </div>
+                </template>
+            </var-cell>
+            <var-cell title="AyConsole" :border="true" @click="leftPopup = false; openConsole()" v-ripple>
+                <template #icon>
+                    <div class="var-cell__icon">
+                        <div class="var-icon">
+                            <my-icon icon="console-line" />
+                        </div>
+                    </div>
+                </template>
+            </var-cell>
+        </div>
+    </var-popup>
+    <div v-if="isMobile" style="height: 100%;">
+        <div class="main-content" style="height: 100%;">
+            <router-view v-if="user" />
+            <div v-else class="loading-placeholder">加载中...</div>
+        </div>
+    </div>
+    <div v-else class="panel-container">
         <var-card class="card var-elevation--10">
             <template #default>
                 <div class="panel-layout">
-                    <div v-if="isMobile">s</div>
-                    <div class="sidebar" v-else>
+                    <div class="sidebar">
                         <var-cell title="账号概览" :border="true" @click="switchScreens('/account-overview')" v-ripple
                             :class="{ active: route.path === '/user-panel/account-overview' }">
                             <template #icon>
@@ -183,6 +255,11 @@ function openConsole() {
 </template>
 
 <style scoped>
+.left-popup {
+    margin: 15px 15px 5px 15px;
+    width: 23vh;
+}
+
 .var-card:deep(.var-card__container>.var-card__content) {
     height: 100%;
 }

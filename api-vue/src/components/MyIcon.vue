@@ -1,7 +1,6 @@
 <template>
-    <Icon :icon="fullIcon" v-bind="$attrs" />
+    <Icon :icon="fullIcon" v-bind="$attrs" :style="{ fontSize: computedSize }" />
 </template>
-
 <script setup>
 import { Icon } from '@iconify/vue'
 import { computed } from 'vue'
@@ -15,21 +14,27 @@ const props = defineProps({
         type: String,
         required: true,
     },
-    // 默认前缀，可以自定义
+    size: {
+        type: String,
+        default: '1em + 2px'
+    },
     defaultPrefix: {
         type: String,
         default: 'mdi',
     },
 })
 
-// 计算最终使用的图标字符串
 const fullIcon = computed(() => {
     const iconStr = props.icon
-    // 如果包含 ':'，说明已有前缀，直接返回
     if (iconStr.includes(':')) {
         return iconStr
     }
-    // 否则加上默认前缀（格式：前缀:图标名）
     return `${props.defaultPrefix}:${iconStr}`
+})
+const computedSize = computed(() => {
+    if (/[\+\-\*\/]/.test(props.size)) {
+        return `calc(${props.size})`
+    }
+    return props.size
 })
 </script>

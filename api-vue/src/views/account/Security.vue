@@ -38,26 +38,25 @@ async function handleRevokeAll() {
         message: '此操作将登出所有设备（包括当前设备）以及授权的应用，如果您想登出授权的应用，请前往授权管理页面。\n\n确认继续？'
     });
 
-    if (action === 'confirm') {
-        const confirm2 = await Dialog({
-            title: '确认',
-            message: '您确认要继续吗？'
+    if (action !== 'confirm') return;
+    const confirm2 = await Dialog({
+        title: '确认',
+        message: '您确认要继续吗？'
+    });
+    if (confirm2 !== 'confirm') return;
+    try {
+        await revokeAllDevices();
+        await sdk.logout();
+        Snackbar.success('已登出，其他设备将在 10 分钟内失效');
+        channel.value.postMessage('logout');
+        router.push('/');
+    } catch (error) {
+        Dialog({
+            title: '操作失败',
+            message: error.message || '未知原因'
         });
-        if (confirm2 === 'confirm') {
-            try {
-                await revokeAllDevices();
-                await sdk.logout();
-                Snackbar.success('所有设备已退出');
-                channel.value.postMessage('logout');
-                router.push('/');
-            } catch (error) {
-                Dialog({
-                    title: '操作失败',
-                    message: error.message || '未知原因'
-                });
-            }
-        }
     }
+
 }
 
 async function handleChangePassword() {
@@ -103,6 +102,12 @@ async function handleChangePassword() {
             <p v-else-if="deviceCount === -1">加载失败</p>
             <p v-else>当前已在 <span style="font-size: calc(1em + 3px);">{{ deviceCount }}</span> 台设备上登录</p>
             <var-button type="danger" @click="handleRevokeAll">登出所有设备</var-button>
+            <p style="display: flex; align-items: flex-start; gap: 5px;">
+                <my-icon icon="about" style="flex-shrink: 0; margin-top: 2px;" size="1em + 3px" />
+                <span style="flex: 1; word-break: break-word;">
+                    注意：其他设备最长需要 10 分钟才会完全失效，请知悉。
+                </span>
+            </p>
         </var-card>
 
         <var-card title="修改密码" style="margin-top: 20px;">

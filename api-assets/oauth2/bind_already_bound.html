@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>已被绑定 - AyOauth2Center</title>
+    <style>
+        @import url('https://cdn.undz.cn/npm/typeface-roboto@1.1.13/index.css');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #F4F2F9;
+            color-scheme: light;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .md3-card {
+            background: #FEF7FF;
+            border-radius: 28px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05), 0 12px 24px rgba(103, 80, 164, 0.10);
+            max-width: 520px;
+            width: 100%;
+            padding: 48px 40px 32px;
+            text-align: center;
+            border: 1px solid #EADDF2;
+        }
+
+        .md3-icon-wrapper {
+            width: 80px;
+            height: 80px;
+            background: #F6EDFF;
+            border-radius: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 24px;
+        }
+
+        .md3-icon-wrapper svg {
+            width: 48px;
+            height: 48px;
+        }
+
+        .md3-title {
+            font-size: 24px;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+            color: #1D1B20;
+            margin-bottom: 8px;
+        }
+
+        .md3-subtitle {
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 0.25px;
+            line-height: 1.6;
+            color: #49454F;
+            margin-bottom: 24px;
+        }
+
+        .md3-detail-box {
+            background: #F3EDF7;
+            border-radius: 16px;
+            padding: 16px 20px;
+            text-align: left;
+            margin-bottom: 28px;
+            border: 1px solid #EADDF2;
+        }
+
+        .md3-detail-box p {
+            font-size: 13px;
+            font-weight: 400;
+            line-height: 1.8;
+            color: #1D1B20;
+            margin: 0;
+        }
+
+        .md3-detail-box strong {
+            color: #6750A4;
+            font-weight: 500;
+        }
+
+        .md3-detail-box code {
+            background: #E6E0E9;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #21005D;
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        .md3-roles {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 32px;
+            text-align: left;
+        }
+
+        .md3-role-item {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            background: #FBF8FE;
+            border-radius: 16px;
+            padding: 16px 20px;
+            border: 1px solid #E6E0E9;
+            transition: background 0.1s ease;
+        }
+
+        .md3-role-item:hover {
+            background: #F6EDFF;
+        }
+
+        .md3-role-icon {
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            background: #E8DEF8;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .md3-role-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: #6750A4;
+        }
+
+        .md3-role-content {
+            flex: 1;
+        }
+
+        .md3-role-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #1D1B20;
+            letter-spacing: 0.3px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .md3-role-desc {
+            font-size: 13px;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #49454F;
+            margin: 0;
+        }
+
+        .md3-role-desc code {
+            background: #E6E0E9;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #21005D;
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        .md3-btn {
+            background: #6750A4;
+            color: #FFFFFF;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 100px;
+            font-family: 'Roboto', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: background 0.2s ease, box-shadow 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .md3-btn:hover {
+            background: #4F378A;
+            box-shadow: 0 2px 6px rgba(103, 80, 164, 0.3);
+        }
+
+        .md3-footer {
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 1px solid #EADDF2;
+            font-size: 13px;
+            color: #79747E;
+            letter-spacing: 0.25px;
+        }
+
+        .md3-footer a {
+            color: #6750A4;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .md3-footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="md3-card">
+        <div class="md3-icon-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                    d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z"
+                    fill="#B3261E" />
+            </svg>
+        </div>
+        <h1 class="md3-title">该账号已被绑定</h1>
+        <p class="md3-subtitle">该第三方账号已被其他用户绑定，无法重复绑定。</p>
+
+        <p class="md3-subtitle countdownTip">此弹窗将在&nbsp;<span class="countdown"
+                style="font-size: calc(1em + 6px);">10</span>&nbsp;
+            秒后自动关闭</p>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        var countdownTime = parseInt(urlParams.get('countdown') || '0x2710', 16);
+
+        const span_countdown = document.querySelector('.countdown');
+        if (window.opener) {
+            span_countdown.textContent = countdownTime / 1000;
+            let intervalId = setInterval(() => {
+                countdownTime -= 1000;
+
+                if (countdownTime <= 0) {
+                    span_countdown.textContent = 0;
+                    window.opener.postMessage({ action: 'bind_failed', error: 'already_bound_to_other' }, '*');
+                    clearInterval(intervalId);
+                } else {
+                    span_countdown.textContent = countdownTime / 1000;
+                }
+            }, 1000)
+        }
+
+    </script>
+</body>
+
+</html>

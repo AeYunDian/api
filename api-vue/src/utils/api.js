@@ -66,6 +66,45 @@ export async function revokeOAuthTokens() {
 export async function revokeOAuthApp(clientId) {
     return request('revoke-oauth-app', {
         method: 'POST',
-        body: JSON.stringify({ client_id: clientId }),
+        body: { client_id: clientId },
     });
+}
+// src/utils/api.js
+
+/**
+ * 获取用户已绑定的第三方账号列表
+ */
+export function getBindings() {
+    return request('oauth-bindings', { method: 'GET' });
+}
+
+/**
+ * 解绑第三方账号
+ * @param {string} provider - 平台名称（如 'yzhyzxy', 'github'）
+ */
+export function unbindProvider(provider) {
+    return request('oauth-unbind', {
+        method: 'POST',
+        body: { provider },
+    });
+}
+
+/**
+ * 获取第三方绑定授权链接
+ * @param {string} provider - 平台名称（如 'yzhyzxy'）
+ * @param {string} mode - 'login' 或 'register'（绑定用 'register'）
+ * @returns {Promise<string>} 授权 URL
+ */
+export async function getBindUrl(provider, mode = 'register') {
+    const response = await fetch(
+        `${BASE_URL}/api/auth/${provider}/start?mode=${mode}`,
+        {
+            credentials: 'include',
+        }
+    );
+    const data = await response.json();
+    if (!response.ok || !data.url) {
+        throw new Error(data.error || '获取授权链接失败');
+    }
+    return data.url; // 返回 URL 字符串
 }

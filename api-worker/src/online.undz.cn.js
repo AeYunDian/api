@@ -24,7 +24,7 @@ var kvStore = null;
 // ---------- 常量与配置 ----------
 const SDK_VER = "2.0.6";
 const JWT_ALG = "HS256";
-const ACCESS_TOKEN_EXPIRES_IN = "15m"; // 访问令牌有效期
+const ACCESS_TOKEN_EXPIRES_IN = "10m"; // 访问令牌有效期
 const OAUTH_TOKEN_EXPIRES_IN = 300; // Oauth token 有效期 5m
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 30; // 刷新令牌有效期（秒），30天
 const OAUTH_REFRESH_TOKEN_TTL = 60 * 60 * 24 * 15; // OAuth客户端刷新令牌有效期（秒），15天
@@ -159,6 +159,12 @@ export async function checkAuth(request, env) {
         return [TAG_NOT_LOGGEDIN, null];
     }
 }
+// 平台名称映射
+const providerMap = {
+    'yzhyzxy': { name: 'Yzhyzxy', icon: 'https://online.undz.cn/yzhyzxy.svg' },
+    'github': { name: 'GitHub', icon: 'https://online.undz.cn/github.svg' },
+    'google': { name: 'Google', icon: 'https://online.undz.cn/google.svg' },
+};
 const allowedEmailDomains = [
     "aliyun.com", // 虽然国内已不开放个人注册业务，但还是支持
     "qq.com",
@@ -1140,6 +1146,7 @@ export default {
                         expirationTtl: 600,
                     },
                 );
+
                 const authUrl = new URL(YZHYZXY_AUTH_URL);
                 authUrl.searchParams.set("client_id", env.YZHYZXY_CLIENT_ID);
                 authUrl.searchParams.set("response_type", "code");
@@ -1153,6 +1160,7 @@ export default {
                     200,
                     corsHeaders(request),
                 );
+
             }
             if (path === "/api/oauth/callback" && method === "GET") {
                 const code = url.searchParams.get("code");
@@ -1308,32 +1316,54 @@ export default {
                 }
 
                 if (mode === "register") {
-                    if (localUser) {
-                        // const userId = localUser.user_sub;
-                        // const user = await env.db
-                        //     .prepare('SELECT sub, username, email, banned, ban_reason FROM online_users WHERE sub = ?')
-                        //     .bind(userId)
-                        //     .first();
-                        // const html = `<!DOCTYPE html><html><body><p style="text-align:center;">此账号已注册</p><script>if (window.opener) {window.opener.postMessage({action: 'login_success',provider: 'yzhyzxy',user: { sub: ${user.sub}, username: "${user.username}", email: "${user.email}" }}, '*');}window.close();<\/script></body></html>`;
+                    if (mode === 'register') {
+                        // 1. 检查用户是否已登录（绑定操作要求用户已登录）
+                        const [authStatus, user] = await checkAuth(request, env);
+                        if (authStatus !== TAG_LOGGEDIN) {
+                            // 未登录：提示用户先登录
+                            return new Response(null,
+                                {
+                                    status: 302, headers: {
+                                        Location: `/oauth2/bind_notloggedin?code=${generateToken()}&countdown=0x1770`,
+                                    },
+                                }
+                            );
+                        }
 
-                        // return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+                        if (localUser) {
+                            if (localUser.user_sub === user.sub) {
+                                return new Response(null,
+                                    {
+                                        status: 302, headers: {
+                                            Location: `/oauth2/bind_bound?code=${generateToken()}&countdown=0x1770&`,
+                                        },
+                                    }
+                                );
+                            } else {
+                                return new Response(null,
+                                    {
+                                        status: 302, headers: {
+                                            Location: `/oauth2/bind_already_bound?code=${generateToken()}&countdown=0x1770`,
+                                        },
+                                    }
+                                );
+                            }
+                        }
 
-                        return new Response(null, {
-                            status: 302,
-                            headers: {
-                                Location: `/oauth2/?code=${generateToken()}&countdown=0x1770&account_provider=${provider}`,
-                            },
-                        });
+                        const now = Date.now();
+                        await env.db
+                            .prepare(
+                                `INSERT INTO oauth_connections (provider, openid, user_sub, created_at)
+             VALUES (?, ?, ?, ?)`
+                            )
+                            .bind(provider, openid, user.sub, now)
+                            .run();
+
+                        return new Response(
+                            `<!DOCTYPE html><html><body><p style="text-align:center;">绑定成功，窗口即将关闭...</p><script>if (window.opener) {window.opener.postMessage({action: 'bind_success',provider: '${provider}',user: { sub: ${user.sub}, username: "${user.username}" }}, '*');}window.close(); <\/script></body></html>`,
+                            { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+                        );
                     }
-                    // const registerUrl = `/oauth2/login?tab=register&oauth_provider=yzhyzxy&openid=${openid}&username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&avatar=${encodeURIComponent(avatar)}`;
-                    // return new Response(null, {
-                    //     status: 302,
-                    //     headers: { 'Location': registerUrl }
-                    // });
-                    return new Response(null, {
-                        status: 302,
-                        headers: { Location: `/oauth2/invalid_request` },
-                    });
                 }
 
                 return new Response("Invalid mode", { status: 400 });
@@ -1454,6 +1484,58 @@ export default {
                         success: true,
                         message: `${deletedCount} OAuth refresh tokens revoked`
                     }, 200, cors);
+                }
+                if (path === "/api/ayonline/oauth-bindings" && method === "GET") {
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) {
+                        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+                    }
+
+                    const bindings = await env.db
+                        .prepare(
+                            `SELECT provider, openid, created_at 
+             FROM oauth_connections 
+             WHERE user_sub = ?`
+                        )
+                        .bind(user.sub)
+                        .all();
+
+
+
+                    const result = (bindings.results || []).map(row => ({
+                        provider: row.provider,
+                        openid: row.openid,
+                        created_at: row.created_at,
+                        name: providerMap[row.provider]?.name || row.provider,
+                        icon: providerMap[row.provider]?.icon || '',
+                    }));
+
+                    return jsonResponse({ bindings: result }, 200, cors);
+                }
+                if (path === "/api/ayonline/oauth-unbind" && method === "POST") {
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) {
+                        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+                    }
+
+                    const body = await request.json().catch(() => null);
+                    if (!body || !body.provider) {
+                        return jsonResponse({ error: "Missing provider" }, 400, cors);
+                    }
+
+                    const result = await env.db
+                        .prepare(
+                            `DELETE FROM oauth_connections 
+             WHERE user_sub = ? AND provider = ?`
+                        )
+                        .bind(user.sub, body.provider)
+                        .run();
+
+                    if (result.meta?.changes === 0) {
+                        return jsonResponse({ error: "Binding not found" }, 404, cors);
+                    }
+
+                    return jsonResponse({ success: true, message: `Unbound ${body.provider}` }, 200, cors);
                 }
                 if (path === "/api/ayonline/revoke-all-devices" && method === "POST") {
                     const [authStatus, user] = await checkAuth(request, env);
