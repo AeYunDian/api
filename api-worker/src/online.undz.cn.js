@@ -3357,17 +3357,6 @@ export default {
                     }
                     return jsonResponse({}, 200, cors);
                 }
-                return new Response(
-                    getMainPage(
-                        "Ay OAuth2.0 Center",
-                        "<h1>404 Not Found</h1>",
-                        "<p>The page you are looking for cannot be found, please check and try again.</p>",
-                    ),
-                    {
-                        status: 404,
-                        headers: { "Content-Type": "text/html", ...cors },
-                    },
-                );
             }
             return env.assets.fetch(request);
         } catch (error) {

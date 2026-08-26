@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/NotFound-DPm3vwWT.js","assets/runtime-core.esm-bundler-CZToptw-.js","assets/_plugin-vue_export-helper-BDNMzG2s.js","assets/NotFound-EFtkIhJA.css"])))=>i.map(i=>d[i]);
+import{t as e}from"./index-DdzoC7mO.js";import{n as t,r as n}from"./vue-router-CR5Bu7dr.js";var r=t({history:n(`/`),routes:[{path:`/:pathMatch(.*)*`,name:`NotFound`,component:()=>e(()=>import(`./NotFound-DPm3vwWT.js`),__vite__mapDeps([0,1,2,3]))}]});export{r as default};

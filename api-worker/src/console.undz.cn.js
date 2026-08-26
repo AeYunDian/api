@@ -11,7 +11,7 @@ export default {
         // kvStore = createKvStore(env.db);
         // const path = url.pathname;
         try {
-            return new Response(getMainPage("Ay Service Router", "<h1>Ay Service Router</h1>", "<p>Sorry, we can't find the hostname you are trying to access. Please try again.</p>"), { status: 404, headers: { 'Content-Type': 'text/html' } });
+            return env.assets.fetch(request);
         } catch (err) {
             console.error(err);
             return new Response(`Worker threw exception: ${err.message}\nStack: ${err.stack || "no stack"}`, { status: 500, headers: { "Content-Type": "text/plain" } });
