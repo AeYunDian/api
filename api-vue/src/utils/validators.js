@@ -14,5 +14,5 @@ const allowedEmailDomains = [
 ];
 
 export function isEmailDomainAllowed(email) {
-    return !allowedEmailDomains.some((domain) => email.endsWith(domain))
+    return allowedEmailDomains.some((domain) => email.endsWith(domain))
 }
