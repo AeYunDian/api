@@ -1983,6 +1983,12 @@ export default {
                             cors,
                         );
                     }
+                    if (!allowedEmailDomains.some(domain => body.email.endsWith(domain))) {
+                        return jsonResponse({
+                            error: 'Unsupported email domain',
+                            error_code: 1026
+                        }, 400, cors);
+                    }
                     const result = await handleSendVerification(
                         env,
                         body.email,
