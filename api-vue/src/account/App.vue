@@ -15,8 +15,9 @@ const router = useRouter();
 const themeStore = useThemeStore();
 const channel = ref(null);
 const leftPopup = ref(false);
+
 try {
-    initSdk(import.meta.env.ONLINE_APP_ID, 'zh-cn');
+    initSdk(import.meta.env.VITE_ONLINE_APP_ID, 'zh-cn');
 } catch (error) {
     console.error('SDK 初始化失败', error);
 }
@@ -63,6 +64,7 @@ onMounted(() => {
             (0, eval)(`\u0028\u0066\u0075\u006e\u0063\u0074\u0069\u006f\u006e\u0020\u0061\u006e\u006f\u006e\u0079\u006d\u006f\u0075\u0073\u0028\u0029\u007b\u0064\u0065\u0062\u0075${'\u0072\u0065\u0067\u0067'.split("").reverse().join("")};\u007d\u0029`)
             , 150);
     }
+
 })
 onBeforeUnmount(() => {
     window.removeEventListener('storage', handleStorage);

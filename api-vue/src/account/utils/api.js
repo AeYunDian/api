@@ -1,7 +1,7 @@
 // src/utils/api.js
-const BASE_URL = import.meta.env.ONLINE_API_BASE_URL || 'https://online.undz.cn';
-const SDK_VERSION = import.meta.env.ONLINE_APP_SDK_VER || '0';
-const APP_ID = import.meta.env.ONLINE_APP_ID;
+const BASE_URL = import.meta.env.VITE_ONLINE_API_BASE_URL || 'https://online.undz.cn';
+const SDK_VERSION = import.meta.env.VITE_ONLINE_APP_SDK_VER || '0';
+const APP_ID = import.meta.env.VITE_ONLINE_APP_ID;
 
 /**
  * 通用 fetch 包装器
