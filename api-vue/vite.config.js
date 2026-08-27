@@ -42,7 +42,6 @@ export default defineConfig({
         emptyOutDir: true,
         rollupOptions: {
             output: {
-                // 入口和 chunk 的文件名模板（按您的分类）
                 entryFileNames: 'js/[name]-[hash].js',
                 chunkFileNames: 'js/[name]-[hash].js',
                 assetFileNames: (assetInfo) => {
@@ -53,31 +52,31 @@ export default defineConfig({
                     return 'assets/[name]-[hash][extname]';
                 },
 
-                manualChunks(id) {
-                    if (id.includes('@vue') || id.includes('vue-router') || id.includes('pinia')) {
-                        if (id.includes('@vue')) return 'vendor-vue';
-                        if (id.includes('vue-router')) return 'vendor-router';
-                        if (id.includes('pinia')) return 'vendor-pinia';
-                    }
+                // manualChunks(id) {
+                //     if (id.includes('@vue') || id.includes('vue-router') || id.includes('pinia')) {
+                //         if (id.includes('@vue')) return 'vendor-vue';
+                //         if (id.includes('vue-router')) return 'vendor-router';
+                //         if (id.includes('pinia')) return 'vendor-pinia';
+                //     }
 
-                    if (id.includes('@varlet/shared') || id.includes('@varlet/use')) {
-                        return 'vendor-varlet-libs';
-                    }
+                //     if (id.includes('@varlet/shared') || id.includes('@varlet/use')) {
+                //         return 'vendor-varlet-libs';
+                //     }
 
-                    if (id.includes('dayjs')) return 'vendor-dayjs';
-                    if (id.includes('@popperjs') || id.includes('popper.js')) return 'vendor-popper';
-                    if (id.includes('rattail') || id.includes('js-cookie')) return 'vendor-varlet-libs'; // 归入 Varlet 公共
+                //     if (id.includes('dayjs')) return 'vendor-dayjs';
+                //     if (id.includes('@popperjs') || id.includes('popper.js')) return 'vendor-popper';
+                //     if (id.includes('rattail') || id.includes('js-cookie')) return 'vendor-varlet-libs'; // 归入 Varlet 公共
 
-                    const varletMatch = id.match(/\/@varlet\/ui\/es\/([^/]+)/);
-                    if (varletMatch) {
-                        const dir = varletMatch[1];
-                        const commonDirs = ['utils', 'locale', 'context', 'hooks', 'styles', 'themes', 'constants'];
-                        if (commonDirs.includes(dir)) {
-                            return 'vendor-varlet-common';
-                        }
-                        return `varlet-${dir}`;
-                    }
-                }
+                //     const varletMatch = id.match(/\/@varlet\/ui\/es\/([^/]+)/);
+                //     if (varletMatch) {
+                //         const dir = varletMatch[1];
+                //         const commonDirs = ['utils', 'locale', 'context', 'hooks', 'styles', 'themes', 'constants'];
+                //         if (commonDirs.includes(dir)) {
+                //             return 'vendor-varlet-common';
+                //         }
+                //         return `varlet-${dir}`;
+                //     }
+                // }
             }
         }
     },
@@ -88,8 +87,8 @@ export default defineConfig({
         compress: {
             dead_code: true,
             passes: 4,
-            unsafe: true,
-            unsafe_proto: true,
+            unsafe: false,
+            unsafe_proto: false,
         },
         mangle: {
             toplevel: true,

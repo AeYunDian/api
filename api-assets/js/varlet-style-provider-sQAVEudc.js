@@ -1,3 +1,0 @@
-import{C as e,Dt as t,R as n,m as r,r as i,w as a,wt as o}from"./varlet-app-bar-BWfajz1S.js";var s={styleVars:{type:Object,default:()=>({})},tag:{type:String,default:`div`}},{name:c,n:l}=r(`style-provider`),u=o({name:c,props:s,setup(e,{slots:r}){return()=>t(e.tag,{class:l(),style:i(e.styleVars)},n(r.default))}}),d=`varlet-style-vars`;function f(){let e=document.head.querySelector(`#${d}`);e&&document.head.removeChild(e)}function p(e){let t=document.createElement(`style`);t.id=d,t.innerHTML=e,document.head.appendChild(t)}function m(e){if(e==null){f();return}let t=i(e??{}),n=Object.entries(t).reduce((e,[t,n])=>(e+=`${t}:${n};`,e),`:root:root {
-`);f(),p(`${n}
-}`)}m.Component=u,e(u),e(u,m),a(m,s);var h=m;export{h as t};
