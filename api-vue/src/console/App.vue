@@ -74,18 +74,13 @@ onUnmounted(() => {
 <template>
     <var-app-bar color="primary" text-color="#fff" style="height: 54px;">
         <template #left>
-            <div v-if="isMobile && route.path.startsWith('/user-panel/')"><var-button @click="leftPopup = true;"
+            <div v-if="isMobile && route.path.startsWith('/console-panel/')"><var-button @click="leftPopup = true;"
                     text><my-icon icon="menu" size="1em + 8px" /></var-button></div>
             <div style="margin-left: 15px; user-select: none;" @click="router.push('/')">
                 <span class="app-bar-title">AyConsole</span>
             </div>
         </template>
         <template #right>
-            <!-- <var-space :size="0" class="nav-space">
-        <var-button text color="transparent" text-color="#fff" class="nav-button" @click="router.push('/')">
-          首页
-        </var-button>
-      </var-space> -->
             <var-button color="transparent" text-color="#fff" round text @click="toggleTheme">
                 <var-icon :name="themeStore.currentTheme === 'light' ? 'weather-night' : 'white-balance-sunny'"
                     :size="24" />

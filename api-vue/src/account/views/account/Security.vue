@@ -121,7 +121,8 @@ async function handleChangePassword() {
                     v => !!v || '请再次输入新密码',
                     v => v === newPassword || '两次密码不一致'
                 ]" />
-                <var-button type="primary" native-type="submit" :loading="passwordLoading">修改密码</var-button>
+                <var-button type="warning" native-type="submit" :loading="passwordLoading"
+                    style="float: inline-end; margin-top: 10px;">修改密码</var-button>
             </var-form>
         </var-card>
 

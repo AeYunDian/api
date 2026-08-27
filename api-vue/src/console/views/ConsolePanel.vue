@@ -222,7 +222,7 @@ function openAyAccountCenter() {
 
 .main-content {
     flex: 1;
-    padding: 0 32px;
+    padding: 1.25rem 32px;
     overflow-y: auto;
 }
 
@@ -285,28 +285,28 @@ function openAyAccountCenter() {
 .orb-1 {
     width: 35vmax;
     height: 35vmax;
-    background: radial-gradient(circle, #4a7cf7, #1a3a8a);
+    background: radial-gradient(circle, #a78bfa, #7c3aed);
     animation: orbFly1 16s ease-in-out infinite alternate;
 }
 
 .orb-2 {
     width: 30vmax;
     height: 30vmax;
-    background: radial-gradient(circle, #6a9cf7, #1a4a9a);
+    background: radial-gradient(circle, #8b5cf6, #6d28d9);
     animation: orbFly2 18s ease-in-out infinite alternate-reverse;
 }
 
 .orb-3 {
     width: 25vmax;
     height: 25vmax;
-    background: radial-gradient(circle, #3a6cf7, #0a2a7a);
+    background: radial-gradient(circle, #c084fc, #7c3aed);
     animation: orbPulse 12s ease-in-out infinite alternate;
 }
 
 .orb-4 {
     width: 20vmax;
     height: 20vmax;
-    background: radial-gradient(circle, #5a8cf7, #2a4a9a);
+    background: radial-gradient(circle, #9a6cf7, #4c1d95);
     animation: orbFly3 20s ease-in-out infinite alternate;
 }
 

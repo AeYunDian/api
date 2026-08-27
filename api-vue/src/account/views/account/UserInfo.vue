@@ -2,7 +2,7 @@
 import { inject, ref, watch, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Dialog, Snackbar } from '@varlet/ui'
-import { formatTime } from '@/account/utils/format';
+import { formatTime } from '@/shared/utils/format';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
 import { isEmailDomainAllowed } from '@/account/utils/validators';
@@ -274,28 +274,36 @@ async function pasteWithClipboard(refvalue) {
 </script>
 
 <template>
-    <var-dialog v-model:show="showChangeEmailDialog" title="修改邮箱">
-        <div style="padding: 0 24px 16px;">
-            <p style="color: var(--color-text-secondary); margin-bottom: 16px;">
-                请输入您的新邮箱地址，验证码将发送到该邮箱。
-            </p>
-            <var-input placeholder="请输入新邮箱" v-model="newEmail" type="email" style="width: 100%;" />
-            <var-button type="primary" :loading="emailSending" :disabled="emailCountdown > 0 || !newEmail"
-                @click="sendEmailCode" style="flex-shrink: 0; margin-top: 10px;" block>
-                {{ emailCountdown > 0 ? `${emailCountdown}s` : '获取验证码' }}
-            </var-button>
-            <var-input placeholder="请输入6位验证码" v-model="emailCode" style="width: 100%;" maxlength="6" />
 
-        </div>
-        <template #actions>
+
+    <!-- var-dialog 组件调用有bug，基于 var-dialog 创建原理，自己弄一个 -->
+    <var-popup v-model:show="showChangeEmailDialog" class="var-dialog__popup" var-dialog-cover>
+        <div class="var--box var-dialog">
+            <div class="var-dialog__title">修改邮箱</div>
+
+            <div style="padding: 0 24px 16px;" class="var-dialog__message">
+                <p style="color: var(--color-text-secondary); margin-bottom: 16px;">
+                    请输入您的新邮箱地址，验证码将发送到该邮箱。
+                </p>
+                <var-input placeholder="请输入新邮箱" v-model="newEmail" type="email" style="width: 100%;" />
+                <var-button type="primary" :loading="emailSending" :disabled="emailCountdown > 0 || !newEmail"
+                    @click="sendEmailCode" style="flex-shrink: 0; margin-top: 10px;" block>
+                    {{ emailCountdown > 0 ? `${emailCountdown}s` : '获取验证码' }}
+                </var-button>
+                <var-input placeholder="请输入6位验证码" v-model="emailCode" style="width: 100%;" maxlength="6" />
+            </div>
+
             <div class="var-dialog__actions">
-                <var-button type="primary" @click="showChangeEmailDialog = false" text>取消</var-button>
-                <var-button type="primary" :loading="emailChanging" @click="confirmChangeEmail" text>
+                <var-button type="primary" @click="showChangeEmailDialog = false" text
+                    class="var--inline-flex var-dialog__button var-dialog__cancel-button">取消</var-button>
+                <var-button type="primary" @click="confirmChangeEmail" text :loading="emailChanging"
+                    class="var--inline-flex var-dialog__button var-dialog__confirm-button">
                     确认修改
                 </var-button>
             </div>
-        </template>
-    </var-dialog>
+        </div>
+    </var-popup>
+
     <div>
         <h2>个人信息</h2>
         <template v-if="user">

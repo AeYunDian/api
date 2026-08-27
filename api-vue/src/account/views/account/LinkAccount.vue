@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, inject } from 'vue';
 import { Dialog, Snackbar } from '@varlet/ui';
-import { formatTime } from '@/account/utils/format';
+import { formatTime } from '@/shared/utils/format';
 import { getBindings, unbindProvider, getBindUrl } from '@/account/utils/api';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';

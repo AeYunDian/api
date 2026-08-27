@@ -2,7 +2,7 @@
 import { inject } from 'vue';
 import { useRouter } from 'vue-router';
 import { Dialog, Snackbar } from '@varlet/ui'
-import { formatTime } from '@/account/utils/format';
+import { formatTime } from '@/shared/utils/format';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
 const sdk = inject('sdk');

@@ -42,6 +42,12 @@ const loadApp = async () => {
         })
         throw new Error(`未知应用: ${appName}`)
     }
+    if (import.meta.env.DEV) {
+        Snackbar.warning({
+            content: `本地测试模式`,
+            duration: 3000,
+        })
+    }
     const [AppModule, RouterModule] = await Promise.all([
         appModules[appName](),
         routerModules[appName]()
@@ -49,12 +55,15 @@ const loadApp = async () => {
 
     const App = AppModule.default
     const router = RouterModule.default
-    document.title = titles[appName] || 'Ay Services'
+
     const app = createApp(App)
     app.use(createPinia())
     app.use(router)
     app.component('MyIcon', MyIcon)
+    document.title = titles[appName] || 'Ay Services'
+
     app.mount('#app')
+
 }
 
 loadApp().catch(err => console.error('加载失败:', err))

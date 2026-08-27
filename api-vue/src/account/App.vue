@@ -84,11 +84,7 @@ onUnmounted(() => {
             </div>
         </template>
         <template #right>
-            <!-- <var-space :size="0" class="nav-space">
-        <var-button text color="transparent" text-color="#fff" class="nav-button" @click="router.push('/')">
-          首页
-        </var-button>
-      </var-space> -->
+
             <var-button color="transparent" text-color="#fff" round text @click="toggleTheme">
                 <var-icon :name="themeStore.currentTheme === 'light' ? 'weather-night' : 'white-balance-sunny'"
                     :size="24" />

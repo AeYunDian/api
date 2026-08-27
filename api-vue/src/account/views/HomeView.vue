@@ -7,7 +7,6 @@ const sdk = getSdk()
 const router = useRouter()
 let intervalId = null
 
-// 核心检查登录状态的方法
 async function checkAndRedirect() {
     try {
         const verifyRes = await sdk.verify()
@@ -59,6 +58,10 @@ onMounted(async () => {
 onUnmounted(() => {
     if (intervalId) clearInterval(intervalId)
 })
+function goConsole() {
+    const domain = import.meta.env.PROD ? 'consle.undz.cn' : 'console-dev.undz.cn';
+    window.location.href = `https://${domain}/`;
+}
 </script>
 <template>
 
@@ -74,9 +77,20 @@ onUnmounted(() => {
             <var-space direction="column" size="large" style="color: #fff; align-items: unset;">
                 <h5 class="content-title">Ay Account Center</h5>
                 <p class="content-subtitle">提供一站式服务，守护账号安全</p>
-                <var-button block @click="login">
-                    <span>登录</span>
-                </var-button>
+                <var-menu placement="bottom-end" style="width: 100%;" same-width>
+                    <var-button-group style="display: flex; width: 100%;">
+                        <var-button style="flex: 1;" @click.stop="login" block>
+                            <span>登录</span>
+                        </var-button>
+                        <var-button style="padding: 0 8px; flex-shrink: 0;">
+                            <var-icon name="menu-down" :size="24" />
+                        </var-button>
+                    </var-button-group>
+
+                    <template #menu>
+                        <var-cell ripple @click="goConsole">前往 AyConsole</var-cell>
+                    </template>
+                </var-menu>
             </var-space>
         </var-space>
         <br />

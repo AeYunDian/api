@@ -1,11 +1,24 @@
 <script setup>
-import { inject } from 'vue';
+import { inject, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-
+let intervalId = null
 const sdk = inject('sdk');
 const router = useRouter();
 const channel = inject('channel');
-
+async function checkAndRedirect() {
+    try {
+        const verifyRes = await sdk.verify()
+        if (verifyRes.valid && verifyRes.user?.sub && verifyRes.user?.username) {
+            if (typeof sdk.close === 'function') { await sdk.close() }
+            channel.value.postMessage('login');
+            router.push('/console-panel/oauth-client')
+            return true
+        }
+        return false
+    } catch {
+        return false
+    }
+}
 async function login() {
     try {
         const loginRes = await sdk.login();
@@ -16,6 +29,36 @@ async function login() {
     } catch (err) {
         console.error('登录失败', err);
     }
+}
+onMounted(async () => {
+    let loggedIn = await checkAndRedirect()
+    if (loggedIn) return
+    try {
+        await sdk.refresh()
+    } catch {
+    }
+
+    loggedIn = await checkAndRedirect()
+    if (loggedIn) return
+
+    try {
+        const loginRes = await sdk.login()
+        if (loginRes?.user?.sub && loginRes?.user?.username) {
+            channel.value.postMessage('login');
+            router.push('/console-panel/oauth-client');
+        }
+    } catch (err) {
+    }
+
+    intervalId = setInterval(checkAndRedirect, 10000)
+})
+
+onUnmounted(() => {
+    if (intervalId) clearInterval(intervalId)
+})
+function goAccountCenter() {
+    const domain = import.meta.env.PROD ? 'online.undz.cn' : 'online-dev.undz.cn';
+    window.location.href = `https://${domain}/`;
 }
 </script>
 <template>
@@ -31,17 +74,29 @@ async function login() {
             <var-image width="85px" height="85px" fit="cover" radius="50%" src="/favicon.webp" />
             <var-space direction="column" size="large" style="color: #fff; align-items: unset;">
                 <h5 class="content-title">Ay Console</h5>
-                <p class="content-subtitle">提供一站式服务，守护应用安全</p>
-                <var-button block @click="login">
-                    <span>登录</span>
-                </var-button>
+                <p class="content-subtitle">开发者控制台，统一管理所有应用</p>
+                <var-menu placement="bottom-end" style="width: 100%;" same-width>
+                    <var-button-group style="display: flex; width: 100%;">
+                        <var-button style="flex: 1;" @click.stop="login" block>
+                            <span>登录</span>
+                        </var-button>
+                        <var-button style="padding: 0 8px; flex-shrink: 0;">
+                            <var-icon name="menu-down" :size="24" />
+                        </var-button>
+                    </var-button-group>
+
+                    <template #menu>
+                        <var-cell ripple @click="goAccountCenter">前往 AyAccountCenter</var-cell>
+                    </template>
+                </var-menu>
+
             </var-space>
         </var-space>
         <br />
         <div class="feature">
-            <var-card title="便捷管理" description="集中管理头像、邮箱、手机号等全部个人信息，修改后实时同步至所有关联服务，省去重复填写的烦恼。" />
-            <var-card title="安全防护" description="实时监控登录设备与活动日志，支持双因素认证及密码强度检测，异常行为即时预警，全方位守护账号。" />
-            <var-card title="通用授权" description="统一管理第三方应用授权与关联关系，随时查看或撤销授权，确保接口权限清晰透明，操作简单易掌控。" />
+            <var-card title="应用管理" description="集中管理所有 OAuth 应用，支持快速创建、配置密钥与回调地址，实时查看应用状态与调用数据。" />
+            <var-card title="安全防护" description="实时监控应用与平台的访问动态，支持异常行为预警与安全策略配置，全方位守护业务数据安全。" />
+            <var-card title="开发者工具" description="集成常用开发与调试能力，提供认证服务对接指引，助力开发者高效完成应用集成与上线。" />
         </div>
     </div>
 </template>
@@ -109,30 +164,31 @@ async function login() {
 .orb-1 {
     width: 35vmax;
     height: 35vmax;
-    background: radial-gradient(circle, #4a7cf7, #1a3a8a);
+    background: radial-gradient(circle, #a78bfa, #7c3aed);
     animation: orbFly1 16s ease-in-out infinite alternate;
 }
 
 .orb-2 {
     width: 30vmax;
     height: 30vmax;
-    background: radial-gradient(circle, #6a9cf7, #1a4a9a);
+    background: radial-gradient(circle, #8b5cf6, #6d28d9);
     animation: orbFly2 18s ease-in-out infinite alternate-reverse;
 }
 
 .orb-3 {
     width: 25vmax;
     height: 25vmax;
-    background: radial-gradient(circle, #3a6cf7, #0a2a7a);
+    background: radial-gradient(circle, #c084fc, #7c3aed);
     animation: orbPulse 12s ease-in-out infinite alternate;
 }
 
 .orb-4 {
     width: 20vmax;
     height: 20vmax;
-    background: radial-gradient(circle, #5a8cf7, #2a4a9a);
+    background: radial-gradient(circle, #9a6cf7, #4c1d95);
     animation: orbFly3 20s ease-in-out infinite alternate;
 }
+
 
 @keyframes orbFly1 {
     0% {

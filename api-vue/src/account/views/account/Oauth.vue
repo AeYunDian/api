@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { Dialog, Snackbar } from '@varlet/ui';
-import { formatTime } from '@/account/utils/format';
+import { formatTime } from '@/shared/utils/format';
 import { getOAuthApps, revokeOAuthApp, revokeOAuthTokens } from '@/account/utils/api';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
@@ -94,7 +94,7 @@ function translateScope(scope) {
                         <div style="font-size: 14px; color: var(--color-text-secondary);">
                             <p>授权范围: {{ translateScope(app.scope) }}</p>
                             <p>授权时间: {{ app.authorized_at ? formatTime(app.authorized_at * 1000) : '未知'
-                            }}</p>
+                                }}</p>
                             <p>登录设备数: {{ app.token_count }}</p>
                         </div>
                     </div>
