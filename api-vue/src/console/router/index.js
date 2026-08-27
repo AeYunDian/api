@@ -8,44 +8,43 @@ const router = createRouter({
             path: '/',
             name: 'home',
             component: HomeView,
+            meta: { title: '首页' }
         },
-        // {
-        //     path: '/user-panel',
-        //     component: () => import('@/console/views/UserPanel.vue'),
-        //     children: [
-        //         { path: '', redirect: '/user-panel/account-overview' },
-        //         {
-        //             path: 'account-overview',
-        //             component: () => import('@/console/views/account/AccountOverview.vue')
-        //         },
-        //         {
-        //             path: 'user-info',
-        //             component: () => import('@/console/views/account/UserInfo.vue')
-        //         },
-        //         {
-        //             path: 'link-account',
-        //             component: () => import('@/console/views/account/LinkAccount.vue')
-        //         },
-        //         {
-        //             path: 'oauth',
-        //             component: () => import('@/console/views/account/Oauth.vue')
-        //         },
-        //         {
-        //             path: 'security',
-        //             component: () => import('@/console/views/account/Security.vue')
-        //         },
-        //         {
-        //             path: ':pathMatch(.*)*',
-        //             redirect: '/user-panel/account-overview'
-        //         }
-        //     ]
-        // },
+        {
+            path: '/console-panel',
+            component: () => import('@/console/views/ConsolePanel.vue'),
+            children: [
+                { path: '', redirect: '/console-panel/oauth-client' },
+                {
+                    path: 'oauth-client',
+                    component: () => import('@/console/views/console/OAuthClient.vue'),
+                    meta: { title: 'OAuth 客户端管理' }
+                },
+                {
+                    path: 'users-manager',
+                    component: () => import('@/console/views/console/UsersManager.vue'),
+                    meta: { title: '账号管理' }
+                },
+                {
+                    path: ':pathMatch(.*)*',
+                    redirect: '/console-panel/oauth-client'
+                }
+            ]
+        },
         {
             path: '/:pathMatch(.*)*',
             name: 'NotFound',
-            component: () => import('@/console/views/NotFound.vue')
+            component: () => import('@/console/views/NotFound.vue'),
+            meta: { title: '404 Not Found' }
         },
     ],
+})
+
+router.beforeEach((to, from, next) => {
+    const appName = 'AyConsole'
+    const pageTitle = to.meta?.title || ''
+    document.title = pageTitle ? `${pageTitle} - ${appName}` : appName
+    next()
 })
 
 export default router

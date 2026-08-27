@@ -1,5 +1,22 @@
 <script setup>
+import { inject } from 'vue';
+import { useRouter } from 'vue-router';
 
+const sdk = inject('sdk');
+const router = useRouter();
+const channel = inject('channel');
+
+async function login() {
+    try {
+        const loginRes = await sdk.login();
+        if (loginRes?.user?.sub) {
+            channel.value.postMessage('login');
+            router.push('/console-panel/oauth-client');
+        }
+    } catch (err) {
+        console.error('登录失败', err);
+    }
+}
 </script>
 <template>
 
@@ -15,7 +32,7 @@
             <var-space direction="column" size="large" style="color: #fff; align-items: unset;">
                 <h5 class="content-title">Ay Console</h5>
                 <p class="content-subtitle">提供一站式服务，守护应用安全</p>
-                <var-button block @click="login" disabled>
+                <var-button block @click="login">
                     <span>登录</span>
                 </var-button>
             </var-space>

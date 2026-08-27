@@ -25,7 +25,10 @@ export default defineConfig({
             certDir: './cert'
         }),
         components({
-            resolvers: [VarletImportResolver()]
+            resolvers: [VarletImportResolver({
+                style: 'css',
+                autoImport: true,
+            })]
         }),
         autoImport({
             resolvers: [VarletImportResolver({ autoImport: true })]

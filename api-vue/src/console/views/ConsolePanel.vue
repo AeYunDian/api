@@ -1,10 +1,10 @@
-// views/UserPanel.vue
+// views/ConsolePanel.vue
 <script setup>
 import { onMounted, onUnmounted, ref, provide, inject, computed } from 'vue';
 
 import { useRouter, useRoute, RouterView } from 'vue-router';
-import { Dialog } from '@varlet/ui'
-import '@varlet/ui/es/dialog/style';
+// import { Dialog } from '@varlet/ui'
+// import '@varlet/ui/es/dialog/style';
 import { useWindowSize } from '@vueuse/core';
 const router = useRouter();
 const route = useRoute()
@@ -95,11 +95,11 @@ onUnmounted(() => {
 
 function switchScreens(path) {
     if (path === route.path) return;
-    router.push(`/user-panel${path}`)
+    router.push(`/console-panel${path}`)
 }
-function openConsole() {
-    const domain = import.meta.env.PROD ? "console.undz.cn" : "console-dev.undz.cn";
-    window.location.href = `https://${domain}/console-panel/oauth-client`;
+function openAyAccountCenter() {
+    const domain = import.meta.env.PROD ? "online.undz.cn" : "online-dev.undz.cn";
+    window.location.href = `https://${domain}/user-panel/account-overview`;
 }
 </script>
 <template>
@@ -112,18 +112,19 @@ function openConsole() {
 
     <var-popup v-if="isMobile" position="left" v-model:show="leftPopup">
         <div class="left-popup">
-            <var-cell title="账号概览" :border="true" @click="leftPopup = false; switchScreens('/account-overview')"
-                v-ripple :class="{ active: route.path === '/user-panel/account-overview' }">
+            <var-cell title="OAuth应用管理" :border="true" @click="leftPopup = false; switchScreens('/oauth-client')"
+                v-ripple :class="{ active: route.path === '/console-panel/oauth-client' }">
                 <template #icon>
                     <div class="var-cell__icon">
                         <div class="var-icon">
-                            <my-icon icon="application" />
+                            <my-icon icon="openid" />
                         </div>
                     </div>
                 </template>
             </var-cell>
-            <var-cell title="个人信息" :border="true" @click="leftPopup = false; switchScreens('/user-info')" v-ripple
-                :class="{ active: route.path === '/user-panel/user-info' }">
+            <var-cell title="用户管理" :border="true" v-if="user?.sub === 1"
+                @click="leftPopup = false; switchScreens('/users-manager')" v-ripple
+                :class="{ active: route.path === '/console-panel/users-manager' }">
                 <template #icon>
                     <div class="var-cell__icon">
                         <div class="var-icon">
@@ -132,41 +133,11 @@ function openConsole() {
                     </div>
                 </template>
             </var-cell>
-            <var-cell title="第三方账号绑定" :border="true" @click="leftPopup = false; switchScreens('/link-account');"
-                v-ripple :class="{ active: route.path === '/user-panel/link-account' }">
+            <var-cell title="AyAccountCenter" :border="true" @click="leftPopup = false; openAyAccountCenter()" v-ripple>
                 <template #icon>
                     <div class="var-cell__icon">
                         <div class="var-icon">
-                            <my-icon icon="apache-kafka" />
-                        </div>
-                    </div>
-                </template>
-            </var-cell>
-            <var-cell title="授权管理" :border="true" @click="leftPopup = false; switchScreens('/oauth')" v-ripple
-                :class="{ active: route.path === '/user-panel/oauth' }">
-                <template #icon>
-                    <div class="var-cell__icon">
-                        <div class="var-icon">
-                            <my-icon icon="account-secure" />
-                        </div>
-                    </div>
-                </template>
-            </var-cell>
-            <var-cell title="安全中心" :border="true" @click="leftPopup = false; switchScreens('/security')" v-ripple
-                :class="{ active: route.path === '/user-panel/security' }">
-                <template #icon>
-                    <div class="var-cell__icon">
-                        <div class="var-icon">
-                            <my-icon icon="secure" />
-                        </div>
-                    </div>
-                </template>
-            </var-cell>
-            <var-cell title="AyConsole" :border="true" @click="leftPopup = false; openConsole()" v-ripple>
-                <template #icon>
-                    <div class="var-cell__icon">
-                        <div class="var-icon">
-                            <my-icon icon="console-line" />
+                            <my-icon icon="user" />
                         </div>
                     </div>
                 </template>
@@ -184,18 +155,20 @@ function openConsole() {
             <template #default>
                 <div class="panel-layout">
                     <div class="sidebar">
-                        <var-cell title="账号概览" :border="true" @click="switchScreens('/account-overview')" v-ripple
-                            :class="{ active: route.path === '/user-panel/account-overview' }">
+                        <var-cell title="OAuth应用管理" :border="true"
+                            @click="leftPopup = false; switchScreens('/oauth-client')" v-ripple
+                            :class="{ active: route.path === '/console-panel/oauth-client' }">
                             <template #icon>
                                 <div class="var-cell__icon">
                                     <div class="var-icon">
-                                        <my-icon icon="application" />
+                                        <my-icon icon="openid" />
                                     </div>
                                 </div>
                             </template>
                         </var-cell>
-                        <var-cell title="个人信息" :border="true" @click="switchScreens('/user-info')" v-ripple
-                            :class="{ active: route.path === '/user-panel/user-info' }">
+                        <var-cell title="用户管理" :border="true" v-if="user?.sub === 1"
+                            @click="leftPopup = false; switchScreens('/users-manager')" v-ripple
+                            :class="{ active: route.path === '/console-panel/users-manager' }">
                             <template #icon>
                                 <div class="var-cell__icon">
                                     <div class="var-icon">
@@ -204,41 +177,12 @@ function openConsole() {
                                 </div>
                             </template>
                         </var-cell>
-                        <var-cell title="第三方账号绑定" :border="true" @click="switchScreens('/link-account')" v-ripple
-                            :class="{ active: route.path === '/user-panel/link-account' }">
+                        <var-cell title="AyAccountCenter" :border="true"
+                            @click="leftPopup = false; openAyAccountCenter()" v-ripple>
                             <template #icon>
                                 <div class="var-cell__icon">
                                     <div class="var-icon">
-                                        <my-icon icon="apache-kafka" />
-                                    </div>
-                                </div>
-                            </template>
-                        </var-cell>
-                        <var-cell title="授权管理" :border="true" @click="switchScreens('/oauth')" v-ripple
-                            :class="{ active: route.path === '/user-panel/oauth' }">
-                            <template #icon>
-                                <div class="var-cell__icon">
-                                    <div class="var-icon">
-                                        <my-icon icon="account-secure" />
-                                    </div>
-                                </div>
-                            </template>
-                        </var-cell>
-                        <var-cell title="安全中心" :border="true" @click="switchScreens('/security')" v-ripple
-                            :class="{ active: route.path === '/user-panel/security' }">
-                            <template #icon>
-                                <div class="var-cell__icon">
-                                    <div class="var-icon">
-                                        <my-icon icon="secure" />
-                                    </div>
-                                </div>
-                            </template>
-                        </var-cell>
-                        <var-cell title="AyConsole" :border="true" @click="openConsole" v-ripple>
-                            <template #icon>
-                                <div class="var-cell__icon">
-                                    <div class="var-icon">
-                                        <my-icon icon="console-line" />
+                                        <my-icon icon="user" />
                                     </div>
                                 </div>
                             </template>

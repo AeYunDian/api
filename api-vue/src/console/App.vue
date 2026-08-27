@@ -16,11 +16,29 @@ const themeStore = useThemeStore();
 const channel = ref(null);
 const leftPopup = ref(false);
 try {
-    initSdk('ayconsolecenter_1601', 'zh-cn');
+    initSdk(import.meta.env.VITE_CONSOLE_APP_ID, 'zh-cn');
 } catch (error) {
     console.error('SDK 初始化失败', error);
 }
-
+async function handleBroadcast(event) {
+    if (event.data === 'login') {
+        if (router.currentRoute.value.path !== '/console-panel/oauth-client') {
+            Snackbar.success({
+                content: "已检测到登入",
+                duration: 1000,
+            })
+            if (typeof sdk.close === 'function') { await sdk.close() }
+            router.push('/console-panel/oauth-client');
+        }
+    } else if (event.data === 'logout') {
+        Snackbar.success({
+            content: "已检测到登出",
+            duration: 1000,
+        })
+        if (typeof sdk.close === 'function') { await sdk.close() }
+        router.push('/');
+    }
+}
 const sdk = getSdk();
 provide('sdk', sdk);
 provide('leftPopup', leftPopup);

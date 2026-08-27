@@ -3,7 +3,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 // 由于组件库交互事件使用 touch 事件进行开发，不支持桌面端的 mouse 事件，使用 @varlet/touch-emulator 将 touch -> mouse 从而实现桌面端适配。
 import '@varlet/touch-emulator'
-import MyIcon from './shared/MyIcon.vue'
+import MyIcon from '@/shared/MyIcon.vue'
 
 import { Snackbar } from '@varlet/ui'
 import '@varlet/ui/es/snackbar/style';
