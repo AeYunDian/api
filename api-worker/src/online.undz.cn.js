@@ -397,7 +397,8 @@ async function initDatabase(db) {
                 scope TEXT DEFAULT '${DEFAULT_OAUTH_CLIENT_SCOPE}',
                 trusted BOOLEAN DEFAULT 0,
                 created_at INTEGER NOT NULL,
-                updated_at INTEGER NOT NULL
+                updated_at INTEGER NOT NULL,
+                user_sub INTEGER  NOT NULL,
             )`,
             )
             .run();
@@ -442,57 +443,50 @@ async function initDatabase(db) {
             user_sub INTEGER NOT NULL,
             created_at INTEGER NOT NULL,
             UNIQUE(provider, openid)
-        )`,
-            )
-            .run();
+          )`).run();
+        await db.prepare(
+            `CREATE TABLE IF NOT EXISTS feedbacks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_sub INTEGER NOT NULL,
+                username TEXT NOT NULL,
+                content TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                admin_reply TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                resolved_at INTEGER
+            )`).run();
         await db
-            .prepare(
-                `CREATE INDEX IF NOT EXISTS idx_oauth_connections_user ON oauth_connections(user_sub)`,
-            )
-            .run();
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_feedbacks_user ON feedbacks(user_sub)`).run();
         await db
-            .prepare(
-                `CREATE INDEX IF NOT EXISTS idx_consent_requests_expires ON oauth_consent_requests(expires_at)`,
-            )
-            .run();
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_feedbacks_status ON feedbacks(status)`).run();
         await db
-            .prepare(
-                `CREATE INDEX IF NOT EXISTS idx_consent_requests_status ON oauth_consent_requests(status)`,
-            )
-            .run();
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_connections_user ON oauth_connections(user_sub)`).run();
         await db
-            .prepare(
-                `CREATE INDEX IF NOT EXISTS idx_oauth_codes_used ON oauth_auth_codes(used)`,
-            )
-            .run();
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_consent_requests_expires ON oauth_consent_requests(expires_at)`,).run();
         await db
-            .prepare(
-                `CREATE INDEX IF NOT EXISTS idx_oauth_codes_expires ON oauth_auth_codes(expires_at)`,
-            )
-            .run();
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_consent_requests_status ON oauth_consent_requests(status)`).run();
         await db
-            .prepare(
-                `CREATE INDEX IF NOT EXISTS idx_username ON online_users(username)`,
-            )
-            .run();
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_codes_used ON oauth_auth_codes(used)`).run();
+        await db
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_codes_expires ON oauth_auth_codes(expires_at)`).run();
+        await db
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_username ON online_users(username)`).run();
         await db
             .prepare(`CREATE INDEX IF NOT EXISTS idx_email ON online_users(email)`)
             .run();
-        await db.prepare(
-            `ALTER TABLE oauth_clients ADD COLUMN user_sub INTEGER`
-        ).run().catch(() => { });
+
         const clientExists = await db
             .prepare(
                 `SELECT COUNT(*) as cnt FROM oauth_clients WHERE client_id = 'app_chat'`,
-            )
-            .first();
+            ).first();
         if (!clientExists || clientExists.cnt === 0) {
             const now = Math.floor(Date.now() / 1000);
             await db
                 .prepare(
                     `
-                INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, scope, trusted, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, scope, trusted, created_at, updated_at, user_sub)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `,
                 )
                 .bind(
@@ -504,6 +498,7 @@ async function initDatabase(db) {
                     0,
                     now,
                     now,
+                    1,
                 )
                 .run();
         }
@@ -531,7 +526,6 @@ async function initDatabase(db) {
  * @throws {Error} 如果客户端 ID 已存在，D1 会抛出 UNIQUE 约束错误，调用方需捕获处理。
  *
  * @example
- * // 在 initDatabase 中调用
  * await registerOAuthClient(
  *   db,
  *   'app_chat',
@@ -540,14 +534,14 @@ async function initDatabase(db) {
  *   'https://chat.undz.cn/oauth/callback,http://test.undz.cn:8080/callback'
  * );
  */
-async function registerOAuthClient(db, clientId, clientSecret, name, redirectUris, userId, scope = DEFAULT_OAUTH_CLIENT_SCOPE, trusted = 0) {
+async function registerOAuthClient(db, clientId, clientSecret, name, redirectUris, userId, scope = DEFAULT_OAUTH_CLIENT_SCOPE, trusted = 0, user_sub) {
     const now = Math.floor(Date.now() / 1000);
     await db
         .prepare(
-            `INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, scope, trusted, user_id, created_at, updated_at)
+            `INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, scope, trusted, user_id, created_at, updated_at, user_sub)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
-        .bind(clientId, clientSecret, name, redirectUris, scope, trusted, userId, now, now)
+        .bind(clientId, clientSecret, name, redirectUris, scope, trusted, userId, now, now, user_sub)
         .run();
 }
 /**
@@ -1886,171 +1880,11 @@ export default {
                         cors,
                     );
                 }
-                //         if (path === "/api/ayonline/admin/unban-user" && method === "POST") {
-                //             const [authStatus, admin] = await checkAuth(request, env);
-                //             if (authStatus !== TAG_LOGGEDIN || admin.sub !== 1) {
-                //                 return jsonResponse({ error: "Forbidden" }, 403, cors);
-                //             }
 
-                //             const body = await request.json().catch(() => null);
-                //             if (!body || !body.user_id) {
-                //                 return jsonResponse({ error: "Missing user_id" }, 400, cors);
-                //             }
+                //
+                // 此处管理部分正式移至控制台后端部分
+                //
 
-                //             await env.db
-                //                 .prepare("UPDATE online_users SET banned = 0, ban_reason = '' WHERE sub = ?")
-                //                 .bind(body.user_id)
-                //                 .run();
-
-                //             return jsonResponse({ success: true, message: "User unbanned" }, 200, cors);
-                //         }
-                //         if (path === "/api/ayonline/admin/oauth-client" && method === "DELETE") {
-                //             const [authStatus, admin] = await checkAuth(request, env);
-                //             if (authStatus !== TAG_LOGGEDIN || admin.sub !== 1) {
-                //                 return jsonResponse({ error: "Forbidden" }, 403, cors);
-                //             }
-
-                //             const url = new URL(request.url);
-                //             const clientId = url.searchParams.get('client_id');
-                //             if (!clientId) {
-                //                 return jsonResponse({ error: "Missing client_id" }, 400, cors);
-                //             }
-
-                //             const result = await env.db
-                //                 .prepare("DELETE FROM oauth_clients WHERE client_id = ?")
-                //                 .bind(clientId)
-                //                 .run();
-
-                //             if (result.meta?.changes === 0) {
-                //                 return jsonResponse({ error: "Client not found" }, 404, cors);
-                //             }
-
-                //             return jsonResponse({ success: true, message: "Client deleted" }, 200, cors);
-                //         }
-                //         if (path === "/api/ayonline/admin/oauth-clients" && method === "GET") {
-                //             const [authStatus, admin] = await checkAuth(request, env);
-                //             if (authStatus !== TAG_LOGGEDIN || admin.sub !== 1) {
-                //                 return jsonResponse({ error: "Forbidden" }, 403, cors);
-                //             }
-
-                //             const clients = await env.db
-                //                 .prepare(`
-                //     SELECT c.*, u.username as owner_username, u.email as owner_email
-                //     FROM oauth_clients c
-                //     LEFT JOIN online_users u ON c.user_id = u.sub
-                //     ORDER BY c.created_at DESC
-                // `)
-                //                 .all();
-
-                //             return jsonResponse({ clients: clients.results }, 200, cors);
-                //         }
-                //         if (path === "/api/ayonline/admin/ban-user" && method === "POST") {
-                //             const [authStatus, admin] = await checkAuth(request, env);
-                //             if (authStatus !== TAG_LOGGEDIN || admin.sub !== 1) {
-                //                 return jsonResponse({ error: "Forbidden" }, 403, cors);
-                //             }
-
-                //             const body = await request.json().catch(() => null);
-                //             if (!body || !body.user_id) {
-                //                 return jsonResponse({ error: "Missing user_id" }, 400, cors);
-                //             }
-
-                //             const targetUserId = body.user_id;
-                //             const banReason = body.ban_reason || "Banned by admin";
-
-                //             // 不能封禁自己
-                //             if (targetUserId === admin.sub) {
-                //                 return jsonResponse({ error: "Cannot ban yourself" }, 400, cors);
-                //             }
-
-                //             // 更新用户状态
-                //             await env.db
-                //                 .prepare("UPDATE online_users SET banned = 1, ban_reason = ? WHERE sub = ?")
-                //                 .bind(banReason, targetUserId)
-                //                 .run();
-
-                //             // 撤销该用户所有刷新令牌（踢下线）
-                //             await revokeAllUserRefreshTokens(kvStore, targetUserId);
-
-                //             return jsonResponse({ success: true, message: "User banned" }, 200, cors);
-                //         }
-                //         if (path === "/api/ayonline/admin/users" && method === "GET") {
-                //             const [authStatus, user] = await checkAuth(request, env);
-                //             if (authStatus !== TAG_LOGGEDIN || user.sub !== 1) {
-                //                 return jsonResponse({ error: "Forbidden" }, 403, cors);
-                //             }
-
-                //             const users = await env.db
-                //                 .prepare("SELECT sub, username, email, banned, ban_reason, created_at FROM online_users ORDER BY sub")
-                //                 .all();
-                //             return jsonResponse({ users: users.results }, 200, cors);
-                //         }
-                //         if (path === "/api/ayonline/register-oauth-client" && method === "POST") {
-                //             const [authStatus, user] = await checkAuth(request, env);
-                //             if (authStatus !== TAG_LOGGEDIN) {
-                //                 return jsonResponse({ error: "Unauthorized" }, 401, cors);
-                //             }
-
-                //             // 检查用户是否被封禁
-                //             if (user.banned) {
-                //                 return jsonResponse({ error: "Account banned", error_code: 1017 }, 403, cors);
-                //             }
-
-                //             const body = await request.json().catch(() => null);
-                //             if (!body) {
-                //                 return jsonResponse({ error: "Invalid JSON body" }, 400, cors);
-                //             }
-
-                //             const { client_id, client_secret, name, redirect_uris, scope, trusted } = body;
-                //             if (!client_id || !client_secret || !name || !redirect_uris) {
-                //                 return jsonResponse({
-                //                     error: "Missing required fields: client_id, client_secret, name, redirect_uris"
-                //                 }, 400, cors);
-                //             }
-
-                //             // 检查客户端 ID 是否已存在
-                //             const existing = await env.db
-                //                 .prepare("SELECT client_id FROM oauth_clients WHERE client_id = ?")
-                //                 .bind(client_id)
-                //                 .first();
-                //             if (existing) {
-                //                 return jsonResponse({ error: "Client ID already exists" }, 409, cors);
-                //             }
-
-                //             // 检查用户注册的客户端数量（管理员不限）
-                //             if (user.sub !== 1) {
-                //                 const count = await env.db
-                //                     .prepare("SELECT COUNT(*) as cnt FROM oauth_clients WHERE user_id = ?")
-                //                     .bind(user.sub)
-                //                     .first();
-                //                 if (count && count.cnt >= 3) {
-                //                     return jsonResponse({ error: "Maximum 3 clients per user" }, 403, cors);
-                //                 }
-                //             }
-
-                //     try {
-                //         await registerOAuthClient(
-                //             env.db,
-                //             client_id,
-                //             client_secret,
-                //             name,
-                //             redirect_uris,
-                //             user.sub,
-                //             scope || DEFAULT_OAUTH_CLIENT_SCOPE,
-                //             trusted ? 1 : 0
-                //         );
-                //         return jsonResponse({
-                //             success: true,
-                //             message: "OAuth client registered successfully"
-                //         }, 201, cors);
-                //     } catch (err) {
-                //         console.error("Register OAuth client error:", err);
-                //         return jsonResponse({
-                //             error: "Failed to register client",
-                //             detail: err.message
-                //         }, 500, cors);
-                //     }
-                // }
 
                 if (path === "/api/ayonline/send-verification" && method === "POST") {
                     const body = await request.json().catch(() => null);

@@ -204,35 +204,6 @@ export default {
                     return jsonResponse({ user }, 200, corsHeaders(request));
                 }
 
-                // ==================== 反馈中心 ====================
-
-                if (path === "/api/console/feedback/init" && method === "POST") {
-                    const authKey = request.headers.get("X-Admin-Key");
-                    if (authKey !== env.KEY) {
-                        return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders(request));
-                    }
-                    try {
-                        await env.db.prepare(
-                            `CREATE TABLE IF NOT EXISTS feedbacks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_sub INTEGER NOT NULL,
-                username TEXT NOT NULL,
-                content TEXT NOT NULL,
-                status TEXT DEFAULT 'pending',
-                admin_reply TEXT,
-                created_at INTEGER NOT NULL,
-                updated_at INTEGER NOT NULL,
-                resolved_at INTEGER
-            )`
-                        ).run();
-                        await env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_feedbacks_user ON feedbacks(user_sub)`).run();
-                        await env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_feedbacks_status ON feedbacks(status)`).run();
-                        return jsonResponse({ success: true, message: "Feedback table initialized" }, 200, corsHeaders(request));
-                    } catch (err) {
-                        return jsonResponse({ error: "Init failed", detail: err.message }, 500, corsHeaders(request));
-                    }
-                }
-
                 // 修改提交反馈路由，增加数量限制
                 if (path === "/api/console/feedback/submit" && method === "POST") {
                     const [authStatus, user] = await checkAuth(request, env);
