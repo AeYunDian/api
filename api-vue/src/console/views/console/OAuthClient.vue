@@ -173,12 +173,10 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- 说明 -->
-        <p style="color: var(--color-text-secondary); margin-bottom: 16px;">
+        <p v-if="clients.length" style="color: var(--color-text-secondary); margin-bottom: 16px;">
             <span v-if="isAdmin">已注册 {{ clients.length }} 个客户端</span>
             <span v-else>已注册 {{ clients.length }} / 3 个客户端</span>
         </p>
-
         <!-- 加载中 -->
         <var-progress v-if="loading" indeterminate />
 

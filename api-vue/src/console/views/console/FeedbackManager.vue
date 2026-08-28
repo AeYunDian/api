@@ -10,7 +10,8 @@ const user = inject('user');
 const loading = ref(false);
 const feedbacks = ref([]);
 const users = ref([]); // 用于转移时选择目标用户
-const selectedStatus = ref(''); // 筛选状态
+const selectedStatus = ref('all'); // 筛选状态
+const counts = ref({ total: 0, pending: 0 });
 
 // 转移对话框
 const showTransferDialog = ref(false);
@@ -41,7 +42,7 @@ async function loadUsers() {
 async function loadFeedbacks() {
     loading.value = true;
     try {
-        const data = await getFeedbackList(selectedStatus.value || null);
+        const data = await getFeedbackList(selectedStatus.value === 'all' ? '' : selectedStatus.value || null);
         feedbacks.value = data.feedbacks || [];
     } catch (error) {
         Snackbar.error(error.message || '加载反馈列表失败');
@@ -108,7 +109,17 @@ async function handleReply() {
         Snackbar.error(error.message || '回复失败');
     }
 }
-
+async function fetchCounts() {
+    try {
+        const data = await getFeedbackList();
+        const list = data.feedbacks || [];
+        const total = list.length;
+        const pending = list.filter(f => f.status === 'pending' || f.status === 'processing').length;
+        counts.value = { total, pending };
+    } catch (error) {
+        Snackbar.error('获取反馈计数失败', error);
+    }
+}
 function openTransferDialog(feedbackId) {
     transferForm.value.feedbackId = feedbackId;
     transferForm.value.targetUserId = 1;
@@ -139,6 +150,7 @@ async function handleTransfer() {
 onMounted(() => {
     loadUsers();
     loadFeedbacks();
+    fetchCounts();
 });
 </script>
 
@@ -147,7 +159,7 @@ onMounted(() => {
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <h2 style="margin: 0;">反馈管理</h2>
             <div>
-                <var-button @click="loadFeedbacks(); if (isAdmin) loadUsers();"
+                <var-button @click="loadFeedbacks(); fetchCounts(); if (isAdmin) loadUsers();"
                     style="margin-inline-end: 5px;">刷新</var-button>
             </div>
         </div>
@@ -158,15 +170,23 @@ onMounted(() => {
             </p>
         </template>
         <template v-else>
-            <div style="margin-bottom: 16px;">
-                <var-select v-model="selectedStatus" placeholder="全部状态" @change="loadFeedbacks" style="width: 180px;">
-                    <var-option label="全部" value="" />
-                    <var-option label="待处理" value="pending" />
-                    <var-option label="处理中" value="processing" />
-                    <var-option label="已解决" value="resolved" />
-                    <var-option label="已关闭" value="closed" />
-                </var-select>
-            </div>
+            <var-space
+                style="align-items: center; justify-content: space-between; margin-bottom: 16px; margin-top: 10px;">
+                <div>
+                    <var-select v-model="selectedStatus" placeholder="全部状态" @change="loadFeedbacks"
+                        style="width: 180px;">
+                        <var-option label="全部" value="all" />
+                        <var-option label="待处理" value="pending" />
+                        <var-option label="处理中" value="processing" />
+                        <var-option label="已解决" value="resolved" />
+                        <var-option label="已关闭" value="closed" />
+                    </var-select>
+                </div>
+                <p>
+                    <span v-if="isAdmin">共 {{ counts.total }} 条反馈</span>
+                    <span v-else>已提交 {{ counts.total }} / 50 条反馈，待处理/处理中 {{ counts.pending }} / 5 条</span>
+                </p>
+            </var-space>
 
             <var-progress v-if="loading" indeterminate />
             <p v-else-if="!feedbacks.length">暂无反馈</p>
@@ -192,7 +212,7 @@ onMounted(() => {
                         </div>
                         <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                             <var-select v-model="fb.status" @change="handleStatusChange(fb.id, fb.status)"
-                                style="width: 100px;" size="small">
+                                style="width: 100px; margin-bottom: 10px;" size="small">
                                 <var-option label="待处理" value="pending" />
                                 <var-option label="处理中" value="processing" />
                                 <var-option label="已解决" value="resolved" />
