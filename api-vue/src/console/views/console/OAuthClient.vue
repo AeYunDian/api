@@ -146,7 +146,7 @@ function resetForm() {
 }
 onMounted(() => {
     loadClients();
-    loadUsers();
+    if (isAdmin.value) loadUsers();
 });
 </script>
 

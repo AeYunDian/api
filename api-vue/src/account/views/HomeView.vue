@@ -59,7 +59,7 @@ onUnmounted(() => {
     if (intervalId) clearInterval(intervalId)
 })
 function goConsole() {
-    const domain = import.meta.env.PROD ? 'consle.undz.cn' : 'console-dev.undz.cn';
+    const domain = import.meta.env.PROD ? 'console.undz.cn' : 'console-dev.undz.cn';
     window.location.href = `https://${domain}/`;
 }
 </script>
