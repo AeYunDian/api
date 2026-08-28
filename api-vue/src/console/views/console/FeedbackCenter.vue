@@ -26,6 +26,7 @@ async function handleSubmit() {
         showSubmitDialog.value = false;
         submitForm.value.content = '';
         await loadFeedbacks();
+        await fetchCounts();
     } catch (error) {
         Snackbar.error(error.message || '提交失败');
     } finally {
@@ -76,6 +77,7 @@ async function handleDelete(feedbackId) {
         await deleteFeedback(feedbackId);
         Snackbar.success('已删除');
         await loadFeedbacks();
+        await fetchCounts();
     } catch (error) {
         Snackbar.error(error.message || '删除失败');
     }
@@ -119,7 +121,8 @@ onMounted(() => {
             </div>
             <p>
                 <span v-if="isAdmin">共 {{ counts.total }} 条反馈</span>
-                <span v-else>已提交 {{ counts.total }} / 50 条反馈，待处理/处理中 {{ counts.pending }} / 5 条</span>
+                <span v-else-if="counts.total > 0">已提交 {{ counts.total }} / 50 条反馈，待处理/处理中 {{ counts.pending }} / 5
+                    条</span>
             </p>
         </var-space>
 
