@@ -141,7 +141,31 @@ export default {
 
                     return jsonResponse({ clients: result }, 200, cors);
                 }
-
+                if (path === "/api/console/feedback/list" && method === "GET") {
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) {
+                        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+                    }
+                    const url = new URL(request.url);
+                    const statusFilter = url.searchParams.get('status');
+                    let sql = `SELECT * FROM feedbacks`;
+                    const params = [];
+                    if (!(user.sub === 1)) {
+                        sql += ` WHERE user_sub = ?`;
+                        params.push(user.sub);
+                    }
+                    if (statusFilter) {
+                        if (params.length > 0) {
+                            sql += ` AND status = ?`;
+                        } else {
+                            sql += ` WHERE status = ?`;
+                        }
+                        params.push(statusFilter);
+                    }
+                    sql += ` ORDER BY created_at DESC`;
+                    const { results } = await env.db.prepare(sql).bind(...params).all();
+                    return jsonResponse({ feedbacks: results }, 200, cors);
+                }
                 // ---------- 删除客户端 ----------
                 if (path.startsWith("/api/console/oauth/client/") && method === "DELETE") {
                     const clientId = path.split("/").pop();
