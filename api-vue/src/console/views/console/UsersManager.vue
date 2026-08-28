@@ -119,12 +119,13 @@ onMounted(() => {
             <var-button @click="loadUsers" :disabled="!isAdmin">刷新</var-button>
         </div>
 
-        <p v-if="!isAdmin" style="align-items: center; display: flex;">
-            <my-icon icon="error" /> <span style="color: var(--color-text-disabled); ">只有管理员可以查看和管理用户</span>
+
+
+        <p v-if="!isAdmin" style="justify-content: center; align-items: center; display: flex;">
+            <my-icon icon="error" /> <span style="margin-inline-start: 10px;">只有管理员可以查看和管理用户</span>
         </p>
 
-        <var-loading v-else-if="loading" type="circle" />
-
+        <var-progress v-else-if="loading" indeterminate />
         <p v-else-if="!users.length">暂无用户</p>
 
         <var-list v-else>

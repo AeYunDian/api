@@ -79,7 +79,7 @@ function translateScope(scope) {
 <template>
     <div>
         <h2>授权管理</h2>
-        <var-loading v-if="loading" />
+        <var-progress v-if="loading" indeterminate />
         <template v-else>
             <var-list v-if="apps.length">
                 <var-button @click="handleRevokeAll" block type="danger" style="margin-bottom: 5px;">撤销全部授权</var-button>
@@ -94,7 +94,7 @@ function translateScope(scope) {
                         <div style="font-size: 14px; color: var(--color-text-secondary);">
                             <p>授权范围: {{ translateScope(app.scope) }}</p>
                             <p>授权时间: {{ app.authorized_at ? formatTime(app.authorized_at * 1000) : '未知'
-                                }}</p>
+                            }}</p>
                             <p>登录设备数: {{ app.token_count }}</p>
                         </div>
                     </div>

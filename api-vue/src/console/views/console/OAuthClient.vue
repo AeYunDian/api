@@ -180,7 +180,7 @@ onMounted(() => {
         </p>
 
         <!-- 加载中 -->
-        <var-loading v-if="loading" type="circle" />
+        <var-progress v-if="loading" indeterminate />
 
         <p v-else-if="!clients.length">暂无 OAuth 客户端</p>
 
@@ -225,12 +225,12 @@ onMounted(() => {
                 <div class="var-dialog__title">转移 OAuth 客户端</div>
                 <div style="padding: 16px 24px 16px;" class="var-dialog__message">
                     <var-select placeholder="请选择 OAuth 应用" v-model="transferForm.clientId" style="margin-bottom: 15px;"
-                        :rules="[(v) => v !== '' || '请选择一个客户端']">
+                        :rules="[(v) => !!v || '请选择一个客户端']">
                         <var-option v-for="client in clients" :key="client.client_id" :label="client.name"
                             :value="client.client_id" />
                     </var-select>
                     <var-select placeholder="请选择目标账号" v-model="transferForm.targetUserId"
-                        :rules="[(v) => v !== '' || '请选择一个账号']">
+                        :rules="[(v) => !!v || '请选择一个账号']">
                         <var-option v-for="u in users" :key="u.sub" :label="u.username" :value="u.sub" />
                     </var-select>
                 </div>

@@ -343,7 +343,64 @@ export default {
                         .run();
                     return jsonResponse({ success: true, message: "Feedback owner transferred" }, 200, cors);
                 }
+                if (path.startsWith("/api/console/feedback/detail/") && method === "GET") {
+                    const id = path.split('/').pop();
+                    if (!id || isNaN(parseInt(id))) {
+                        return jsonResponse({ error: "Invalid id" }, 400, cors);
+                    }
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) {
+                        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+                    }
+                    const feedback = await env.db.prepare(`SELECT * FROM feedbacks WHERE id = ?`).bind(parseInt(id)).first();
+                    if (!feedback) {
+                        return jsonResponse({ error: "Feedback not found" }, 404, cors);
+                    }
+                    if (!(user.sub === 1) && feedback.user_sub !== user.sub) {
+                        return jsonResponse({ error: "Forbidden" }, 403, cors);
+                    }
+                    return jsonResponse({ feedback }, 200, cors);
+                }
+                if (path === "/api/console/feedback/update-status" && method === "PUT") {
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN || user.sub !== 1) {
+                        return jsonResponse({ error: "Forbidden" }, 403, cors);
+                    }
+                    const body = await request.json().catch(() => null);
+                    if (!body || !body.id || !body.status) {
+                        return jsonResponse({ error: "Missing id or status" }, 400, cors);
+                    }
+                    const allowed = ['pending', 'processing', 'resolved', 'closed'];
+                    if (!allowed.includes(body.status)) {
+                        return jsonResponse({ error: "Invalid status" }, 400, cors);
+                    }
+                    const now = Math.floor(Date.now() / 1000);
+                    let resolved_at = null;
+                    if (body.status === 'resolved') {
+                        resolved_at = now;
+                    }
+                    await env.db.prepare(
+                        `UPDATE feedbacks SET status = ?, updated_at = ?, resolved_at = ? WHERE id = ?`
+                    ).bind(body.status, now, resolved_at, body.id).run();
+                    return jsonResponse({ success: true }, 200, cors);
+                }
 
+                // 管理员回复反馈
+                if (path === "/api/console/feedback/reply" && method === "PUT") {
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN || user.sub !== 1) {
+                        return jsonResponse({ error: "Forbidden" }, 403, cors);
+                    }
+                    const body = await request.json().catch(() => null);
+                    if (!body || !body.id || !body.reply) {
+                        return jsonResponse({ error: "Missing id or reply" }, 400, cors);
+                    }
+                    const now = Math.floor(Date.now() / 1000);
+                    await env.db.prepare(
+                        `UPDATE feedbacks SET admin_reply = ?, updated_at = ? WHERE id = ?`
+                    ).bind(body.reply.trim(), now, body.id).run();
+                    return jsonResponse({ success: true }, 200, cors);
+                }
                 // 转移 OAuth 应用所有者
                 if (path === "/api/console/oauth/client/transfer" && method === "PUT") {
                     const [authStatus, admin] = await checkAuth(request, env);

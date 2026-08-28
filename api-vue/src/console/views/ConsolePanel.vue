@@ -237,7 +237,7 @@ function openAyAccountCenter() {
                     </div>
                     <div class="main-content">
                         <router-view v-if="user" />
-                        <div v-else class="loading-placeholder">加载中...</div>
+                        <var-progress v-else indeterminate />
                     </div>
                 </div>
             </template>

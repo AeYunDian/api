@@ -356,7 +356,7 @@ async function pasteWithClipboard(refvalue) {
                     style="float: inline-end;">保存</var-button>
             </div>
         </template>
-        <p v-else>加载中...</p>
+        <var-progress v-else indeterminate />
     </div>
 </template>
 <style scoped>

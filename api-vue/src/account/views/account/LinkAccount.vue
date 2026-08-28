@@ -133,8 +133,7 @@ onMounted(async () => {
             绑定第三方账号后，您可以使用它们进行快速登录。
         </p>
 
-        <var-loading v-if="loading" type="circle" />
-
+        <var-progress v-if="loading" indeterminate />
         <template v-else>
             <var-list>
                 <var-cell v-for="provider in supportedProviders" :key="provider.id" :border="true">
