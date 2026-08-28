@@ -1,16 +1,17 @@
 <script setup>
 import { ref, onMounted, inject, computed } from 'vue';
 import { Dialog, Snackbar } from '@varlet/ui';
-import { getClients, registerClient, deleteClient } from '@/console/utils/api';
+import { getClients, registerClient, deleteClient, getUsers, transferOAuthClientOwner } from '@/console/utils/api';
 import { formatTime } from '@/shared/utils/format';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
 
 const user = inject('user');
 const loading = ref(false);
+const users = ref([])
 const clients = ref([]);
 const showRegisterDialog = ref(false);
-
+const showTransferDialog = ref(false);
 // 注册表单
 const registerForm = ref({
     name: '',
@@ -18,10 +19,28 @@ const registerForm = ref({
     scope: 'openid profile email',
     trusted: false,
 });
-
+const transferForm = ref({
+    clientId: "",
+    targetUserId: 1,
+});
 // 是否为管理员
 const isAdmin = computed(() => user.value?.sub === 1);
 
+async function loadUsers() {
+    if (!isAdmin.value) {
+        Snackbar.warning('只有管理员可以查看用户列表');
+        return;
+    }
+    loading.value = true;
+    try {
+        const data = await getUsers();
+        users.value = data.users || [];
+    } catch (error) {
+        Snackbar.error(error.message || '获取用户列表失败');
+    } finally {
+        loading.value = false;
+    }
+}
 async function loadClients() {
     loading.value = true;
     try {
@@ -65,7 +84,27 @@ async function handleRegister() {
         Snackbar.error(error.message || '注册失败');
     }
 }
-
+async function handleTransfer() {
+    const form = transferForm.value;
+    if (!form.clientId.trim() || !form.targetUserId) {
+        Snackbar.warning('请填写目标应用和目标用户');
+        return;
+    }
+    console.log(users.value.length)
+    if (form.targetUserId < 1 || form.targetUserId > users.value.length) {
+        Snackbar.error('目标用户不合法');
+        return;
+    }
+    try {
+        await transferOAuthClientOwner(form.clientId.trim(), form.targetUserId);
+        Snackbar.success('转移成功');
+        showRegisterDialog.value = false;
+        transferForm.value = { clientId: "", targetUserId: 1 };
+        await loadClients();
+    } catch (error) {
+        Snackbar.error(error.message || '转移失败');
+    }
+}
 async function handleDelete(clientId, clientName) {
     const action = await Dialog({
         title: '确认删除',
@@ -95,9 +134,14 @@ function resetForm() {
         scope: 'openid profile email',
         trusted: false
     };
+    transferForm.value = {
+        clientId: "",
+        targetUserId: 1,
+    }
 }
 onMounted(() => {
     loadClients();
+    loadUsers();
 });
 </script>
 
@@ -106,16 +150,22 @@ onMounted(() => {
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <h2 style="margin: 0;">OAuth 客户端管理</h2>
 
-            <var-tooltip v-if="!user || (!isAdmin && clients.length >= 3)" content="已达到最大注册数量（3个）">
-                <span>
-                    <var-button type="primary" disabled>
-                        注册新客户端
-                    </var-button>
-                </span>
-            </var-tooltip>
-            <var-button v-else type="primary" @click="showRegisterDialog = true" :disabled="!user">
-                注册新客户端
-            </var-button>
+            <div style="text-align: end;">
+                <var-button v-if="isAdmin" @click="loadClients(); if (isAdmin) { loadUsers() };"
+                    style="margin-inline-end: 5px; margin-bottom: 5px;">
+                    刷新
+                </var-button>
+                <var-tooltip v-if="!user || (!isAdmin && clients.length >= 3)" content="已达到最大注册数量（3个）">
+                    <span>
+                        <var-button type="primary" disabled>
+                            注册新客户端
+                        </var-button>
+                    </span>
+                </var-tooltip>
+                <var-button v-else type="primary" @click="showRegisterDialog = true" :disabled="!user">
+                    注册新客户端
+                </var-button>
+            </div>
         </div>
 
         <!-- 说明 -->
@@ -147,15 +197,49 @@ onMounted(() => {
                             <div>创建时间：{{ formatTime(client.created_at) }}</div>
                         </div>
                     </div>
-                    <var-button type="danger" @click="handleDelete(client.client_id, client.name)"
-                        :disabled="!isAdmin && client.user_sub !== user?.sub">
-                        删除
-                    </var-button>
+                    <div>
+                        <var-button type="default" v-if="isAdmin" style="margin-inline-end: 5px; margin-bottom: 5px;"
+                            @click="transferForm.clientId = client.client_id; showTransferDialog = true;"
+                            :disabled="!isAdmin && client.user_sub !== user?.sub">
+                            转移
+                        </var-button>
+                        <var-button type="danger" @click="handleDelete(client.client_id, client.name)"
+                            :disabled="!isAdmin && client.user_sub !== user?.sub">
+                            删除
+                        </var-button>
+                    </div>
                 </div>
             </var-card>
         </var-list>
 
+        <!-- var-dialog 组件调用有bug，基于 var-dialog 创建原理，自己弄 -->
+
         <!-- var-dialog 组件调用有bug，基于 var-dialog 创建原理，自己弄一个 -->
+        <var-popup v-model:show="showTransferDialog" class="var-dialog__popup" var-dialog-cover @closed="resetForm">
+            <div class="var--box var-dialog">
+                <div class="var-dialog__title">转移 OAuth 客户端</div>
+                <div style="padding: 16px 24px 16px;" class="var-dialog__message">
+                    <var-select placeholder="请选择 OAuth 应用" v-model="transferForm.clientId" style="margin-bottom: 15px;"
+                        :rules="[(v) => v !== '' || '请选择一个客户端']">
+                        <var-option v-for="client in clients" :key="client.client_id" :label="client.name"
+                            :value="client.client_id" />
+                    </var-select>
+                    <var-select placeholder="请选择目标账号" v-model="transferForm.targetUserId"
+                        :rules="[(v) => v !== '' || '请选择一个账号']">
+                        <var-option v-for="u in users" :key="u.sub" :label="u.username" :value="u.sub" />
+                    </var-select>
+                </div>
+
+                <div class="var-dialog__actions">
+                    <var-button @click="showTransferDialog = false" text type="primary"
+                        class="var--inline-flex var-dialog__button var-dialog__cancel-button">取消</var-button>
+                    <var-button @click="handleTransfer" text type="primary"
+                        class="var--inline-flex var-dialog__button var-dialog__confirm-button"
+                        :disabled="!isAdmin">转移</var-button>
+                </div>
+            </div>
+        </var-popup>
+
         <var-popup v-model:show="showRegisterDialog" class="var-dialog__popup" var-dialog-cover @closed="resetForm">
             <div class="var--box var-dialog">
                 <div class="var-dialog__title">注册 OAuth 客户端</div>

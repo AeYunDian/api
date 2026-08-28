@@ -203,6 +203,181 @@ export default {
                 if (path === "/api/console/me" && method === "GET") {
                     return jsonResponse({ user }, 200, corsHeaders(request));
                 }
+
+                // ==================== 反馈中心 ====================
+
+                if (path === "/api/console/feedback/init" && method === "POST") {
+                    const authKey = request.headers.get("X-Admin-Key");
+                    if (authKey !== env.KEY) {
+                        return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders(request));
+                    }
+                    try {
+                        await env.db.prepare(
+                            `CREATE TABLE IF NOT EXISTS feedbacks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_sub INTEGER NOT NULL,
+                username TEXT NOT NULL,
+                content TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                admin_reply TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                resolved_at INTEGER
+            )`
+                        ).run();
+                        await env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_feedbacks_user ON feedbacks(user_sub)`).run();
+                        await env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_feedbacks_status ON feedbacks(status)`).run();
+                        return jsonResponse({ success: true, message: "Feedback table initialized" }, 200, corsHeaders(request));
+                    } catch (err) {
+                        return jsonResponse({ error: "Init failed", detail: err.message }, 500, corsHeaders(request));
+                    }
+                }
+
+                // 修改提交反馈路由，增加数量限制
+                if (path === "/api/console/feedback/submit" && method === "POST") {
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) {
+                        return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders(request));
+                    }
+                    const key = `rl:v1:action:feedback`;
+                    if (env.limiter) {
+                        const { success } = await env.limiter.limit({ key });
+                        if (!success) {
+                            console.warn(JSON.stringify({
+                                event: 'rate_limited',
+                                policy: 'feedback_submit',
+                                user: user.sub,
+                            }));
+                            return jsonResponse(
+                                { error: "Too many requests, please slow down." },
+                                429,
+                                { ...corsHeaders(request), 'Retry-After': '10' }
+                            );
+                        }
+                    }
+                    const body = await request.json().catch(() => null);
+                    if (!body || !body.content || body.content.trim() === '') {
+                        return jsonResponse({ error: "Content is required" }, 400, corsHeaders(request));
+                    }
+
+                    // 如果是普通用户，检查数量限制
+                    if (user.sub !== 1) {
+                        // 检查 pending/processing 数量
+                        const pendingCount = await env.db
+                            .prepare(`SELECT COUNT(*) as cnt FROM feedbacks WHERE user_sub = ? AND status IN ('pending', 'processing')`)
+                            .bind(user.sub)
+                            .first();
+                        if (pendingCount.cnt >= 5) {
+                            return jsonResponse({ error: "You have too many pending/processing feedbacks (max 5)" }, 403, corsHeaders(request));
+                        }
+                        // 检查总数量
+                        const totalCount = await env.db
+                            .prepare(`SELECT COUNT(*) as cnt FROM feedbacks WHERE user_sub = ?`)
+                            .bind(user.sub)
+                            .first();
+                        if (totalCount.cnt >= 50) {
+                            return jsonResponse({ error: "You have reached the maximum total feedbacks (50)" }, 403, corsHeaders(request));
+                        }
+                    }
+
+                    const now = Math.floor(Date.now() / 1000);
+                    const result = await env.db
+                        .prepare(`INSERT INTO feedbacks (user_sub, username, content, status, created_at, updated_at)
+                  VALUES (?, ?, ?, 'pending', ?, ?)`)
+                        .bind(user.sub, user.username, body.content.trim(), now, now)
+                        .run();
+                    const id = result.meta?.last_row_id;
+                    return jsonResponse({ success: true, id }, 201, corsHeaders(request));
+                }
+
+                // 删除反馈（用户可删自己的，管理员可删任何）
+                if (path.startsWith("/api/console/feedback/delete/") && method === "DELETE") {
+                    const id = parseInt(path.split('/').pop(), 10);
+                    if (!id) {
+                        return jsonResponse({ error: "Invalid id" }, 400, corsHeaders(request));
+                    }
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) {
+                        return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders(request));
+                    }
+                    const feedback = await env.db.prepare(`SELECT user_sub FROM feedbacks WHERE id = ?`).bind(id).first();
+                    if (!feedback) {
+                        return jsonResponse({ error: "Feedback not found" }, 404, corsHeaders(request));
+                    }
+                    if (!(user.sub === 1) && feedback.user_sub !== user.sub) {
+                        return jsonResponse({ error: "Forbidden" }, 403, corsHeaders(request));
+                    }
+
+                    await env.db.prepare(`DELETE FROM feedbacks WHERE id = ?`).bind(id).run();
+                    return jsonResponse({ success: true, message: "Feedback deleted" }, 200, corsHeaders(request));
+                }
+
+                // 转移反馈所有者
+                if (path === "/api/console/feedback/transfer" && method === "PUT") {
+                    const [authStatus, admin] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN || admin.sub !== 1) {
+                        return jsonResponse({ error: "Forbidden" }, 403, corsHeaders(request));
+                    }
+                    const body = await request.json().catch(() => null);
+                    if (!body || !body.feedback_id || !body.target_user_id) {
+                        return jsonResponse({ error: "Missing feedback_id or target_user_id" }, 400, corsHeaders(request));
+                    }
+                    const feedbackId = parseInt(body.feedback_id, 10);
+                    const targetUserId = parseInt(body.target_user_id, 10);
+                    // 检查目标用户是否存在
+                    const targetUser = await env.db
+                        .prepare(`SELECT sub, username FROM online_users WHERE sub = ?`)
+                        .bind(targetUserId)
+                        .first();
+                    if (!targetUser) {
+                        return jsonResponse({ error: "Target user not found" }, 404, corsHeaders(request));
+                    }
+                    // 检查反馈是否存在
+                    const feedback = await env.db.prepare(`SELECT id FROM feedbacks WHERE id = ?`).bind(feedbackId).first();
+                    if (!feedback) {
+                        return jsonResponse({ error: "Feedback not found" }, 404, corsHeaders(request));
+                    }
+                    const now = Math.floor(Date.now() / 1000);
+                    await env.db
+                        .prepare(`UPDATE feedbacks SET user_sub = ?, username = ?, updated_at = ? WHERE id = ?`)
+                        .bind(targetUser.sub, targetUser.username, now, feedbackId)
+                        .run();
+                    return jsonResponse({ success: true, message: "Feedback owner transferred" }, 200, corsHeaders(request));
+                }
+
+                // 转移 OAuth 应用所有者
+                if (path === "/api/console/oauth/client/transfer" && method === "PUT") {
+                    const [authStatus, admin] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN || admin.sub !== 1) {
+                        return jsonResponse({ error: "Forbidden" }, 403, corsHeaders(request));
+                    }
+                    const body = await request.json().catch(() => null);
+                    if (!body || !body.client_id || !body.target_user_id) {
+                        return jsonResponse({ error: "Missing client_id or target_user_id" }, 400, corsHeaders(request));
+                    }
+                    const clientId = body.client_id;
+                    const targetUserId = parseInt(body.target_user_id, 10);
+                    const targetUser = await env.db
+                        .prepare(`SELECT sub, username FROM online_users WHERE sub = ?`)
+                        .bind(targetUserId)
+                        .first();
+                    if (!targetUser) {
+                        return jsonResponse({ error: "Target user not found" }, 404, corsHeaders(request));
+                    }
+                    const client = await env.db
+                        .prepare(`SELECT client_id FROM oauth_clients WHERE client_id = ?`)
+                        .bind(clientId)
+                        .first();
+                    if (!client) {
+                        return jsonResponse({ error: "OAuth client not found" }, 404, corsHeaders(request));
+                    }
+                    const now = Math.floor(Date.now() / 1000);
+                    await env.db
+                        .prepare(`UPDATE oauth_clients SET user_sub = ?, updated_at = ? WHERE client_id = ?`)
+                        .bind(targetUserId, now, clientId)
+                        .run();
+                    return jsonResponse({ success: true, message: "OAuth client owner transferred" }, 200, corsHeaders(request));
+                }
             } catch (error) {
                 console.error("API error:", error);
                 return jsonResponse({ error: "Internal server error" }, 500, corsHeaders(request));

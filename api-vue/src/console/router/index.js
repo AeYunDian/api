@@ -20,6 +20,16 @@ const router = createRouter({
                     meta: { title: 'OAuth 客户端管理' }
                 },
                 {
+                    path: 'feedback-center',
+                    component: () => import('@/console/views/console/FeedbackCenter.vue'),
+                    meta: { title: '反馈中心' }
+                },
+                {
+                    path: 'feedback-manager',
+                    component: () => import('@/console/views/console/FeedbackManager.vue'),
+                    meta: { title: '反馈管理' }
+                },
+                {
                     path: 'users-manager',
                     component: () => import('@/console/views/console/UsersManager.vue'),
                     meta: { title: '账号管理' }

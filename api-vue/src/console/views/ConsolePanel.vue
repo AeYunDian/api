@@ -122,13 +122,12 @@ function openAyAccountCenter() {
                     </div>
                 </template>
             </var-cell>
-            <var-cell title="用户管理" :border="true" v-if="user?.sub === 1"
-                @click="leftPopup = false; switchScreens('/users-manager')" v-ripple
-                :class="{ active: route.path === '/console-panel/users-manager' }">
+            <var-cell title="反馈中心" :border="true" @click="leftPopup = false; switchScreens('/feedback-center')" v-ripple
+                :class="{ active: route.path === '/console-panel/feedback-center' }">
                 <template #icon>
                     <div class="var-cell__icon">
                         <div class="var-icon">
-                            <my-icon icon="account-circle" />
+                            <my-icon icon="feedback" />
                         </div>
                     </div>
                 </template>
@@ -138,6 +137,29 @@ function openAyAccountCenter() {
                     <div class="var-cell__icon">
                         <div class="var-icon">
                             <my-icon icon="user" />
+                        </div>
+                    </div>
+                </template>
+            </var-cell>
+            <p style="margin: var(--cell-padding);">管理员</p>
+            <var-cell title="反馈管理" :border="true" v-if="user?.sub === 1"
+                @click="leftPopup = false; switchScreens('/feedback-manager')" v-ripple
+                :class="{ active: route.path === '/console-panel/feedback-manager' }">
+                <template #icon>
+                    <div class="var-cell__icon">
+                        <div class="var-icon">
+                            <my-icon icon="breast-feed" />
+                        </div>
+                    </div>
+                </template>
+            </var-cell>
+            <var-cell title="用户管理" :border="true" v-if="user?.sub === 1"
+                @click="leftPopup = false; switchScreens('/users-manager')" v-ripple
+                :class="{ active: route.path === '/console-panel/users-manager' }">
+                <template #icon>
+                    <div class="var-cell__icon">
+                        <div class="var-icon">
+                            <my-icon icon="account-circle" />
                         </div>
                     </div>
                 </template>
@@ -166,13 +188,13 @@ function openAyAccountCenter() {
                                 </div>
                             </template>
                         </var-cell>
-                        <var-cell title="用户管理" :border="true" v-if="user?.sub === 1"
-                            @click="leftPopup = false; switchScreens('/users-manager')" v-ripple
-                            :class="{ active: route.path === '/console-panel/users-manager' }">
+                        <var-cell title="反馈中心" :border="true"
+                            @click="leftPopup = false; switchScreens('/feedback-center')" v-ripple
+                            :class="{ active: route.path === '/console-panel/feedback-center' }">
                             <template #icon>
                                 <div class="var-cell__icon">
                                     <div class="var-icon">
-                                        <my-icon icon="account-circle" />
+                                        <my-icon icon="feedback" />
                                     </div>
                                 </div>
                             </template>
@@ -183,6 +205,29 @@ function openAyAccountCenter() {
                                 <div class="var-cell__icon">
                                     <div class="var-icon">
                                         <my-icon icon="user" />
+                                    </div>
+                                </div>
+                            </template>
+                        </var-cell>
+                        <p style="margin: var(--cell-padding);">管理员</p>
+                        <var-cell title="反馈管理" :border="true" v-if="user?.sub === 1"
+                            @click="leftPopup = false; switchScreens('/feedback-manager')" v-ripple
+                            :class="{ active: route.path === '/console-panel/feedback-manager' }">
+                            <template #icon>
+                                <div class="var-cell__icon">
+                                    <div class="var-icon">
+                                        <my-icon icon="breast-feed" />
+                                    </div>
+                                </div>
+                            </template>
+                        </var-cell>
+                        <var-cell title="用户管理" :border="true" v-if="user?.sub === 1"
+                            @click="leftPopup = false; switchScreens('/users-manager')" v-ripple
+                            :class="{ active: route.path === '/console-panel/users-manager' }">
+                            <template #icon>
+                                <div class="var-cell__icon">
+                                    <div class="var-icon">
+                                        <my-icon icon="account-circle" />
                                     </div>
                                 </div>
                             </template>

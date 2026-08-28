@@ -5,9 +5,6 @@ import { createPinia } from 'pinia'
 import '@varlet/touch-emulator'
 import MyIcon from '@/shared/MyIcon.vue'
 
-import { Snackbar } from '@varlet/ui'
-import '@varlet/ui/es/snackbar/style';
-
 const hostname = window.location.hostname
 const appModules = {
     account: () => import('./account/App.vue'),
@@ -32,38 +29,64 @@ function getAppName() {
     if (hostname.includes('online')) return 'account'
     return DEFAULT_APP
 }
+let appInstance = null;
 
-const loadApp = async () => {
-    const appName = getAppName()
-    if (!appModules[appName]) {
-        Snackbar.error({
-            content: `未知应用: ${appName}`,
-            duration: 1000 * 60 * 60,
-        })
-        throw new Error(`未知应用: ${appName}`)
+async function loadApp(retryCount = 0) {
+    try {
+        // 卸载之前的应用
+        if (appInstance) {
+            appInstance.unmount();
+            appInstance = null;
+        }
+        const appName = getAppName()
+        if (!appModules[appName]) {
+            throw new Error(`未知应用: ${appName}`)
+        }
+        const [AppModule, RouterModule] = await Promise.all([
+            appModules[appName](),
+            routerModules[appName]()
+        ])
+        const App = AppModule.default
+        const router = RouterModule.default
+
+        const app = createApp(App)
+        app.use(createPinia())
+        app.use(router)
+        app.component('MyIcon', MyIcon)
+        document.title = titles[appName] || 'Ay Services'
+        appInstance = app;
+        app.mount('#app');
+
+
+    } catch (err) {
+        try {
+            const { StyleProvider, Themes } = await import('@varlet/ui');
+            const { Dialog } = await import('@varlet/ui');
+            await import('@varlet/ui/es/dialog/style');
+            StyleProvider(Themes.md3Light);
+            if (retryCount >= 3) {
+                console.error('重试次数过多，停止尝试');
+                Dialog({
+                    title: '加载失败',
+                    message: err.message,
+                    cancelButton: false,
+                    confirmButton: false
+                });
+                return;
+            }
+
+            const res = await Dialog({
+                title: '加载失败',
+                message: err.message + '\n是否重试？',
+                cancelButton: false
+            });
+            if (res === 'confirm') {
+                loadApp(retryCount + 1);
+            }
+        } catch (err) {
+            console.error(err)
+            alert(`加载出错：${err.message}`);
+        }
     }
-    if (import.meta.env.DEV) {
-        Snackbar.warning({
-            content: `本地测试模式`,
-            duration: 3000,
-        })
-    }
-    const [AppModule, RouterModule] = await Promise.all([
-        appModules[appName](),
-        routerModules[appName]()
-    ])
-
-    const App = AppModule.default
-    const router = RouterModule.default
-
-    const app = createApp(App)
-    app.use(createPinia())
-    app.use(router)
-    app.component('MyIcon', MyIcon)
-    document.title = titles[appName] || 'Ay Services'
-
-    app.mount('#app')
-
 }
-
-loadApp().catch(err => console.error('加载失败:', err))
+await loadApp();
