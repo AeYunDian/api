@@ -398,8 +398,8 @@ async function initDatabase(db) {
                 trusted BOOLEAN DEFAULT 0,
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL,
-                user_sub INTEGER  NOT NULL,
-            )`,
+                user_sub INTEGER  NOT NULL
+            )`
             )
             .run();
 
@@ -414,7 +414,7 @@ async function initDatabase(db) {
                 state TEXT,
                 expires_at INTEGER NOT NULL,
                 used BOOLEAN DEFAULT 0
-            )`,
+            )`
             )
             .run();
         await db
@@ -431,7 +431,7 @@ async function initDatabase(db) {
         expires_at INTEGER NOT NULL,
         status TEXT DEFAULT 'pending',
         consent_token TEXT NOT NULL
-    )`,
+    )`
             )
             .run();
         await db
@@ -463,7 +463,7 @@ async function initDatabase(db) {
         await db
             .prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_connections_user ON oauth_connections(user_sub)`).run();
         await db
-            .prepare(`CREATE INDEX IF NOT EXISTS idx_consent_requests_expires ON oauth_consent_requests(expires_at)`,).run();
+            .prepare(`CREATE INDEX IF NOT EXISTS idx_consent_requests_expires ON oauth_consent_requests(expires_at)`).run();
         await db
             .prepare(`CREATE INDEX IF NOT EXISTS idx_consent_requests_status ON oauth_consent_requests(status)`).run();
         await db
