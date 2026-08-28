@@ -90,15 +90,20 @@ async function handleTransfer() {
         Snackbar.warning('请填写目标应用和目标用户');
         return;
     }
-    console.log(users.value.length)
-    if (form.targetUserId < 1 || form.targetUserId > users.value.length) {
-        Snackbar.error('目标用户不合法');
+    const targetExists = users.value.some(u => u.sub === form.targetUserId);
+    if (!targetExists) {
+        Snackbar.error('目标用户不存在');
+        return;
+    }
+    const clientExists = clients.value.some(c => c.client_id === form.clientId);
+    if (!clientExists) {
+        Snackbar.error('所选客户端不存在');
         return;
     }
     try {
         await transferOAuthClientOwner(form.clientId.trim(), form.targetUserId);
         Snackbar.success('转移成功');
-        showRegisterDialog.value = false;
+        showTransferDialog.value = false;
         transferForm.value = { clientId: "", targetUserId: 1 };
         await loadClients();
     } catch (error) {
