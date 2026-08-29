@@ -109,7 +109,7 @@ async function onPullRefresh() {
             <h2>安全中心</h2>
 
             <var-card title="设备管理">
-                <var-progress v-if="deviceCountLoading" indeterminate />
+                <var-progress v-if="deviceCountLoading || refreshState" indeterminate class="var-elevation--3" />
                 <p v-else-if="deviceCount === -1">加载失败</p>
                 <p v-else>当前已在 <span style="font-size: calc(1em + 3px);">{{ deviceCount }}</span> 台设备上登录</p>
                 <var-button type="danger" @click="handleRevokeAll">登出所有设备</var-button>
@@ -121,7 +121,7 @@ async function onPullRefresh() {
                 </p>
             </var-card>
 
-            <var-card title="修改密码" style="margin-top: 20px;">
+            <var-card title="修改密码" style="margin-top: 20px; margin-bottom: 10px;" class="var-elevation--3">
                 <var-form ref="passwordForm" @submit="handleChangePassword">
                     <var-input type="password" placeholder="请输入旧密码" v-model="oldPassword"
                         :rules="[v => !!v || '请填写旧密码']" />

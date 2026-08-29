@@ -86,9 +86,9 @@ function translateScope(scope) {
 
 <template>
     <var-pull-refresh v-model="refreshState" @refresh="onPullRefresh">
-        <div>
-            <h2>授权管理</h2>
-            <var-progress v-if="loading" indeterminate />
+        <div style="margin-bottom: 20px;">
+            <h2 style="margin-bottom: 10px;">授权管理</h2>
+            <var-progress v-if="loading" indeterminate style="margin-bottom: 20px;" />
             <template v-else>
                 <var-list v-if="apps.length">
                     <var-button @click="handleRevokeAll" block type="danger"
