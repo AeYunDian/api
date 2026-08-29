@@ -148,7 +148,7 @@ function resetForm() {
 async function onPullRefresh() {
     try {
         await loadClients();
-        if (isAdmin) { await loadUsers(); }
+        if (isAdmin.value) { await loadUsers(); }
     } catch (error) {
         Snackbar.error(error.message)
     } finally {
@@ -193,7 +193,7 @@ onMounted(() => {
             <!-- 加载中 -->
             <var-progress v-if="loading" indeterminate />
 
-            <p v-else-if="!clients.length">暂无 OAuth 客户端</p>
+            <p v-else-if="!clients.length" style="margin-bottom: 70px;">暂无 OAuth 客户端</p>
 
             <!-- 客户端列表 -->
             <var-list v-else>

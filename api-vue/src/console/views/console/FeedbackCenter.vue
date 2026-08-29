@@ -143,7 +143,7 @@ onMounted(() => {
             <p v-else-if="!feedbacks.length">暂无反馈</p>
 
             <var-list v-else>
-                <var-card v-for="fb in feedbacks" :key="fb.id" style="margin-bottom: 12px;">
+                <var-card v-for="fb in feedbacks" :key="fb.id" style="margin-bottom: 12px; margin-bottom: 20px;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div style="flex: 1;">
                             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">

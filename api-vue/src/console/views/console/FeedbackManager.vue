@@ -156,7 +156,7 @@ async function onPullRefresh() {
     try {
         await loadFeedbacks();
         await fetchCounts();
-        if (isAdmin) await loadUsers();
+        if (isAdmin.value) await loadUsers();
     } catch (error) {
         Snackbar.error(error.message)
     } finally {
@@ -182,7 +182,7 @@ onMounted(() => {
             </div>
 
             <template v-if="!isAdmin">
-                <p style="justify-content: center; align-items: center; display: flex;">
+                <p style="justify-content: center; align-items: center; display: flex; margin-bottom: 70px;">
                     <my-icon icon="error" /> <span style="margin-inline-start: 10px;">只有管理员可以对反馈进行操作</span>
                 </p>
             </template>

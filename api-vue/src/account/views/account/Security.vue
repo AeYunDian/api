@@ -108,8 +108,8 @@ async function onPullRefresh() {
         <div>
             <h2>安全中心</h2>
 
-            <var-card title="设备管理">
-                <var-progress v-if="deviceCountLoading || refreshState" indeterminate class="var-elevation--3" />
+            <var-card title="设备管理" class="var-elevation--3">
+                <var-progress v-if="deviceCountLoading || refreshState" indeterminate />
                 <p v-else-if="deviceCount === -1">加载失败</p>
                 <p v-else>当前已在 <span style="font-size: calc(1em + 3px);">{{ deviceCount }}</span> 台设备上登录</p>
                 <var-button type="danger" @click="handleRevokeAll">登出所有设备</var-button>

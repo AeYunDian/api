@@ -120,7 +120,7 @@ onMounted(() => {
             </p>
 
             <var-progress v-else-if="loading" indeterminate />
-            <p v-else-if="!users.length">暂无用户</p>
+            <p v-else-if="!users.length" style="margin-bottom: 70px;">暂无用户</p>
 
             <var-list v-else>
 
