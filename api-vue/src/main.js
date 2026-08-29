@@ -29,6 +29,24 @@ function getAppName() {
     if (hostname.includes('online')) return 'account'
     return DEFAULT_APP
 }
+
+
+function preloadAllRoutes(router) {
+    const schedule = window.requestIdleCallback || window.setTimeout;
+
+    schedule(() => {
+        const routes = router.getRoutes();
+        // 筛选出使用动态导入的组件
+        const loadTasks = routes
+            .filter(route => route.component && typeof route.component === 'function')
+            .map(route => route.component().catch((err) => { console.warn(`[Preload] ${err.message}`) }));
+        // 并发加载，不阻塞主线程
+        Promise.allSettled(loadTasks).then(() => {
+            console.log('[Preload] All route components have been loaded');
+        });
+    }, { timeout: 3000 }); // 最多延迟 3 秒后强制执行
+}
+
 let appInstance = null;
 
 async function loadApp(retryCount = 0) {
@@ -51,12 +69,15 @@ async function loadApp(retryCount = 0) {
 
         const app = createApp(App)
         app.use(createPinia())
+        const { useThemeStore } = await import('@/shared/stores/theme')
+        const themeStore = useThemeStore();
+        themeStore.initializeTheme();
         app.use(router)
         app.component('MyIcon', MyIcon)
-        document.title = titles[appName] || 'Ay Services'
         appInstance = app;
         app.mount('#app');
-
+        preloadAllRoutes(router);
+        document.title = titles[appName] || 'Ay Services'
 
     } catch (err) {
         try {

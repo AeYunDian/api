@@ -5,7 +5,7 @@ import { formatTime } from '@/shared/utils/format';
 import { getOAuthApps, revokeOAuthApp, revokeOAuthTokens } from '@/account/utils/api';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
-
+const refreshState = ref(false);
 const apps = ref([]);
 const loading = ref(false);
 
@@ -59,7 +59,15 @@ async function handleRevoke(clientId, appName) {
 }
 
 onMounted(fetchApps);
-
+async function onPullRefresh() {
+    try {
+        await fetchApps();
+    } catch (error) {
+        Snackbar.error(error.message)
+    } finally {
+        refreshState.value = false;
+    }
+}
 const scopeMap = {
     'openid': '身份标识',
     'profile': '用户资料',
@@ -77,37 +85,40 @@ function translateScope(scope) {
 </script>
 
 <template>
-    <div>
-        <h2>授权管理</h2>
-        <var-progress v-if="loading" indeterminate />
-        <template v-else>
-            <var-list v-if="apps.length">
-                <var-button @click="handleRevokeAll" block type="danger" style="margin-bottom: 5px;">撤销全部授权</var-button>
-                <var-card v-for="app in apps" :key="app.client_id" style="margin-bottom: 16px;">
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h3>{{ app.name }}</h3>
-                            <var-button type="danger" size="small" @click="handleRevoke(app.client_id, app.name)">
-                                撤销授权
-                            </var-button>
+    <var-pull-refresh v-model="refreshState" @refresh="onPullRefresh">
+        <div>
+            <h2>授权管理</h2>
+            <var-progress v-if="loading" indeterminate />
+            <template v-else>
+                <var-list v-if="apps.length">
+                    <var-button @click="handleRevokeAll" block type="danger"
+                        style="margin-bottom: 5px;">撤销全部授权</var-button>
+                    <var-card v-for="app in apps" :key="app.client_id" style="margin-bottom: 16px;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h3>{{ app.name }}</h3>
+                                <var-button type="danger" size="small" @click="handleRevoke(app.client_id, app.name)">
+                                    撤销授权
+                                </var-button>
+                            </div>
+                            <div style="font-size: 14px; color: var(--color-text-secondary);">
+                                <p>授权范围: {{ translateScope(app.scope) }}</p>
+                                <p>授权时间: {{ app.authorized_at ? formatTime(app.authorized_at * 1000) : '未知'
+                                    }}</p>
+                                <p>登录设备数: {{ app.token_count }}</p>
+                            </div>
                         </div>
-                        <div style="font-size: 14px; color: var(--color-text-secondary);">
-                            <p>授权范围: {{ translateScope(app.scope) }}</p>
-                            <p>授权时间: {{ app.authorized_at ? formatTime(app.authorized_at * 1000) : '未知'
-                            }}</p>
-                            <p>登录设备数: {{ app.token_count }}</p>
-                        </div>
-                    </div>
-                </var-card>
-            </var-list>
-            <div v-else style="text-align: center; ">
-                <p style="color: var(--color-text-disabled);">
-                    暂无第三方应用授权
+                    </var-card>
+                </var-list>
+                <div v-else style="text-align: center; ">
+                    <p style="color: var(--color-text-disabled);">
+                        暂无第三方应用授权
 
-                </p>
-                <var-button @click="fetchApps">刷新</var-button>
-            </div>
+                    </p>
+                    <var-button @click="fetchApps">刷新</var-button>
+                </div>
 
-        </template>
-    </div>
+            </template>
+        </div>
+    </var-pull-refresh>
 </template>

@@ -11,7 +11,7 @@ const sdk = inject('sdk');
 const user = inject('user');
 const channel = inject('channel');
 const deviceCount = ref(0);
-
+const refreshState = ref(false);
 // 修改密码表单
 const oldPassword = ref('');
 const newPassword = ref('');
@@ -91,42 +91,55 @@ async function handleChangePassword() {
     }
 
 }
+
+async function onPullRefresh() {
+    try {
+        await getDeviceCount();
+    } catch (error) {
+        Snackbar.error(error.message)
+    } finally {
+        refreshState.value = false;
+    }
+}
 </script>
 
 <template>
-    <div>
-        <h2>安全中心</h2>
+    <var-pull-refresh v-model="refreshState" @refresh="onPullRefresh">
+        <div>
+            <h2>安全中心</h2>
 
-        <var-card title="设备管理">
-            <var-progress v-if="deviceCountLoading" indeterminate />
-            <p v-else-if="deviceCount === -1">加载失败</p>
-            <p v-else>当前已在 <span style="font-size: calc(1em + 3px);">{{ deviceCount }}</span> 台设备上登录</p>
-            <var-button type="danger" @click="handleRevokeAll">登出所有设备</var-button>
-            <p style="display: flex; align-items: flex-start; gap: 5px;">
-                <my-icon icon="about" style="flex-shrink: 0; margin-top: 2px;" size="1em + 3px" />
-                <span style="flex: 1; word-break: break-word;">
-                    注意：其他设备最长需要 10 分钟才会完全失效，请知悉。
-                </span>
-            </p>
-        </var-card>
+            <var-card title="设备管理">
+                <var-progress v-if="deviceCountLoading" indeterminate />
+                <p v-else-if="deviceCount === -1">加载失败</p>
+                <p v-else>当前已在 <span style="font-size: calc(1em + 3px);">{{ deviceCount }}</span> 台设备上登录</p>
+                <var-button type="danger" @click="handleRevokeAll">登出所有设备</var-button>
+                <p style="display: flex; align-items: flex-start; gap: 5px;">
+                    <my-icon icon="about" style="flex-shrink: 0; margin-top: 2px;" size="1em + 3px" />
+                    <span style="flex: 1; word-break: break-word;">
+                        注意：其他设备最长需要 10 分钟才会完全失效，请知悉。
+                    </span>
+                </p>
+            </var-card>
 
-        <var-card title="修改密码" style="margin-top: 20px;">
-            <var-form ref="passwordForm" @submit="handleChangePassword">
-                <var-input type="password" placeholder="请输入旧密码" v-model="oldPassword" :rules="[v => !!v || '请填写旧密码']" />
-                <var-input type="password" placeholder="请输入新密码（至少6位）" v-model="newPassword" :rules="[
-                    v => !!v || '请填写新密码',
-                    v => v.length >= 6 || '密码至少6位'
-                ]" />
-                <var-input type="password" placeholder="请再次输入新密码" v-model="confirmPassword" :rules="[
-                    v => !!v || '请再次输入新密码',
-                    v => v === newPassword || '两次密码不一致'
-                ]" />
-                <var-button type="warning" native-type="submit" :loading="passwordLoading"
-                    style="float: inline-end; margin-top: 10px;">修改密码</var-button>
-            </var-form>
-        </var-card>
+            <var-card title="修改密码" style="margin-top: 20px;">
+                <var-form ref="passwordForm" @submit="handleChangePassword">
+                    <var-input type="password" placeholder="请输入旧密码" v-model="oldPassword"
+                        :rules="[v => !!v || '请填写旧密码']" />
+                    <var-input type="password" placeholder="请输入新密码（至少6位）" v-model="newPassword" :rules="[
+                        v => !!v || '请填写新密码',
+                        v => v.length >= 6 || '密码至少6位'
+                    ]" />
+                    <var-input type="password" placeholder="请再次输入新密码" v-model="confirmPassword" :rules="[
+                        v => !!v || '请再次输入新密码',
+                        v => v === newPassword || '两次密码不一致'
+                    ]" />
+                    <var-button type="warning" native-type="submit" :loading="passwordLoading"
+                        style="float: inline-end; margin-top: 10px;">修改密码</var-button>
+                </var-form>
+            </var-card>
 
-    </div>
+        </div>
+    </var-pull-refresh>
 </template>
 <style scoped>
 .var-input,

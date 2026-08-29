@@ -30,6 +30,7 @@ declare module 'vue' {
     VarOption: typeof import('@varlet/ui')['Option']
     VarPopup: typeof import('@varlet/ui')['Popup']
     VarProgress: typeof import('@varlet/ui')['Progress']
+    VarPullRefresh: typeof import('@varlet/ui')['PullRefresh']
     VarSelect: typeof import('@varlet/ui')['Select']
     VarSpace: typeof import('@varlet/ui')['Space']
     VarTooltip: typeof import('@varlet/ui')['Tooltip']

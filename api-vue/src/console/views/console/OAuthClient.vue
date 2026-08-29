@@ -8,6 +8,7 @@ import '@varlet/ui/es/snackbar/style';
 
 const user = inject('user');
 const loading = ref(false);
+const refreshState = ref(false);
 const users = ref([])
 const clients = ref([]);
 const showRegisterDialog = ref(false);
@@ -144,6 +145,16 @@ function resetForm() {
         targetUserId: 1,
     }
 }
+async function onPullRefresh() {
+    try {
+        await loadClients();
+        if (isAdmin) { await loadUsers(); }
+    } catch (error) {
+        Snackbar.error(error.message)
+    } finally {
+        refreshState.value = false;
+    }
+}
 onMounted(() => {
     loadClients();
     if (isAdmin.value) loadUsers();
@@ -151,120 +162,124 @@ onMounted(() => {
 </script>
 
 <template>
-    <div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h2 style="margin: 0;">OAuth 客户端管理</h2>
+    <var-pull-refresh v-model="refreshState" @refresh="onPullRefresh">
+        <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 style="margin: 0;">OAuth 客户端管理</h2>
 
-            <div style="text-align: end;">
-                <var-button v-if="isAdmin" @click="loadClients(); if (isAdmin) { loadUsers() };"
-                    style="margin-inline-end: 5px; margin-bottom: 5px;">
-                    刷新
-                </var-button>
-                <var-tooltip v-if="!user || (!isAdmin && clients.length >= 3)" content="已达到最大注册数量（3个）">
-                    <span>
-                        <var-button type="primary" disabled>
-                            注册新客户端
-                        </var-button>
-                    </span>
-                </var-tooltip>
-                <var-button v-else type="primary" @click="showRegisterDialog = true" :disabled="!user">
-                    注册新客户端
-                </var-button>
+                <div style="text-align: end;">
+                    <var-button v-if="isAdmin" @click="loadClients(); if (isAdmin) { loadUsers(); }"
+                        style="margin-inline-end: 5px; margin-bottom: 5px;">
+                        刷新
+                    </var-button>
+                    <var-tooltip v-if="!user || (!isAdmin && clients.length >= 3)" content="已达到最大注册数量（3个）">
+                        <span>
+                            <var-button type="primary" disabled>
+                                注册新客户端
+                            </var-button>
+                        </span>
+                    </var-tooltip>
+                    <var-button v-else type="primary" @click="showRegisterDialog = true" :disabled="!user">
+                        注册新客户端
+                    </var-button>
+                </div>
+            </div>
+
+            <p v-if="clients.length" style="color: var(--color-text-secondary); margin-bottom: 16px;">
+                <span v-if="isAdmin">已注册 {{ clients.length }} 个客户端</span>
+                <span v-else>已注册 {{ clients.length }} / 3 个客户端</span>
+            </p>
+
+            <!-- 加载中 -->
+            <var-progress v-if="loading" indeterminate />
+
+            <p v-else-if="!clients.length">暂无 OAuth 客户端</p>
+
+            <!-- 客户端列表 -->
+            <var-list v-else>
+                <var-card v-for="client in clients" :key="client.client_id" style="margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <strong style="font-size: 16px;">{{ client.name }}</strong>
+                                <var-chip v-if="client.trusted" type="success" size="small">受信任</var-chip>
+                            </div>
+                            <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 4px;">
+                                <div>Client ID: <span style="cursor: pointer;"
+                                        @click="copyToClipboard(client.client_id)">{{
+                                            client.client_id }}</span></div>
+                                <div v-if="isAdmin && client.creator_username">创建者：{{ client.creator_username }}</div>
+                                <div>回调地址：{{ client.redirect_uris }}</div>
+                                <div>权限范围：{{ client.scope }}</div>
+                                <div>创建时间：{{ formatTime(client.created_at) }}</div>
+                            </div>
+                        </div>
+                        <div>
+                            <var-button type="default" v-if="isAdmin"
+                                style="margin-inline-end: 5px; margin-bottom: 5px;"
+                                @click="transferForm.clientId = client.client_id; showTransferDialog = true;"
+                                :disabled="!isAdmin && client.user_sub !== user?.sub">
+                                转移
+                            </var-button>
+                            <var-button type="danger" @click="handleDelete(client.client_id, client.name)"
+                                :disabled="!isAdmin && client.user_sub !== user?.sub">
+                                删除
+                            </var-button>
+                        </div>
+                    </div>
+                </var-card>
+            </var-list>
+
+        </div>
+    </var-pull-refresh>
+
+    <!-- var-dialog 组件调用有bug，基于 var-dialog 创建原理，自己弄一个 -->
+    <var-popup v-model:show="showTransferDialog" class="var-dialog__popup" var-dialog-cover @closed="resetForm">
+        <div class="var--box var-dialog">
+            <div class="var-dialog__title">转移 OAuth 客户端</div>
+            <div style="padding: 16px 24px 16px;" class="var-dialog__message">
+                <var-select placeholder="请选择 OAuth 应用" v-model="transferForm.clientId" style="margin-bottom: 15px;"
+                    :rules="[(v) => !!v || '请选择一个客户端']">
+                    <var-option v-for="client in clients" :key="client.client_id" :label="client.name"
+                        :value="client.client_id" />
+                </var-select>
+                <var-select placeholder="请选择目标账号" v-model="transferForm.targetUserId"
+                    :rules="[(v) => !!v || '请选择一个账号']">
+                    <var-option v-for="u in users" :key="u.sub" :label="u.username" :value="u.sub" />
+                </var-select>
+            </div>
+
+            <div class="var-dialog__actions">
+                <var-button @click="showTransferDialog = false" text type="primary"
+                    class="var--inline-flex var-dialog__button var-dialog__cancel-button">取消</var-button>
+                <var-button @click="handleTransfer" text type="primary"
+                    class="var--inline-flex var-dialog__button var-dialog__confirm-button"
+                    :disabled="!isAdmin">转移</var-button>
             </div>
         </div>
+    </var-popup>
 
-        <p v-if="clients.length" style="color: var(--color-text-secondary); margin-bottom: 16px;">
-            <span v-if="isAdmin">已注册 {{ clients.length }} 个客户端</span>
-            <span v-else>已注册 {{ clients.length }} / 3 个客户端</span>
-        </p>
-        <!-- 加载中 -->
-        <var-progress v-if="loading" indeterminate />
-
-        <p v-else-if="!clients.length">暂无 OAuth 客户端</p>
-
-        <!-- 客户端列表 -->
-        <var-list v-else>
-            <var-card v-for="client in clients" :key="client.client_id" style="margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div style="flex: 1;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <strong style="font-size: 16px;">{{ client.name }}</strong>
-                            <var-chip v-if="client.trusted" type="success" size="small">受信任</var-chip>
-                        </div>
-                        <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 4px;">
-                            <div>Client ID: <span style="cursor: pointer;" @click="copyToClipboard(client.client_id)">{{
-                                client.client_id }}</span></div>
-                            <div v-if="isAdmin && client.creator_username">创建者：{{ client.creator_username }}</div>
-                            <div>回调地址：{{ client.redirect_uris }}</div>
-                            <div>权限范围：{{ client.scope }}</div>
-                            <div>创建时间：{{ formatTime(client.created_at) }}</div>
-                        </div>
-                    </div>
-                    <div>
-                        <var-button type="default" v-if="isAdmin" style="margin-inline-end: 5px; margin-bottom: 5px;"
-                            @click="transferForm.clientId = client.client_id; showTransferDialog = true;"
-                            :disabled="!isAdmin && client.user_sub !== user?.sub">
-                            转移
-                        </var-button>
-                        <var-button type="danger" @click="handleDelete(client.client_id, client.name)"
-                            :disabled="!isAdmin && client.user_sub !== user?.sub">
-                            删除
-                        </var-button>
-                    </div>
-                </div>
-            </var-card>
-        </var-list>
-
-        <!-- var-dialog 组件调用有bug，基于 var-dialog 创建原理，自己弄 -->
-
-        <!-- var-dialog 组件调用有bug，基于 var-dialog 创建原理，自己弄一个 -->
-        <var-popup v-model:show="showTransferDialog" class="var-dialog__popup" var-dialog-cover @closed="resetForm">
-            <div class="var--box var-dialog">
-                <div class="var-dialog__title">转移 OAuth 客户端</div>
-                <div style="padding: 16px 24px 16px;" class="var-dialog__message">
-                    <var-select placeholder="请选择 OAuth 应用" v-model="transferForm.clientId" style="margin-bottom: 15px;"
-                        :rules="[(v) => !!v || '请选择一个客户端']">
-                        <var-option v-for="client in clients" :key="client.client_id" :label="client.name"
-                            :value="client.client_id" />
-                    </var-select>
-                    <var-select placeholder="请选择目标账号" v-model="transferForm.targetUserId"
-                        :rules="[(v) => !!v || '请选择一个账号']">
-                        <var-option v-for="u in users" :key="u.sub" :label="u.username" :value="u.sub" />
-                    </var-select>
-                </div>
-
-                <div class="var-dialog__actions">
-                    <var-button @click="showTransferDialog = false" text type="primary"
-                        class="var--inline-flex var-dialog__button var-dialog__cancel-button">取消</var-button>
-                    <var-button @click="handleTransfer" text type="primary"
-                        class="var--inline-flex var-dialog__button var-dialog__confirm-button"
-                        :disabled="!isAdmin">转移</var-button>
-                </div>
+    <var-popup v-model:show="showRegisterDialog" class="var-dialog__popup" var-dialog-cover @closed="resetForm">
+        <div class="var--box var-dialog">
+            <div class="var-dialog__title">注册 OAuth 客户端</div>
+            <div style="padding: 0 24px 16px;" class="var-dialog__message">
+                <var-input placeholder="应用名称" v-model="registerForm.name" :rules="[v => !!v || '请输入应用名称']" />
+                <var-input placeholder="回调地址（多个用逗号分隔）" v-model="registerForm.redirect_uris"
+                    :rules="[v => !!v || '请输入回调地址']" style="margin-top: 12px;" />
+                <var-input placeholder="权限范围（默认 openid profile email）" v-model="registerForm.scope"
+                    style="margin-top: 12px;" />
+                <var-checkbox v-model="registerForm.trusted" style="margin-top: 12px;" v-if="isAdmin">
+                    设置为受信任应用
+                </var-checkbox>
             </div>
-        </var-popup>
-
-        <var-popup v-model:show="showRegisterDialog" class="var-dialog__popup" var-dialog-cover @closed="resetForm">
-            <div class="var--box var-dialog">
-                <div class="var-dialog__title">注册 OAuth 客户端</div>
-                <div style="padding: 0 24px 16px;" class="var-dialog__message">
-                    <var-input placeholder="应用名称" v-model="registerForm.name" :rules="[v => !!v || '请输入应用名称']" />
-                    <var-input placeholder="回调地址（多个用逗号分隔）" v-model="registerForm.redirect_uris"
-                        :rules="[v => !!v || '请输入回调地址']" style="margin-top: 12px;" />
-                    <var-input placeholder="权限范围（默认 openid profile email）" v-model="registerForm.scope"
-                        style="margin-top: 12px;" />
-                    <var-checkbox v-model="registerForm.trusted" style="margin-top: 12px;" v-if="isAdmin">
-                        设置为受信任应用
-                    </var-checkbox>
-                </div>
-                <div class="var-dialog__actions">
-                    <var-button @click="showRegisterDialog = false" text type="primary"
-                        class="var--inline-flex var-dialog__button var-dialog__cancel-button">取消</var-button>
-                    <var-button @click="handleRegister" text type="primary"
-                        class="var--inline-flex var-dialog__button var-dialog__confirm-button">注册</var-button>
-                </div>
+            <div class="var-dialog__actions">
+                <var-button @click="showRegisterDialog = false" text type="primary"
+                    class="var--inline-flex var-dialog__button var-dialog__cancel-button">取消</var-button>
+                <var-button @click="handleRegister" text type="primary"
+                    class="var--inline-flex var-dialog__button var-dialog__confirm-button">注册</var-button>
             </div>
-        </var-popup>
-    </div>
+        </div>
+    </var-popup>
 </template>
 
 <style scoped></style>

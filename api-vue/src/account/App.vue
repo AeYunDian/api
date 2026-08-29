@@ -54,7 +54,6 @@ function handleStorage(e) {
     }
 }
 onMounted(() => {
-    themeStore.initializeTheme();
     channel.value = new BroadcastChannel('ayaccountcenter_data');
     channel.value.addEventListener('message', handleBroadcast);
     window.addEventListener('storage', handleStorage);
@@ -62,7 +61,7 @@ onMounted(() => {
     if (import.meta.env.PROD) {
         setInterval(
             (0, eval)(`\u0028\u0066\u0075\u006e\u0063\u0074\u0069\u006f\u006e\u0020\u0061\u006e\u006f\u006e\u0079\u006d\u006f\u0075\u0073\u0028\u0029\u007b\u0064\u0065\u0062\u0075${'\u0072\u0065\u0067\u0067'.split("").reverse().join("")};\u007d\u0029`)
-            , 150);
+            , 500);
     }
 
 })
@@ -84,7 +83,6 @@ onUnmounted(() => {
             </div>
         </template>
         <template #right>
-
             <var-button color="transparent" text-color="#fff" round text @click="toggleTheme">
                 <var-icon :name="themeStore.currentTheme === 'light' ? 'weather-night' : 'white-balance-sunny'"
                     :size="24" />

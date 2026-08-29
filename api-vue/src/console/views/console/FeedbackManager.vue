@@ -8,6 +8,7 @@ import '@varlet/ui/es/snackbar/style';
 
 const user = inject('user');
 const loading = ref(false);
+const refreshState = ref(false);
 const feedbacks = ref([]);
 const users = ref([]); // 用于转移时选择目标用户
 const selectedStatus = ref('all'); // 筛选状态
@@ -151,7 +152,17 @@ async function handleTransfer() {
         Snackbar.error(error.message || '转移失败');
     }
 }
-
+async function onPullRefresh() {
+    try {
+        await loadFeedbacks();
+        await fetchCounts();
+        if (isAdmin) await loadUsers();
+    } catch (error) {
+        Snackbar.error(error.message)
+    } finally {
+        refreshState.value = false;
+    }
+}
 onMounted(() => {
     loadUsers();
     loadFeedbacks();
@@ -160,122 +171,124 @@ onMounted(() => {
 </script>
 
 <template>
-    <div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h2 style="margin: 0;">反馈管理</h2>
-            <div>
-                <var-button @click="loadFeedbacks(); fetchCounts(); if (isAdmin) loadUsers();"
-                    style="margin-inline-end: 5px;">刷新</var-button>
-            </div>
-        </div>
-
-        <template v-if="!isAdmin">
-            <p style="justify-content: center; align-items: center; display: flex;">
-                <my-icon icon="error" /> <span style="margin-inline-start: 10px;">只有管理员可以对反馈进行操作</span>
-            </p>
-        </template>
-        <template v-else>
-            <var-space
-                style="align-items: center; justify-content: space-between; margin-bottom: 16px; margin-top: 10px;">
+    <var-pull-refresh v-model="refreshState" @refresh="onPullRefresh">
+        <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 style="margin: 0;">反馈管理</h2>
                 <div>
-                    <var-select v-model="selectedStatus" placeholder="全部状态" @change="loadFeedbacks"
-                        style="width: 180px;">
-                        <var-option label="全部" value="all" />
-                        <var-option label="待处理" value="pending" />
-                        <var-option label="处理中" value="processing" />
-                        <var-option label="已解决" value="resolved" />
-                        <var-option label="已关闭" value="closed" />
-                    </var-select>
+                    <var-button @click="loadFeedbacks(); fetchCounts(); if (isAdmin) loadUsers();"
+                        style="margin-inline-end: 5px;">刷新</var-button>
                 </div>
-                <p>
-                    <span v-if="isAdmin">共 {{ counts.total }} 条反馈</span>
-                    <span v-else-if="counts.total > 0">已提交 {{ counts.total }} / 50 条反馈，待处理/处理中 {{ counts.pending }} / 5
-                        条</span>
+            </div>
+
+            <template v-if="!isAdmin">
+                <p style="justify-content: center; align-items: center; display: flex;">
+                    <my-icon icon="error" /> <span style="margin-inline-start: 10px;">只有管理员可以对反馈进行操作</span>
                 </p>
-            </var-space>
-
-            <var-progress v-if="loading" indeterminate />
-            <p v-else-if="!feedbacks.length">暂无反馈</p>
-
-            <var-list v-else>
-                <var-card v-for="fb in feedbacks" :key="fb.id" style="margin-bottom: 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div style="flex: 1;">
-                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                <strong style="font-size: 16px;">{{ fb.username }}</strong>
-                                <var-chip
-                                    :type="fb.status === 'pending' ? 'warning' : fb.status === 'processing' ? 'info' : fb.status === 'resolved' ? 'success' : 'default'"
-                                    size="small">
-                                    {{ getStatusLabel(fb.status) }}
-                                </var-chip>
-                            </div>
-                            <div style="font-size: 14px; margin: 8px 0;">{{ fb.content }}</div>
-                            <div style="font-size: 13px; color: var(--color-text-secondary);">
-                                <div v-if="fb.admin_reply">管理员回复：{{ fb.admin_reply }}</div>
-                                <div>提交时间：{{ formatTime(fb.created_at) }}</div>
-                                <div v-if="fb.resolved_at">解决时间：{{ formatTime(fb.resolved_at) }}</div>
-                            </div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                            <var-select v-model="fb.status" @change="handleStatusChange(fb.id, fb.status)"
-                                style="width: 100px; margin-bottom: 10px;" size="small">
-                                <var-option label="待处理" value="pending" />
-                                <var-option label="处理中" value="processing" />
-                                <var-option label="已解决" value="resolved" />
-                                <var-option label="已关闭" value="closed" />
-                            </var-select>
-
-                            <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
-                                <var-button type="primary" size="small" @click="openReplyDialog(fb.id)">
-                                    回复
-                                </var-button>
-                                <var-button type="default" size="small" @click="openTransferDialog(fb.id)">
-                                    转移
-                                </var-button>
-                                <var-button type="danger" size="small" @click="handleDelete(fb.id)"
-                                    :disabled="!isAdmin && fb.user_sub !== user?.sub">
-                                    删除
-                                </var-button>
-                            </div>
-                        </div>
-                    </div>
-                </var-card>
-            </var-list>
-
-            <var-popup v-model:show="showReplyDialog" class="var-dialog__popup" var-dialog-cover>
-                <div class="var--box var-dialog">
-                    <div class="var-dialog__title">回复反馈</div>
-                    <div style="padding: 0 24px 16px;" class="var-dialog__message">
-                        <var-input placeholder="请输入回复内容" v-model="replyForm.reply" textarea rows="4" maxlength="500" />
-                    </div>
-                    <div class="var-dialog__actions">
-                        <var-button @click="showReplyDialog = false" text type="primary"
-                            class="var--inline-flex var-dialog__button var-dialog__cancel-button">取消</var-button>
-                        <var-button @click="handleReply" text type="primary"
-                            class="var--inline-flex var-dialog__button var-dialog__confirm-button">发送回复</var-button>
-                    </div>
-                </div>
-            </var-popup>
-
-            <var-popup v-model:show="showTransferDialog" class="var-dialog__popup" var-dialog-cover>
-                <div class="var--box var-dialog">
-                    <div class="var-dialog__title">转移反馈所有者</div>
-                    <div style="padding: 16px 24px 16px;" class="var-dialog__message">
-                        <var-select placeholder="请选择目标用户" v-model="transferForm.targetUserId"
-                            :rules="[(v) => v !== '' || '请选择一个用户']">
-                            <var-option v-for="u in users" :key="u.sub" :label="u.username" :value="u.sub" />
+            </template>
+            <template v-else>
+                <var-space
+                    style="align-items: center; justify-content: space-between; margin-bottom: 16px; margin-top: 10px;">
+                    <div>
+                        <var-select v-model="selectedStatus" placeholder="全部状态" @change="loadFeedbacks"
+                            style="width: 180px;">
+                            <var-option label="全部" value="all" />
+                            <var-option label="待处理" value="pending" />
+                            <var-option label="处理中" value="processing" />
+                            <var-option label="已解决" value="resolved" />
+                            <var-option label="已关闭" value="closed" />
                         </var-select>
                     </div>
-                    <div class="var-dialog__actions">
-                        <var-button @click="showTransferDialog = false" text type="primary"
-                            class="var--inline-flex var-dialog__button var-dialog__cancel-button">取消</var-button>
-                        <var-button @click="handleTransfer" text type="primary"
-                            class="var--inline-flex var-dialog__button var-dialog__confirm-button">确认转移</var-button>
-                    </div>
-                </div>
-            </var-popup>
-        </template>
-    </div>
+                    <p>
+                        <span v-if="isAdmin">共 {{ counts.total }} 条反馈</span>
+                        <span v-else-if="counts.total > 0">已提交 {{ counts.total }} / 50 条反馈，待处理/处理中 {{ counts.pending }}
+                            / 5
+                            条</span>
+                    </p>
+                </var-space>
+
+                <var-progress v-if="loading" indeterminate />
+                <p v-else-if="!feedbacks.length">暂无反馈</p>
+
+                <var-list v-else>
+                    <var-card v-for="fb in feedbacks" :key="fb.id" style="margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <strong style="font-size: 16px;">{{ fb.username }}</strong>
+                                    <var-chip
+                                        :type="fb.status === 'pending' ? 'warning' : fb.status === 'processing' ? 'info' : fb.status === 'resolved' ? 'success' : 'default'"
+                                        size="small">
+                                        {{ getStatusLabel(fb.status) }}
+                                    </var-chip>
+                                </div>
+                                <div style="font-size: 14px; margin: 8px 0;">{{ fb.content }}</div>
+                                <div style="font-size: 13px; color: var(--color-text-secondary);">
+                                    <div v-if="fb.admin_reply">管理员回复：{{ fb.admin_reply }}</div>
+                                    <div>提交时间：{{ formatTime(fb.created_at) }}</div>
+                                    <div v-if="fb.resolved_at">解决时间：{{ formatTime(fb.resolved_at) }}</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                                <var-select v-model="fb.status" @change="handleStatusChange(fb.id, fb.status)"
+                                    style="width: 100px; margin-bottom: 10px;" size="small">
+                                    <var-option label="待处理" value="pending" />
+                                    <var-option label="处理中" value="processing" />
+                                    <var-option label="已解决" value="resolved" />
+                                    <var-option label="已关闭" value="closed" />
+                                </var-select>
+
+                                <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
+                                    <var-button type="primary" size="small" @click="openReplyDialog(fb.id)">
+                                        回复
+                                    </var-button>
+                                    <var-button type="default" size="small" @click="openTransferDialog(fb.id)">
+                                        转移
+                                    </var-button>
+                                    <var-button type="danger" size="small" @click="handleDelete(fb.id)"
+                                        :disabled="!isAdmin && fb.user_sub !== user?.sub">
+                                        删除
+                                    </var-button>
+                                </div>
+                            </div>
+                        </div>
+                    </var-card>
+                </var-list>
+            </template>
+        </div>
+    </var-pull-refresh>
+    <var-popup v-model:show="showReplyDialog" class="var-dialog__popup" var-dialog-cover>
+        <div class="var--box var-dialog">
+            <div class="var-dialog__title">回复反馈</div>
+            <div style="padding: 0 24px 16px;" class="var-dialog__message">
+                <var-input placeholder="请输入回复内容" v-model="replyForm.reply" textarea rows="4" maxlength="500" />
+            </div>
+            <div class="var-dialog__actions">
+                <var-button @click="showReplyDialog = false" text type="primary"
+                    class="var--inline-flex var-dialog__button var-dialog__cancel-button">取消</var-button>
+                <var-button @click="handleReply" text type="primary"
+                    class="var--inline-flex var-dialog__button var-dialog__confirm-button">发送回复</var-button>
+            </div>
+        </div>
+    </var-popup>
+
+    <var-popup v-model:show="showTransferDialog" class="var-dialog__popup" var-dialog-cover>
+        <div class="var--box var-dialog">
+            <div class="var-dialog__title">转移反馈所有者</div>
+            <div style="padding: 16px 24px 16px;" class="var-dialog__message">
+                <var-select placeholder="请选择目标用户" v-model="transferForm.targetUserId"
+                    :rules="[(v) => v !== '' || '请选择一个用户']">
+                    <var-option v-for="u in users" :key="u.sub" :label="u.username" :value="u.sub" />
+                </var-select>
+            </div>
+            <div class="var-dialog__actions">
+                <var-button @click="showTransferDialog = false" text type="primary"
+                    class="var--inline-flex var-dialog__button var-dialog__cancel-button">取消</var-button>
+                <var-button @click="handleTransfer" text type="primary"
+                    class="var--inline-flex var-dialog__button var-dialog__confirm-button">确认转移</var-button>
+            </div>
+        </div>
+    </var-popup>
 </template>
 
 <style scoped>

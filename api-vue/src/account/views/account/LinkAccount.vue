@@ -8,7 +8,7 @@ import '@varlet/ui/es/snackbar/style';
 
 const sdk = inject('sdk');
 const user = inject('user');
-
+const refreshState = ref(false);
 const loading = ref(false);
 const bindings = ref([]);
 const supportedProviders = ref([
@@ -120,65 +120,75 @@ async function handleUnbind(providerId) {
         });
     }
 }
-
+async function onPullRefresh() {
+    try {
+        await fetchBindings();
+    } catch (error) {
+        Snackbar.error(error.message)
+    } finally {
+        refreshState.value = false;
+    }
+}
 onMounted(async () => {
     await fetchBindings();
 })
 </script>
 
 <template>
-    <div>
-        <h2>第三方账号绑定</h2>
-        <p style="color: var(--card-content-color); margin-bottom: 16px;">
-            绑定第三方账号后，您可以使用它们进行快速登录。
-        </p>
+    <var-pull-refresh v-model="refreshState" @refresh="onPullRefresh">
+        <div>
+            <h2>第三方账号绑定</h2>
+            <p style="color: var(--card-content-color); margin-bottom: 16px;">
+                绑定第三方账号后，您可以使用它们进行快速登录。
+            </p>
 
-        <var-progress v-if="loading" indeterminate />
-        <template v-else>
-            <var-list>
-                <var-cell v-for="provider in supportedProviders" :key="provider.id" :border="true">
-                    <template #default>
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 4px 0;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <var-avatar v-if="provider.icon" :src="provider.icon" size="32px" color="transparent"
-                                    style="flex-shrink: 0;" />
-                                <div>
-                                    <div style="font-weight: 500;">{{ provider.name }}</div>
-                                    <div
-                                        style="font-size: 13px; color: var(--card-content-color); display: flex; align-items: center; word-break: keep-all;">
-                                        <template v-if="isBound(provider.id)">
-                                            <my-icon icon="check-circle-outline"
-                                                style="margin-inline-end: 5px; color: var(--color-success);" />
-                                            已绑定
-                                            <span v-if="getBinding(provider.id)?.created_at"
-                                                style="margin-inline-start: 10px;">绑定时间：{{
-                                                    formatTime(getBinding(provider.id)?.created_at) }}</span>
+            <var-progress v-if="loading" indeterminate />
+            <template v-else>
+                <var-list>
+                    <var-cell v-for="provider in supportedProviders" :key="provider.id" :border="true">
+                        <template #default>
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 4px 0;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <var-avatar v-if="provider.icon" :src="provider.icon" size="32px"
+                                        color="transparent" style="flex-shrink: 0;" />
+                                    <div>
+                                        <div style="font-weight: 500;">{{ provider.name }}</div>
+                                        <div
+                                            style="font-size: 13px; color: var(--card-content-color); display: flex; align-items: center; word-break: keep-all;">
+                                            <template v-if="isBound(provider.id)">
+                                                <my-icon icon="check-circle-outline"
+                                                    style="margin-inline-end: 5px; color: var(--color-success);" />
+                                                已绑定
+                                                <span v-if="getBinding(provider.id)?.created_at"
+                                                    style="margin-inline-start: 10px;">绑定时间：{{
+                                                        formatTime(getBinding(provider.id)?.created_at) }}</span>
 
-                                        </template>
-                                        <template v-else>
-                                            <my-icon icon="minus-circle"
-                                                style="margin-inline-end: 5px; color: var(--color-danger);" />
-                                            未绑定
-                                        </template>
+                                            </template>
+                                            <template v-else>
+                                                <my-icon icon="minus-circle"
+                                                    style="margin-inline-end: 5px; color: var(--color-danger);" />
+                                                未绑定
+                                            </template>
+                                        </div>
                                     </div>
                                 </div>
+                                <div>
+                                    <var-button v-if="isBound(provider.id)" type="danger"
+                                        @click="handleUnbind(provider.id)">
+                                        解绑
+                                    </var-button>
+                                    <var-button v-else type="primary" @click="handleBind(provider.id)">
+                                        绑定
+                                    </var-button>
+                                </div>
                             </div>
-                            <div>
-                                <var-button v-if="isBound(provider.id)" type="danger"
-                                    @click="handleUnbind(provider.id)">
-                                    解绑
-                                </var-button>
-                                <var-button v-else type="primary" @click="handleBind(provider.id)">
-                                    绑定
-                                </var-button>
-                            </div>
-                        </div>
-                    </template>
-                </var-cell>
-            </var-list>
-        </template>
-    </div>
+                        </template>
+                    </var-cell>
+                </var-list>
+            </template>
+        </div>
+    </var-pull-refresh>
 </template>
 
 <style scoped>

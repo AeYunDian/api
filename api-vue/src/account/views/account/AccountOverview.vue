@@ -1,5 +1,5 @@
 <script setup>
-import { inject } from 'vue';
+import { inject, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Dialog, Snackbar } from '@varlet/ui'
 import { formatTime } from '@/shared/utils/format';
@@ -9,6 +9,7 @@ const sdk = inject('sdk');
 const user = inject('user');
 const channel = inject('channel');
 const router = useRouter();
+const loading = ref(false);
 async function logout() {
     const action = await Dialog({
         title: '确认',
@@ -52,6 +53,7 @@ function maskEmail(email) {
 <template>
     <div>
         <h2>账号概览</h2>
+
         <template v-if="user">
             <var-space style="align-items: center;" class="info-content">
                 <div v-if="user.avatar">
@@ -68,6 +70,7 @@ function maskEmail(email) {
         </template>
         <p v-else>加载中...</p>
         <var-button @click="logout" style="float: inline-end;">退出登录</var-button>
+
     </div>
 </template>
 <style scoped>
