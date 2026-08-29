@@ -74,7 +74,7 @@ function goAccountCenter() {
             <var-image width="85px" height="85px" fit="cover" radius="50%" src="/favicon.webp" />
             <var-space direction="column" size="large" style="color: #fff; align-items: unset;">
                 <h5 class="content-title">Ay Console</h5>
-                <p class="content-subtitle">开发者控制台，统一管理所有应用</p>
+                <p class="content-subtitle">开发者控制台，统一管理应用与反馈</p>
                 <var-menu placement="bottom-end" style="width: 100%;" same-width>
                     <var-button-group style="display: flex; width: 100%;">
                         <var-button style="flex: 1;" @click.stop="login" block>
@@ -84,19 +84,17 @@ function goAccountCenter() {
                             <var-icon name="menu-down" :size="24" />
                         </var-button>
                     </var-button-group>
-
                     <template #menu>
                         <var-cell ripple @click="goAccountCenter">前往 AyAccountCenter</var-cell>
                     </template>
                 </var-menu>
-
             </var-space>
         </var-space>
         <br />
         <div class="feature">
-            <var-card title="应用管理" description="集中管理所有 OAuth 应用，支持快速创建、配置密钥与回调地址，实时查看应用状态与调用数据。" />
-            <var-card title="安全防护" description="实时监控应用与平台的访问动态，支持异常行为预警与安全策略配置，全方位守护业务数据安全。" />
-            <var-card title="开发者工具" description="集成常用开发与调试能力，提供认证服务对接指引，助力开发者高效完成应用集成与上线。" />
+            <var-card title="应用管理" description="集中管理您的OAuth应用，快速创建并配置密钥与回调地址，实时查看应用调用数据，全面掌控授权服务。" />
+            <var-card title="反馈中心" description="遇到问题或有建议？提交反馈并全程追踪处理状态，管理员将及时回复，确保您的反馈得到有效解决。" />
+            <var-card title="开发者工具" description="提供详尽的认证对接指引与调试工具，助您快速理解OAuth授权流程，轻松高效集成并上线您的应用。" />
         </div>
     </div>
 </template>

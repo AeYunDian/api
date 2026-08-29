@@ -143,33 +143,32 @@ onMounted(() => {
             <p v-else-if="!feedbacks.length">暂无反馈</p>
 
             <var-list v-else>
-                <var-card v-for="fb in feedbacks" :key="fb.id" style="margin-bottom: 12px; margin-bottom: 20px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div style="flex: 1;">
-                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                <strong style="font-size: 16px;">{{ fb.username }}</strong>
-                                <var-chip
-                                    :type="fb.status === 'pending' ? 'warning' : fb.status === 'processing' ? 'info' : fb.status === 'resolved' ? 'success' : 'default'"
-                                    size="small">
-                                    {{ getStatusLabel(fb.status) }}
-                                </var-chip>
-                            </div>
-                            <div style="font-size: 14px; margin: 8px 0;">{{ fb.content }}</div>
-                            <div style="font-size: 13px; color: var(--color-text-secondary);">
-                                <div v-if="fb.admin_reply">管理员回复：{{ fb.admin_reply }}</div>
-                                <div>提交时间：{{ formatTime(fb.created_at) }}</div>
-                                <div v-if="fb.resolved_at">解决时间：{{ formatTime(fb.resolved_at) }}</div>
-                            </div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                            <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
-                                <var-button type="danger" @click="handleDelete(fb.id)"
-                                    :disabled="!isAdmin && fb.user_sub !== user?.sub">
-                                    删除
-                                </var-button>
-                            </div>
-                        </div>
+                <var-card v-for="fb in feedbacks" :key="fb.id" style="margin: 0 5px 20px;" class="var-elevation--2">
+
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <strong style="font-size: 16px;">{{ fb.username }}</strong>
+                        <var-chip
+                            :type="fb.status === 'pending' ? 'warning' : fb.status === 'processing' ? 'info' : fb.status === 'resolved' ? 'success' : 'default'"
+                            size="small">
+                            {{ getStatusLabel(fb.status) }}
+                        </var-chip>
                     </div>
+                    <div style="font-size: 14px; margin: 8px 0;">{{ fb.content }}</div>
+                    <div style="font-size: 13px;">
+                        <div v-if="fb.admin_reply" class="admin-reply">管理员回复：{{ fb.admin_reply }}</div>
+                        <div>提交时间：{{ formatTime(fb.created_at) }}</div>
+                        <div v-if="fb.resolved_at">解决时间：{{ formatTime(fb.resolved_at) }}</div>
+                    </div>
+                    <var-divider />
+                    <div style="text-align: end;">
+                        <var-button type="danger" @click="handleDelete(fb.id)"
+                            :disabled="!isAdmin && fb.user_sub !== user?.sub">
+                            删除
+                        </var-button>
+                    </div>
+
+
+
                 </var-card>
             </var-list>
 
@@ -192,7 +191,13 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.admin-reply {
+    word-wrap: break-word;
+    user-select: all;
+    word-break: break-all;
+}
+
 .var-card {
-    transition: background-color 0.2s;
+    width: 95%;
 }
 </style>

@@ -211,47 +211,50 @@ onMounted(() => {
                 <p v-else-if="!feedbacks.length">暂无反馈</p>
 
                 <var-list v-else>
-                    <var-card v-for="fb in feedbacks" :key="fb.id" style="margin-bottom: 12px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div style="flex: 1;">
-                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                    <strong style="font-size: 16px;">{{ fb.username }}</strong>
-                                    <var-chip
-                                        :type="fb.status === 'pending' ? 'warning' : fb.status === 'processing' ? 'info' : fb.status === 'resolved' ? 'success' : 'default'"
-                                        size="small">
-                                        {{ getStatusLabel(fb.status) }}
-                                    </var-chip>
-                                </div>
-                                <div style="font-size: 14px; margin: 8px 0;">{{ fb.content }}</div>
-                                <div style="font-size: 13px; color: var(--color-text-secondary);">
-                                    <div v-if="fb.admin_reply">管理员回复：{{ fb.admin_reply }}</div>
-                                    <div>提交时间：{{ formatTime(fb.created_at) }}</div>
-                                    <div v-if="fb.resolved_at">解决时间：{{ formatTime(fb.resolved_at) }}</div>
-                                </div>
+                    <var-card v-for="fb in feedbacks" :key="fb.id" style="margin: 0 5px 20px;" class="var-elevation--2">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <strong style="font-size: 16px;">{{ fb.username }}</strong>
+                                <var-chip
+                                    :type="fb.status === 'pending' ? 'warning' : fb.status === 'processing' ? 'info' : fb.status === 'resolved' ? 'success' : 'default'"
+                                    size="small">
+                                    {{ getStatusLabel(fb.status) }}
+                                </var-chip>
                             </div>
-                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                                <var-select v-model="fb.status" @change="handleStatusChange(fb.id, fb.status)"
-                                    style="width: 100px; margin-bottom: 10px;" size="small">
-                                    <var-option label="待处理" value="pending" />
-                                    <var-option label="处理中" value="processing" />
-                                    <var-option label="已解决" value="resolved" />
-                                    <var-option label="已关闭" value="closed" />
-                                </var-select>
-
-                                <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
-                                    <var-button type="primary" size="small" @click="openReplyDialog(fb.id)">
-                                        回复
-                                    </var-button>
-                                    <var-button type="default" size="small" @click="openTransferDialog(fb.id)">
-                                        转移
-                                    </var-button>
-                                    <var-button type="danger" size="small" @click="handleDelete(fb.id)"
-                                        :disabled="!isAdmin && fb.user_sub !== user?.sub">
-                                        删除
-                                    </var-button>
-                                </div>
+                            <div style="font-size: 14px; margin: 8px 0;">{{ fb.content }}</div>
+                            <div style="font-size: 13px; color: var(--color-text-secondary);">
+                                <div v-if="fb.admin_reply" class="admin-reply">管理员回复：{{ fb.admin_reply }}</div>
+                                <div>提交时间：{{ formatTime(fb.created_at) }}</div>
+                                <div v-if="fb.resolved_at">解决时间：{{ formatTime(fb.resolved_at) }}</div>
                             </div>
                         </div>
+                        <var-divider />
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+
+                            <var-select v-model="fb.status" @change="handleStatusChange(fb.id, fb.status)"
+                                style="justify-content: flex-end; margin-inline-end: 10px; width: 150px;"
+                                placeholder="状态">
+                                <var-option label="待处理" value="pending" />
+                                <var-option label="处理中" value="processing" />
+                                <var-option label="已解决" value="resolved" />
+                                <var-option label="已关闭" value="closed" />
+                            </var-select>
+
+                            <div style="display: flex; gap: 5px;  justify-content: flex-end;">
+                                <var-button type="primary" @click="openReplyDialog(fb.id)">
+                                    回复
+                                </var-button>
+                                <var-button type="default" @click="openTransferDialog(fb.id)">
+                                    转移
+                                </var-button>
+                                <var-button type="danger" @click="handleDelete(fb.id)"
+                                    :disabled="!isAdmin && fb.user_sub !== user?.sub">
+                                    删除
+                                </var-button>
+                            </div>
+
+                        </div>
+
                     </var-card>
                 </var-list>
             </template>
@@ -292,7 +295,13 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.admin-reply {
+    word-wrap: break-word;
+    user-select: all;
+    word-break: break-all;
+}
+
 .var-card {
-    transition: background-color 0.2s;
+    width: 95%;
 }
 </style>
