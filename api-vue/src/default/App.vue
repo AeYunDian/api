@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { StyleProvider, Themes } from '@varlet/ui'
 import { Dialog } from '@varlet/ui'
 import '@varlet/ui/es/dialog/style';
