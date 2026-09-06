@@ -8,7 +8,7 @@ import { isHostShell, initWindow } from '@/shared/utils/hostshell'
 
 const url = new URL(window.location.href);
 
-if (isHostShell() && url.searchParams.get('notinithostshell') != null) {
+if (isHostShell() && url.searchParams.has('notinithostshell')) {
     initWindow({ borderStyle: 'none', windowState: 'normal', enableEdgeResize: true, minWidth: 1000, minHeight: 800 });
 }
 
