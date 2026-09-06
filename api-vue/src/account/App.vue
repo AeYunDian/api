@@ -4,6 +4,7 @@ import { RouterView } from 'vue-router'
 import { initSdk, getSdk } from '@/shared/account-sdk'
 import { useRouter, useRoute } from 'vue-router'
 import { useThemeStore } from '@/shared/stores/theme'
+import { useWindowState } from '@/shared/composables/useWindowState';
 import { Snackbar } from '@varlet/ui'
 import '@varlet/ui/es/snackbar/style';
 import '@/shared/assets/base.css'
@@ -15,6 +16,9 @@ const router = useRouter();
 const themeStore = useThemeStore();
 const channel = ref(null);
 const leftPopup = ref(false);
+
+const { isMaximized } = useWindowState();
+
 
 try {
     initSdk(import.meta.env.VITE_ONLINE_APP_ID, 'zh-cn');
@@ -71,10 +75,33 @@ onBeforeUnmount(() => {
 onUnmounted(() => {
     channel.value?.close();
 });
+const isHostShell = computed(() => {
+    return typeof window.hostshell !== 'undefined' && typeof window.chrome !== 'undefined' && typeof window.chrome.webview !== 'undefined';
+});
+const minimizeWindow = () => {
+    if (typeof window.hostshell !== 'undefined' && typeof window.hostshell.windowState === 'string') {
+        window.hostshell.windowState = 'minimized';
+    }
+};
+const maximizeWindow = () => {
+    if (typeof window.hostshell !== 'undefined' && typeof window.hostshell.windowState === 'string') {
+        if (window.hostshell.windowState === 'maximized') {
+            window.hostshell.windowState = 'normal';
+        } else {
+            window.hostshell.windowState = 'maximized';
+        }
+    }
+};
+const closeWindow = () => {
+    if (typeof window.hostshell !== 'undefined' && typeof window.hostshell.exit === 'function') {
+        setTimeout(() => window.hostshell.exit(0), 300);
+    }
+};
+
 </script>
 
 <template>
-    <var-app-bar color="primary" text-color="#fff" style="height: 54px;">
+    <var-app-bar onmousedown="window.hostshell.startDrag()" color="primary" text-color="#fff" style="height: 54px;">
         <template #left>
             <div v-if="isMobile && route.path.startsWith('/user-panel/')"><var-button @click="leftPopup = true;"
                     text><my-icon icon="menu" size="1em + 8px" /></var-button></div>
@@ -86,6 +113,18 @@ onUnmounted(() => {
             <var-button color="transparent" text-color="#fff" round text @click="toggleTheme">
                 <var-icon :name="themeStore.currentTheme === 'light' ? 'weather-night' : 'white-balance-sunny'"
                     :size="24" />
+            </var-button>
+            <var-button v-if="isHostShell" color="transparent" text-color="#fff" round text @mousedown.stop
+                @click.stop="minimizeWindow">
+                <my-icon icon="window-minimize" size="1em + 8px" />
+            </var-button>
+            <var-button v-if="isHostShell" color="transparent" text-color="#fff" round text @mousedown.stop
+                @click.stop="maximizeWindow">
+                <my-icon :icon="isMaximized ? 'window-restore' : 'window-maximize'" size="1em + 8px" />
+            </var-button>
+            <var-button v-if="isHostShell" color="transparent" text-color="#fff" round text @click.stop="closeWindow"
+                @mousedown.stop>
+                <my-icon icon="close" size="1em + 8px" />
             </var-button>
         </template>
     </var-app-bar>

@@ -1,7 +1,7 @@
 // views/UserPanel.vue
 <script setup>
 import { onMounted, onUnmounted, ref, provide, inject, computed } from 'vue';
-
+import { isHostShell } from '@/shared/utils/hostshell';
 import { useRouter, useRoute, RouterView } from 'vue-router';
 import { Dialog } from '@varlet/ui'
 import '@varlet/ui/es/dialog/style';
@@ -98,7 +98,7 @@ function switchScreens(path) {
     router.push(`/user-panel${path}`)
 }
 function openConsole() {
-    const domain = import.meta.env.PROD ? "console.undz.cn" : "console-dev.undz.cn";
+    const domain = import.meta.env.PROD ? (isHostShell() ? 'console.app.undz.cn' : 'console.undz.cn') : "console-dev.undz.cn";
     window.location.href = `https://${domain}/console-panel/oauth-client`;
 }
 </script>

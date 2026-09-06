@@ -1,6 +1,7 @@
 <script setup>
 import { inject, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { isHostShell } from '@/shared/utils/hostshell';
 let intervalId = null
 const sdk = inject('sdk');
 const router = useRouter();
@@ -57,7 +58,7 @@ onUnmounted(() => {
     if (intervalId) clearInterval(intervalId)
 })
 function goAccountCenter() {
-    const domain = import.meta.env.PROD ? 'online.undz.cn' : 'online-dev.undz.cn';
+    const domain = import.meta.env.PROD ? (isHostShell() ? 'console.app.undz.cn' : 'console.undz.cn') : 'online-dev.undz.cn';
     window.location.href = `https://${domain}/`;
 }
 </script>

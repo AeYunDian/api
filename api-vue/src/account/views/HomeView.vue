@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, inject } from 'vue';
 import { getSdk } from '@/shared/account-sdk'
 import { useRouter } from 'vue-router'
+import { isHostShell } from '@/shared/utils/hostshell';
 const channel = inject('channel');
 const sdk = getSdk()
 const router = useRouter()
@@ -59,7 +60,7 @@ onUnmounted(() => {
     if (intervalId) clearInterval(intervalId)
 })
 function goConsole() {
-    const domain = import.meta.env.PROD ? 'console.undz.cn' : 'console-dev.undz.cn';
+    const domain = import.meta.env.PROD ? (isHostShell() ? 'console.app.undz.cn' : 'console.undz.cn') : 'console-dev.undz.cn';
     window.location.href = `https://${domain}/`;
 }
 </script>
