@@ -8,5 +8,6 @@
 // biome-ignore lint: disable
 export {}
 declare global {
+  const Dialog: typeof import('@varlet/ui').Dialog
   const Snackbar: typeof import('@varlet/ui').Snackbar
 }

@@ -89,11 +89,22 @@ const maximizeWindow = () => {
         }
     }
 };
-const closeWindow = () => {
+const closeWindow = async () => {
     if (typeof window.hostshell !== 'undefined' && typeof window.hostshell.exit === 'function') {
-        setTimeout(() => window.hostshell.exit(0), 300);
+        const result = await Dialog(
+            {
+                title: '退出',
+                message: '确定要退出应用吗？',
+                confirmButtonText: '退出',
+                cancelButtonText: '取消',
+            });
+        if (result === 'confirm') {
+            window.hostshell.exit(0);
+        }
+
     }
 };
+
 
 
 </script>
@@ -101,14 +112,14 @@ const closeWindow = () => {
 <template>
     <var-app-bar onmousedown="window.hostshell.startDrag()" color="primary" text-color="#fff" style="height: 54px;">
         <template #left>
-            <div v-if="isMobile && route.path.startsWith('/console-panel/')"><var-button @click="leftPopup = true;"
-                    text><my-icon icon="menu" size="1em + 8px" /></var-button></div>
-            <div style="margin-left: 15px; user-select: none;" @click="router.push('/')">
-                <span class="app-bar-title">AyConsole</span>
+            <div v-if="isMobile && route.path.startsWith('/console-panel/')" @mousedown.stop><var-button @mousedown.stop
+                    @click="leftPopup = true;" text><my-icon icon="menu" size="1em + 8px" /></var-button></div>
+            <div style="margin-left: 15px; user-select: none;" @click="router.push('/')" @mousedown.stop>
+                <span class=" app-bar-title" @mousedown.stop>AyConsole</span>
             </div>
         </template>
         <template #right>
-            <var-button color="transparent" text-color="#fff" round text @click="toggleTheme">
+            <var-button color="transparent" text-color="#fff" round text @click="toggleTheme" @mousedown.stop>
                 <var-icon :name="themeStore.currentTheme === 'light' ? 'weather-night' : 'white-balance-sunny'"
                     :size="24" />
             </var-button>

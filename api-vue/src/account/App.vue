@@ -5,8 +5,9 @@ import { initSdk, getSdk } from '@/shared/account-sdk'
 import { useRouter, useRoute } from 'vue-router'
 import { useThemeStore } from '@/shared/stores/theme'
 import { useWindowState } from '@/shared/composables/useWindowState';
-import { Snackbar } from '@varlet/ui'
+import { Snackbar, Dialog } from '@varlet/ui'
 import '@varlet/ui/es/snackbar/style';
+import '@varlet/ui/es/dialog/style';
 import '@/shared/assets/base.css'
 import { useWindowSize } from '@vueuse/core';
 const { width } = useWindowSize();
@@ -92,9 +93,19 @@ const maximizeWindow = () => {
         }
     }
 };
-const closeWindow = () => {
+const closeWindow = async () => {
     if (typeof window.hostshell !== 'undefined' && typeof window.hostshell.exit === 'function') {
-        setTimeout(() => window.hostshell.exit(0), 300);
+        const result = await Dialog(
+            {
+                title: '退出',
+                message: '确定要退出应用吗？',
+                confirmButtonText: '退出',
+                cancelButtonText: '取消',
+            });
+        if (result === 'confirm') {
+            window.hostshell.exit(0);
+        }
+
     }
 };
 
@@ -103,14 +114,15 @@ const closeWindow = () => {
 <template>
     <var-app-bar onmousedown="window.hostshell.startDrag()" color="primary" text-color="#fff" style="height: 54px;">
         <template #left>
-            <div v-if="isMobile && route.path.startsWith('/user-panel/')"><var-button @click="leftPopup = true;"
-                    text><my-icon icon="menu" size="1em + 8px" /></var-button></div>
-            <div style="margin-left: 15px; user-select: none;" @click="router.push('/')">
-                <span class="app-bar-title">AyAccountCenter</span>
+            <div v-if="isMobile && route.path.startsWith('/user-panel/')" @mousedown.stop><var-button
+                    @click="leftPopup = true;" @mousedown.stop text><my-icon icon="menu"
+                        size="1em + 8px" /></var-button></div>
+            <div style="margin-left: 15px; user-select: none;" @click="router.push('/')" @mousedown.stop>
+                <span class="app-bar-title" @mousedown.stop>AyAccountCenter</span>
             </div>
         </template>
         <template #right>
-            <var-button color="transparent" text-color="#fff" round text @click="toggleTheme">
+            <var-button color="transparent" text-color="#fff" round text @click="toggleTheme" @mousedown.stop>
                 <var-icon :name="themeStore.currentTheme === 'light' ? 'weather-night' : 'white-balance-sunny'"
                     :size="24" />
             </var-button>
