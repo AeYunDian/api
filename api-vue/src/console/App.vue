@@ -5,8 +5,9 @@ import { useWindowState } from '@/shared/composables/useWindowState';
 import { initSdk, getSdk } from '@/shared/account-sdk'
 import { useRouter, useRoute } from 'vue-router'
 import { useThemeStore } from '@/shared/stores/theme'
-import { Snackbar } from '@varlet/ui'
+import { Snackbar, Dialog } from '@varlet/ui'
 import '@varlet/ui/es/snackbar/style';
+import '@varlet/ui/es/dialog/style';
 import '@/shared/assets/base.css'
 import { useWindowSize } from '@vueuse/core';
 const { width } = useWindowSize();
