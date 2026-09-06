@@ -99,7 +99,7 @@ function switchScreens(path) {
 }
 function openConsole() {
     const domain = import.meta.env.PROD ? (isHostShell() ? 'console.app.undz.cn' : 'console.undz.cn') : "console-dev.undz.cn";
-    window.location.href = `https://${domain}/console-panel/oauth-client`;
+    window.location.href = `https://${domain}/console-panel/oauth-client${isHostShell() ? '?notinithostshell' : ''}`;
 }
 </script>
 <template>

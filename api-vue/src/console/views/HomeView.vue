@@ -58,8 +58,8 @@ onUnmounted(() => {
     if (intervalId) clearInterval(intervalId)
 })
 function goAccountCenter() {
-    const domain = import.meta.env.PROD ? (isHostShell() ? 'console.app.undz.cn' : 'console.undz.cn') : 'online-dev.undz.cn';
-    window.location.href = `https://${domain}/`;
+    const domain = import.meta.env.PROD ? (isHostShell() ? 'online.app.undz.cn' : 'online.undz.cn') : 'online-dev.undz.cn';
+    window.location.href = `https://${domain}/${isHostShell() ? '?notinithostshell' : ''}`;
 }
 </script>
 <template>

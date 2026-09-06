@@ -61,7 +61,7 @@ onUnmounted(() => {
 })
 function goConsole() {
     const domain = import.meta.env.PROD ? (isHostShell() ? 'console.app.undz.cn' : 'console.undz.cn') : 'console-dev.undz.cn';
-    window.location.href = `https://${domain}/`;
+    window.location.href = `https://${domain}/${isHostShell() ? '?notinithostshell' : ''}`;
 }
 </script>
 <template>

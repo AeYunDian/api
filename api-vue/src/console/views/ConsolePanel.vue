@@ -98,8 +98,8 @@ function switchScreens(path) {
     router.push(`/console-panel${path}`)
 }
 function openAyAccountCenter() {
-    const domain = import.meta.env.PROD ? (isHostShell() ? 'console.app.undz.cn' : 'console.undz.cn') : "online-dev.undz.cn";
-    window.location.href = `https://${domain}/user-panel/account-overview`;
+    const domain = import.meta.env.PROD ? (isHostShell() ? 'online.app.undz.cn' : 'online.undz.cn') : "online-dev.undz.cn";
+    window.location.href = `https://${domain}/user-panel/account-overview${isHostShell() ? '?notinithostshell' : ''}`;
 }
 </script>
 <template>
