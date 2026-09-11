@@ -1,5 +1,5 @@
 // console.undz.cn.js
-import { checkAuth, TAG_LOGGEDIN, TAG_BANNED, TAG_NOT_LOGGEDIN } from './online.undz.cn.js';
+import { checkAuth, TAG_LOGGEDIN, TAG_BANNED, TAG_NOT_LOGGEDIN } from './ayOnline.js';
 import { generateToken } from './utils.js';
 
 const ALLOWED_ORIGINS = [
