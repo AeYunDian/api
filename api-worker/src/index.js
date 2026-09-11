@@ -1,6 +1,5 @@
 import { cleanExpiredKv, initKvTable } from './kvWithD1.js';
-
-// import { triggerWorkflow } from './trigger_workflow.js';
+import { cleanExpiredPsp, initPspTables } from './wsRelay.js'
 
 import uniAPI from './uniAPI.js';
 import chatRoom from './ayChatRoom.js';
@@ -25,9 +24,10 @@ import ayRelay from './wsRelay.js';
 export default {
     async scheduled(controller, env) {
         await cleanExpiredKv(env.db);
+        await cleanExpiredPsp(env.db);
     },
 
-    async fetch(request, env) {
+    async fetch(request, env, ctx) {
         const url = new URL(request.url);
         const hostname = url.hostname;
         //     let _tm_path;
@@ -55,7 +55,7 @@ export default {
             if (hostname === 'i1.undz.cn') return await i1UndzCn.fetch(request);
             if (hostname === 'i2.undz.cn') return await i2UndzCn.fetch(request);
 
-            if (hostname === 'relay.undz.cn') return await ayRelay.fetch(request, env);
+            if (hostname === 'relay.undz.cn') return await ayRelay.fetch(request, env, ctx);
 
 
             // jsdelivr 代理服务
@@ -113,6 +113,7 @@ export default {
                     }
                     try {
                         await initKvTable(env.db);
+                        await initPspTables(env.db);
                         return new Response(JSON.stringify({ success: true, message: "Database initialized" }), {
                             status: 200,
                             headers: {

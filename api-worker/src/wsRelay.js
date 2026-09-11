@@ -96,6 +96,35 @@ function jsonResponse(body, status = 200) {
     });
 }
 
+export async function initPspTables(db) {
+    await db.prepare(`
+        CREATE TABLE IF NOT EXISTS psp_announcements (
+            network TEXT NOT NULL,
+            peer_id TEXT NOT NULL,
+            session_id TEXT,
+            expires_at_ms INTEGER NOT NULL,
+            updated_at_ms INTEGER NOT NULL,
+            PRIMARY KEY (network, peer_id)
+        )
+    `).run();
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_psp_ann_expires ON psp_announcements(expires_at_ms)`).run();
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_psp_ann_network ON psp_announcements(network, expires_at_ms)`).run();
+
+    await db.prepare(`
+        CREATE TABLE IF NOT EXISTS psp_relay (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            network TEXT NOT NULL,
+            to_peer_id TEXT NOT NULL,
+            type TEXT NOT NULL,
+            session_id TEXT,
+            message_json TEXT NOT NULL,
+            expires_at_ms INTEGER NOT NULL,
+            created_at_ms INTEGER NOT NULL
+        )
+    `).run();
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_psp_relay_lookup ON psp_relay(network, to_peer_id, expires_at_ms)`).run();
+}
+
 // ============================================================
 //  WebSocket 处理
 // ============================================================
@@ -114,18 +143,22 @@ function handleWebSocket(request, env, ctx) {
         const currentPeerId = peerId;
         const key = peerKeyOf(currentNetwork, currentPeerId);
 
-        livePeers.delete(key);
+        // 只有当 livePeers 里记录的还是本连接时才清
+        const current = livePeers.get(key);
+        if (current && current.socket === server) {
+            livePeers.delete(key);
+            if (env.db) {
+                ctx.waitUntil(
+                    deleteAnnouncement(env.db, currentNetwork, currentPeerId)
+                        .then(() => broadcastPeerList(env.db, currentNetwork))
+                        .catch(() => { })
+                );
+            }
+        }
+
         peerKey = null;
         peerId = null;
         network = null;
-
-        if (env.db) {
-            ctx.waitUntil(
-                deleteAnnouncement(env.db, currentNetwork, currentPeerId)
-                    .then(() => broadcastPeerList(env.db, currentNetwork))
-                    .catch(() => { })
-            );
-        }
         return currentNetwork;
     }
 
@@ -453,7 +486,7 @@ async function deleteRelayMessagesById(db, ids) {
         .bind(...ids).run();
 }
 
-async function cleanupExpired(db) {
+export async function cleanExpiredPsp(db) {
     const now = Date.now();
     await db.prepare(`DELETE FROM psp_announcements WHERE expires_at_ms <= ?1`).bind(now).run();
     await db.prepare(`DELETE FROM psp_relay WHERE expires_at_ms <= ?1`).bind(now).run();
@@ -465,7 +498,7 @@ function maybeCleanup(db, ctx) {
     const now = Date.now();
     if (now - lastCleanupMs < CLEANUP_INTERVAL_MS) return;
     lastCleanupMs = now;
-    ctx.waitUntil(cleanupExpired(db).catch(() => { }));
+    ctx.waitUntil(cleanExpiredPsp(db).catch(() => { }));
 }
 
 // ============================================================

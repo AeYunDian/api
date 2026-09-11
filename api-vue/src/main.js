@@ -15,22 +15,26 @@ const hostname = window.location.hostname
 const appModules = {
     account: () => import('./account/App.vue'),
     console: () => import('./console/App.vue'),
+    relay: () => import('./relay/App.vue'),
     default: () => import('./default/App.vue'),
 }
 const routerModules = {
     account: () => import('./account/router/index.js'),
     console: () => import('./console/router/index.js'),
+    relay: () => import('./relay/router/index.js'),
     default: () => import('./default/router/index.js'),
 }
 const titles = {
     account: 'AyAccountCenter',
     console: 'AyConsole',
+    relay: 'AyRelay',
     default: 'Ay Services'
 }
 
 const DEFAULT_APP = 'default'
 
 function getAppName() {
+    if (hostname.includes('relay')) return 'relay'
     if (hostname.includes('console')) return 'console'
     if (hostname.includes('online')) return 'account'
     return DEFAULT_APP

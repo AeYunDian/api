@@ -14,7 +14,7 @@ export default defineConfig({
         port: 443,
         strictPort: true,
         https: true,
-        allowedHosts: ['online-dev.undz.cn', 'console-dev.undz.cn']
+        allowedHosts: ['online-dev.undz.cn', 'console-dev.undz.cn', 'relay-dev.undz.cn']
     },
     plugins: [
         vue(),
