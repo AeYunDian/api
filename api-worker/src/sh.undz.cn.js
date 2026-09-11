@@ -3,7 +3,7 @@
 // 集成 online.undz.cn 认证，使用 GitHub 存储文章
 // ============================================================
 
-import { TAG_LOGGEDIN, TAG_NOT_LOGGEDIN, TAG_BANNED, checkAuth } from './online.undz.cn.js';
+import { TAG_LOGGEDIN, TAG_NOT_LOGGEDIN, TAG_BANNED, checkAuth } from './ayOnline.js';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import { parse } from 'cookie';
 import { homePage, articlePage, errorPage } from './ayyd_template.js';

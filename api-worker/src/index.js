@@ -2,14 +2,16 @@ import { cleanExpiredKv, initKvTable } from './kvWithD1.js';
 
 // import { triggerWorkflow } from './trigger_workflow.js';
 
-import apiUndzCn from './api.undz.cn.js';
-import chatUndzCn from './chat.undz.cn.js';
-import cdnUndzCn from './cdn.undz.cn.js';
+import uniAPI from './uniAPI.js';
+import chatRoom from './ayChatRoom.js';
+import uniCDN from './jsdelivrCDN.js';
 import i0UndzCn from './i0.undz.cn.js';
 import i1UndzCn from './i1.undz.cn.js';
 import i2UndzCn from './i2.undz.cn.js';
-import onlineUndzCn from './online.undz.cn.js';
-import consoleUndzCn from './console.undz.cn.js';
+import ayOnline from './ayOnline.js';
+import ayConsole from './ayConsole.js';
+import ayRelay from './wsRelay.js';
+
 // import shundzcn from './sh.undz.cn.js'
 
 // const corsHeaders_GPO = {
@@ -53,24 +55,26 @@ export default {
             if (hostname === 'i1.undz.cn') return await i1UndzCn.fetch(request);
             if (hostname === 'i2.undz.cn') return await i2UndzCn.fetch(request);
 
-            // jsdelivr 代理服务
-            if (hostname === 'cdn.undz.cn') return await cdnUndzCn.fetch(request, env);
+            if (hostname === 'relay.undz.cn') return await ayRelay.fetch(request, env);
 
-            // if (hostname === 'mail.undz.cn' || hostname === 'mail.io.hb.cn') return new Response("邮件服务彻底关闭，很抱歉给您带来不便体验", { headers: corsHeaders_GPO });
+
+            // jsdelivr 代理服务
+            if (hostname === 'cdn.undz.cn') return await uniCDN.fetch(request, env);
+
             // 直接走前端404
             if (hostname === 'mail.undz.cn' || hostname === 'mail.io.hb.cn') return env.assets.fetch(request);
 
             // 通用API服务
-            if (hostname === 'api.undz.cn' || hostname === 'api.io.hb.cn') return await apiUndzCn.fetch(request, env);
+            if (hostname === 'api.undz.cn' || hostname === 'api.io.hb.cn') return await uniAPI.fetch(request, env);
 
             // IE8 怀旧聊天室服务
-            if (hostname === 'chat.undz.cn' || hostname === 'c.undz.cn') return await chatUndzCn.fetch(request, env);
+            if (hostname === 'chat.undz.cn' || hostname === 'c.undz.cn') return await chatRoom.fetch(request, env);
 
 
-            if (hostname === 'console.undz.cn') return await consoleUndzCn.fetch(request, env);
+            if (hostname === 'console.undz.cn') return await ayConsole.fetch(request, env);
 
             // AyAccount 集中服务
-            if (hostname === 'online.undz.cn') return await onlineUndzCn.fetch(request, env);
+            if (hostname === 'online.undz.cn') return await ayOnline.fetch(request, env);
 
             if (hostname === 'kv.undz.cn') {
                 if (url.pathname === '/runtask') {
@@ -131,10 +135,6 @@ export default {
                     }
                 }
             }
-            // 班级文章服务
-            // if (hostname === 'sh.undz.cn') {
-            //   return await shundzcn.fetch(request, env);
-            // }
 
             return env.assets.fetch(request);
         } catch (err) {

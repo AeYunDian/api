@@ -17,7 +17,7 @@ import {
 } from './chat_room.js';
 import { getMainPage, mobileRegex, generateToken } from './utils.js';
 import { parse, serialize } from 'cookie';
-import { exchangeOAuthToken, revokeRefreshToken } from './online.undz.cn.js';  // 导入 token 交换函数
+import { exchangeOAuthToken, revokeRefreshToken } from './ayOnline.js';  // 导入 token 交换函数
 
 const corsHeaders_GO = {
     'Access-Control-Allow-Origin': '*',
