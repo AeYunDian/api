@@ -551,7 +551,7 @@ export async function CreateAccount(request, env) {  //项目内使用的自定�
                 );
             }
 
-            if (env.DEBUG) console.error('Database error:', dbError);
+            console.error('Database error:', dbError);
             return new Response(
                 JSON.stringify({ error: 'Database operation failed' }),
                 { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
@@ -575,7 +575,7 @@ export async function CreateAccount(request, env) {  //项目内使用的自定�
     
         if (!resendResponse.ok) {
           const error = await resendResponse.text();
-          if (env.DEBUG) console.error('Resend API error:', error);
+          console.error('Resend API error:', error);
           return new Response(
             JSON.stringify({ error: 'Failed to send email' }), 
             { 

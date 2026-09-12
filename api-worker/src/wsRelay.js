@@ -462,14 +462,14 @@ async function deliverQueuedRelayMessages(db, socket, network, peerId) {
     const queued = await fetchRelayMessages(db, network, peerId);
     if (queued.length === 0) return 0;
 
-    if (env.DEBUG) console.log(`[OUT] Delivering ${queued.length} queued messages to ${peerId}`);
+
     const deliveredIds = [];
     for (const { id, message } of queued) {
         try {
             socket.send(JSON.stringify(message));
             deliveredIds.push(id);
         } catch (err) {
-            if (env.DEBUG) console.error("[OUT] Failed to deliver queued message:", err?.message);
+            console.error("[OUT] Failed to deliver queued message:", err?.message);
         }
     }
 
