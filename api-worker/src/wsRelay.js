@@ -171,7 +171,7 @@ function handleWebSocket(request, env, ctx) {
                 peerId = result.peerId;
             }
         } catch (err) {
-            console.error("[WS] Error:", err?.message || String(err));
+            if (env.DEBUG) console.error("[WS] Error:", err?.message || String(err));
             try {
                 server.send(JSON.stringify({
                     psp_version: PSP_VERSION, type: "error",
@@ -246,7 +246,7 @@ async function handleClientMessage(socket, rawData, env, ctx, prevPeerKey = null
                 networkSubscribers.set(network, new Set());
             }
             networkSubscribers.get(network).add(socket);
-            console.log(`[NET] Peer ${peerId} subscribed to ${network}`);
+            if (env.DEBUG) console.log(`[NET] Peer ${peerId} subscribed to ${network}`);
         }
 
         // 更新 live 状态
@@ -260,8 +260,8 @@ async function handleClientMessage(socket, rawData, env, ctx, prevPeerKey = null
             // 仅当是新 peer 加入时才广播，心跳不广播
             const isHeartbeat = prevPeerKey === peerKey;
             if (!isHeartbeat && db) {
-                console.log(`[NET] Broadcasting peer_list for ${network} after new announce from ${peerId}`);
-                broadcastPeerList(db, network).catch((err) => console.error("[Broadcast error]", err?.message));
+                if (env.DEBUG) console.log(`[NET] Broadcasting peer_list for ${network} after new announce from ${peerId}`);
+                broadcastPeerList(db, network).catch((err) => { if (env.DEBUG) console.error("[Broadcast error]", err?.message) });
             }
 
         } else if (type === "withdraw") {
@@ -308,9 +308,9 @@ async function handleClientMessage(socket, rawData, env, ctx, prevPeerKey = null
                 try {
                     live.socket.send(rawData);
                     deliveredLive = true;
-                    console.log(`[RELAY] Delivered ${type} from ${peerId} to ${message.to}`);
+                    if (env.DEBUG) console.log(`[RELAY] Delivered ${type} from ${peerId} to ${message.to}`);
                 } catch (err) {
-                    console.error(`[RELAY] Failed to deliver to ${message.to}:`, err?.message);
+                    if (env.DEBUG) console.error(`[RELAY] Failed to deliver to ${message.to}:`, err?.message);
                 }
             }
 
@@ -318,9 +318,9 @@ async function handleClientMessage(socket, rawData, env, ctx, prevPeerKey = null
             if (!deliveredLive) {
                 if (db) {
                     await insertRelayMessage(db, message);
-                    console.log(`[RELAY] Queued ${type} for ${message.to}${live ? " (live send failed)" : " (offline)"}`);
+                    if (env.DEBUG) console.log(`[RELAY] Queued ${type} for ${message.to}${live ? " (live send failed)" : " (offline)"}`);
                 } else {
-                    console.warn(`[RELAY] Could not deliver ${type} to ${message.to}; persistence unavailable`);
+                    if (env.DEBUG) console.warn(`[RELAY] Could not deliver ${type} to ${message.to}; persistence unavailable`);
                 }
             }
         }
@@ -329,7 +329,7 @@ async function handleClientMessage(socket, rawData, env, ctx, prevPeerKey = null
         return { peerKey, network, peerId };
 
     } catch (err) {
-        console.error("[Handler] Error:", err?.message || String(err));
+        if (env.DEBUG) console.error("[Handler] Error:", err?.message || String(err));
         return null;
     }
 }
@@ -462,14 +462,14 @@ async function deliverQueuedRelayMessages(db, socket, network, peerId) {
     const queued = await fetchRelayMessages(db, network, peerId);
     if (queued.length === 0) return 0;
 
-    console.log(`[OUT] Delivering ${queued.length} queued messages to ${peerId}`);
+    if (env.DEBUG) console.log(`[OUT] Delivering ${queued.length} queued messages to ${peerId}`);
     const deliveredIds = [];
     for (const { id, message } of queued) {
         try {
             socket.send(JSON.stringify(message));
             deliveredIds.push(id);
         } catch (err) {
-            console.error("[OUT] Failed to deliver queued message:", err?.message);
+            if (env.DEBUG) console.error("[OUT] Failed to deliver queued message:", err?.message);
         }
     }
 

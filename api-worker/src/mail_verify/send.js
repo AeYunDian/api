@@ -27,69 +27,69 @@ Best regards,\n
 %SERVICENAME%`
 
 export async function handleSendVerification(env, email, expirationTtl = 300, serviceName = 'AyService', template = LOGIN_TEMPLATE) {
-  const kvStore = createKvStore(env.db);
-  try {
-    if (!email) {
-      return { msg: 'EMAIL_REQUIRED' };
-    }
-
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const token = generateToken();
-
-    const mailDomain = env.MAIL_SEND_DOMAIN;
-    const mailApiKey = env.MAIL_API_KEY;
-    const port = 80;
-
-    if (!mailDomain || !mailApiKey) {
-      console.error('Missing MAIL_SEND_DOMAIN or MAIL_API_KEY in env');
-      return { msg: 'CONFIG_ERROR' };
-    }
-
-    const mailUrl = `http://${mailDomain}:${port}/send`;
-    const textContent = template.replace('%CODE%', verificationCode).replace('%EXPDATA%', expirationTtl / 60).replace('%SERVICENAME%', serviceName);
-    const htmlContent = textContent.replace(/\n/g, '<br>');
-    const mailResponse = await fetch(mailUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${mailApiKey}`
-      },
-      body: JSON.stringify({
-        to: email,
-        subject: `[${serviceName}] Your Verification Code`,
-        body: textContent,
-        html: htmlContent
-      })
-    });
-    if (mailResponse.status === 429) {
-      return { msg: 'ERR429' };
-    }
-    if (mailResponse.status === 500) {
-      return { msg: 'ERR500' };
-    }
-    if (!mailResponse.ok) {
-      return { msg: 'FAILED_SEND_EMAIL' };
-    }
-
-    let mailResult;
+    const kvStore = createKvStore(env.db);
     try {
-      mailResult = await mailResponse.json();
-    } catch (e) {
-      return { msg: 'INVALID_RESPONSE' };
-    }
+        if (!email) {
+            return { msg: 'EMAIL_REQUIRED' };
+        }
 
-    if (mailResult.status !== 'ok') {
-      return { msg: 'FAILED_SEND_EMAIL' };
-    }
+        const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const token = generateToken();
 
-    await kvStore.put(
-      `token:${token}`,
-      JSON.stringify({ email, code: verificationCode }),
-      { expirationTtl: expirationTtl }
-    );
-    return { msg: "OK", token };
-  } catch (error) {
-    console.error('Error in send verification:', error);
-    return { msg: 'FAILED_SEND_EMAIL' };
-  }
+        const mailDomain = env.MAIL_SEND_DOMAIN;
+        const mailApiKey = env.MAIL_API_KEY;
+        const port = 80;
+
+        if (!mailDomain || !mailApiKey) {
+            if (env.DEBUG) console.error('Missing MAIL_SEND_DOMAIN or MAIL_API_KEY in env');
+            return { msg: 'CONFIG_ERROR' };
+        }
+
+        const mailUrl = `http://${mailDomain}:${port}/send`;
+        const textContent = template.replace('%CODE%', verificationCode).replace('%EXPDATA%', expirationTtl / 60).replace('%SERVICENAME%', serviceName);
+        const htmlContent = textContent.replace(/\n/g, '<br>');
+        const mailResponse = await fetch(mailUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${mailApiKey}`
+            },
+            body: JSON.stringify({
+                to: email,
+                subject: `[${serviceName}] Your Verification Code`,
+                body: textContent,
+                html: htmlContent
+            })
+        });
+        if (mailResponse.status === 429) {
+            return { msg: 'ERR429' };
+        }
+        if (mailResponse.status === 500) {
+            return { msg: 'ERR500' };
+        }
+        if (!mailResponse.ok) {
+            return { msg: 'FAILED_SEND_EMAIL' };
+        }
+
+        let mailResult;
+        try {
+            mailResult = await mailResponse.json();
+        } catch (e) {
+            return { msg: 'INVALID_RESPONSE' };
+        }
+
+        if (mailResult.status !== 'ok') {
+            return { msg: 'FAILED_SEND_EMAIL' };
+        }
+
+        await kvStore.put(
+            `token:${token}`,
+            JSON.stringify({ email, code: verificationCode }),
+            { expirationTtl: expirationTtl }
+        );
+        return { msg: "OK", token };
+    } catch (error) {
+        if (env.DEBUG) console.error('Error in send verification:', error);
+        return { msg: 'FAILED_SEND_EMAIL' };
+    }
 }

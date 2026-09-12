@@ -433,7 +433,7 @@ export default {
             return new Response(errorPage(404), { status: 404, headers: { 'Content-Type': 'text/html' } });
 
         } catch (err) {
-            console.error(err);
+            if (env.DEBUG) console.error(err);
             return new Response(errorPage(500), { status: 500, headers: { 'Content-Type': 'text/html' } });
         }
     },

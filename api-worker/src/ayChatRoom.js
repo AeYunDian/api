@@ -293,9 +293,9 @@ export default {
                             env,
                             'refresh_token'
                         );
-                        console.log('Refresh token revoked successfully');
+                        if (env.DEBUG) console.log('Refresh token revoked successfully');
                     } catch (err) {
-                        console.error('Failed to revoke refresh token:', err);
+                        if (env.DEBUG) console.error('Failed to revoke refresh token:', err);
                         // 不影响登录流程，只记录错误
                     }
                 }

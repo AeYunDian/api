@@ -242,7 +242,7 @@ export default {
                     if (env.limiter) {
                         const { success } = await env.limiter.limit({ key });
                         if (!success) {
-                            console.warn(JSON.stringify({
+                            if (env.DEBUG) console.warn(JSON.stringify({
                                 event: 'rate_limited',
                                 policy: 'feedback_submit',
                                 user: user.sub,
@@ -435,7 +435,7 @@ export default {
                     return jsonResponse({ success: true, message: "OAuth client owner transferred" }, 200, cors);
                 }
             } catch (error) {
-                console.error("API error:", error);
+                if (env.DEBUG) console.error("API error:", error);
                 return jsonResponse({ error: "Internal server error" }, 500, cors);
             }
         }
@@ -443,7 +443,7 @@ export default {
         try {
             return env.assets.fetch(request);
         } catch (err) {
-            console.error(err);
+            if (env.DEBUG) console.error(err);
             return new Response(`Worker threw exception: ${err.message}\nStack: ${err.stack || "no stack"}`, {
                 status: 500,
                 headers: { "Content-Type": "text/plain" },

@@ -56,7 +56,7 @@ export default {
 
             return newResponse
         } catch (error) {
-            console.error(error.message);
+            if (env.DEBUG) console.error(error.message);
             //伪装nginx
             return new Response(`
                 <html>

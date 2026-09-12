@@ -78,6 +78,15 @@ export default {
 
             if (hostname === 'kv.undz.cn') {
                 if (url.pathname === '/runtask') {
+                    const authKey = request.headers.get("X-Admin-Key");
+                    if (authKey !== env.KEY) {
+                        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                            status: 401,
+                            headers: {
+                                "Content-Type": "application/json",
+                            }
+                        });
+                    }
                     try {
                         await cleanExpiredKv(env.db);
                         return new Response(JSON.stringify({ success: true, message: "task runed" }), {

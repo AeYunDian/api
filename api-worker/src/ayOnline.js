@@ -154,7 +154,7 @@ export async function checkAuth(request, env) {
             },
         ];
     } catch (error) {
-        console.error("checkAuth error:", error);
+        if (env.DEBUG) console.error("checkAuth error:", error);
         // 遇到异常视为未登录
         return [TAG_NOT_LOGGEDIN, null];
     }
@@ -504,7 +504,7 @@ async function initDatabase(db) {
         }
         return { success: true, message: "Database initialized" };
     } catch (err) {
-        console.error("initDatabase error:", err);
+        if (env.DEBUG) console.error("initDatabase error:", err);
         throw err; // 向上抛出，由上层处理
     }
 }
@@ -1185,7 +1185,7 @@ export default {
                 });
                 const tokenData = await tokenRes.json();
                 if (!tokenData.access_token) {
-                    console.error("Token exchange failed:", tokenData);
+                    if (env.DEBUG) console.error("Token exchange failed:", tokenData);
                     return new Response(
                         "Failed to exchange token: " + JSON.stringify(tokenData),
                         { status: 500 },
@@ -1196,7 +1196,7 @@ export default {
                 });
                 const userData = await userRes.json();
                 if (!userData.openid) {
-                    console.error("Failed to get userinfo:", userData);
+                    if (env.DEBUG) console.error("Failed to get userinfo:", userData);
                     return new Response("Failed to get userinfo", { status: 500 });
                 }
 
@@ -1214,9 +1214,9 @@ export default {
                             headers: { "Content-Type": "application/x-www-form-urlencoded" },
                             body: revokeBody,
                         });
-                        console.log("yzhyzxy refresh_token revoked");
+                        if (env.DEBUG) console.log("yzhyzxy refresh_token revoked");
                     } catch (err) {
-                        console.error("Failed to revoke yzhyzxy refresh_token:", err);
+                        if (env.DEBUG) console.error("Failed to revoke yzhyzxy refresh_token:", err);
                     }
                 }
 
@@ -1372,7 +1372,7 @@ export default {
                             cors,
                         );
                     } catch (err) {
-                        console.error("Init failed:", err);
+                        if (env.DEBUG) console.error("Init failed:", err);
                         // 返回更详细的错误信息便于调试
                         return jsonResponse(
                             {
@@ -2020,7 +2020,7 @@ export default {
                         }
                         const sign_token = await hmacSha256(prikey, gt.lot_number);
                         const query = Object.assign(gt, { sign_token });
-                        console.debug(gt);
+                        if (env.DEBUG) console.debug(gt);
                         const validateUrl = new URL(
                             "https://gcaptcha4.geetest.com/validate",
                         );
@@ -2142,7 +2142,7 @@ export default {
                         }
                         const sign_token = await hmacSha256(prikey, gt.lot_number);
                         const query = Object.assign(gt, { sign_token });
-                        console.debug(gt);
+                        if (env.DEBUG) console.debug(gt);
                         const validateUrl = new URL(
                             "https://gcaptcha4.geetest.com/validate",
                         );
@@ -2354,7 +2354,7 @@ export default {
                         }
                         const sign_token = await hmacSha256(prikey, gt.lot_number);
                         const query = Object.assign(gt, { sign_token });
-                        console.debug(gt);
+                        if (env.DEBUG) console.debug(gt);
                         const validateUrl = new URL(
                             "https://gcaptcha4.geetest.com/validate",
                         );
@@ -3272,7 +3272,7 @@ export default {
             }
             return env.assets.fetch(request);
         } catch (error) {
-            console.error("Unhandled error:", error);
+            if (env.DEBUG) console.error("Unhandled error:", error);
             return jsonResponse(
                 { action: "none", error: "Internal Server Error", error_code: 1018 },
                 500,

@@ -45,7 +45,7 @@ export default {
                 return jsonResponse({ code: 404, msg: '授权码无效' }, 404);
             }
         } catch (error) {
-            console.error('verify error:', error);
+            if (env.DEBUG) console.error('verify error:', error);
             return jsonResponse({ code: 500, msg: '服务器内部错误' }, 500);
         }
     },
@@ -99,7 +99,7 @@ export default {
                 return jsonResponse({ code: 200, success: true, msg: '提交成功' });
             }
         } catch (error) {
-            console.error('submit error:', error);
+            if (env.DEBUG) console.error('submit error:', error);
             return jsonResponse({ code: 500, msg: '服务器内部错误' }, 500);
         }
     },
@@ -126,7 +126,7 @@ export default {
                 return jsonResponse({ code: 404, msg: '未找到记录' }, 404);
             }
         } catch (error) {
-            console.error('get record error:', error);
+            if (env.DEBUG) console.error('get record error:', error);
             return jsonResponse({ code: 500, msg: '服务器内部错误' }, 500);
         }
     },
@@ -169,7 +169,7 @@ export default {
 
             return jsonResponse({ code: 200, msg: '数据库初始化成功' });
         } catch (error) {
-            console.error('initdb error:', error);
+            if (env.DEBUG) console.error('initdb error:', error);
             return jsonResponse({ code: 500, msg: '数据库初始化失败' }, 500);
         }
     }
