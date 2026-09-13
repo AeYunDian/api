@@ -1558,38 +1558,49 @@ export default {
                     return jsonResponse({ count: result?.count || 0 }, 200, cors);
                 }
                 if (path === "/api/ayonline/revoke-oauth-app" && method === "POST") {
-                    const [authStatus, user] = await checkAuth(request, env);
-                    if (authStatus !== TAG_LOGGEDIN) {
-                        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+                    try {
+                        const [authStatus, user] = await checkAuth(request, env);
+                        if (authStatus !== TAG_LOGGEDIN) {
+                            return jsonResponse({ error: "Unauthorized" }, 401, cors);
+                        }
+                        const body = await request.json().catch(() => null);
+                        if (!body || !body.client_id) {
+                            return jsonResponse({ error: "Missing client_id" }, 400, cors);
+                        }
+                        const clientId = body.client_id;
+                        const client = await env.db
+                            .prepare("SELECT client_id FROM oauth_clients WHERE client_id = ?")
+                            .bind(clientId)
+                            .first();
+                        if (!client) {
+                            return jsonResponse({ error: "Invalid client_id" }, 400, cors);
+                        }
+                        const result = await env.db
+                            .prepare(
+                                `DELETE FROM app_kv_store
+         WHERE key LIKE ?
+           AND json_extract(value, '$.userId') = ?
+           AND json_extract(value, '$.clientId') = ?`
+                            )
+                            .bind(`${KV_PREFIX.REFRESH}%`, user.sub, clientId)
+                            .run();
+                        const deletedCount = result.meta?.changes || 0;
+                        return jsonResponse({
+                            success: true,
+                            message: `Revoked ${deletedCount} tokens for client ${clientId}`
+                        }, 200, cors);
+                    } catch (err) {
+                        console.error("[revoke-oauth-app] error:", err);
+                        return jsonResponse(
+                            {
+                                error: "Internal Server Error",
+                                error_code: 1018,
+                                detail: env.DEBUG ? err.message : undefined,
+                            },
+                            500,
+                            cors
+                        );
                     }
-                    const body = await request.json().catch(() => null);
-                    if (!body || !body.client_id) {
-                        return jsonResponse({ error: "Missing client_id" }, 400, cors);
-                    }
-                    const clientId = body.client_id;
-                    const client = await env.db
-                        .prepare("SELECT client_id FROM oauth_clients WHERE client_id = ?")
-                        .bind(clientId)
-                        .first();
-                    if (!client) {
-                        return jsonResponse({ error: "Invalid client_id" }, 400, cors);
-                    }
-                    const result = await env.db
-                        .prepare(
-                            `DELETE FROM app_kv_store 
-             WHERE key LIKE ? 
-             AND value LIKE ?`
-                        )
-                        .bind(
-                            `${KV_PREFIX.REFRESH}%`,
-                            `%"userId":${user.sub},"clientId":"${clientId}"%`
-                        )
-                        .run();
-                    const deletedCount = result.meta?.changes || 0;
-                    return jsonResponse({
-                        success: true,
-                        message: `Revoked ${deletedCount} tokens for client ${clientId}`
-                    }, 200, cors);
                 }
                 if (path === "/api/ayonline/update-profile" && method === "POST") {
                     const [authStatus, user] = await checkAuth(request, env);
