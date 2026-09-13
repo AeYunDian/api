@@ -2525,7 +2525,33 @@ export default {
                         cors,
                     );
                 }
+                if (path === "/api/ayonline/oauth-bindings" && method === "GET") {
+                    const [authStatus, user] = await checkAuth(request, env);
+                    if (authStatus !== TAG_LOGGEDIN) {
+                        return jsonResponse({ error: "Unauthorized" }, 401, cors);
+                    }
 
+                    const bindings = await env.db
+                        .prepare(
+                            `SELECT provider, openid, created_at 
+             FROM oauth_connections 
+             WHERE user_sub = ?`
+                        )
+                        .bind(user.sub)
+                        .all();
+
+
+
+                    const result = (bindings.results || []).map(row => ({
+                        provider: row.provider,
+                        openid: row.openid,
+                        created_at: row.created_at,
+                        name: providerMap[row.provider]?.name || row.provider,
+                        icon: providerMap[row.provider]?.icon || '',
+                    }));
+
+                    return jsonResponse({ bindings: result }, 200, cors);
+                }
                 // ---------- 刷新访问令牌 ----------
                 if (path === "/api/ayonline/refresh" && method === "POST") {
                     const cookies = parse(request.headers.get("Cookie") || "");
@@ -2618,113 +2644,7 @@ export default {
                     );
                 }
 
-                // ---------- oauth 用户注册 ---------- ======================================================================================================================== 待维护
-                if (
-                    path === "/api/ayonline/register-oauth" &&
-                    method === "POST" &&
-                    false
-                ) {
-                    const body = await request.json().catch(() => null);
-                    if (
-                        !body ||
-                        !body.provider ||
-                        !body.openid ||
-                        !body.username ||
-                        !body.email ||
-                        !body.password
-                    ) {
-                        return jsonResponse(
-                            { error: "Missing required fields" },
-                            400,
-                            cors,
-                        );
-                    }
 
-                    const { provider, openid, username, email, password, avatar } = body;
-
-                    // 检查是否已被关联
-                    const existing = await env.db
-                        .prepare(
-                            "SELECT user_sub FROM oauth_connections WHERE provider = ? AND openid = ?",
-                        )
-                        .bind(provider, openid)
-                        .first();
-                    if (existing) {
-                        return jsonResponse(
-                            { error: "This account is already linked" },
-                            409,
-                            cors,
-                        );
-                    }
-                    // 注册用户
-                    const registerResult = await registerUser(
-                        env.db,
-                        username,
-                        email,
-                        password,
-                    );
-                    if (!registerResult.success) {
-                        return jsonResponse(registerResult, registerResult.code, cors);
-                    }
-                    // 获取用户 ID
-                    const user = await env.db
-                        .prepare(
-                            "SELECT sub FROM online_users WHERE username = ? OR email = ?",
-                        )
-                        .bind(username, email)
-                        .first();
-                    if (!user) {
-                        return jsonResponse({ error: "User not found" }, 500, cors);
-                    }
-                    // 创建关联
-                    const now = Date.now();
-                    await env.db
-                        .prepare(
-                            `INSERT INTO oauth_connections (provider, openid, user_sub, created_at) VALUES (?, ?, ?, ?)`,
-                        )
-                        .bind(provider, openid, user.sub, now)
-                        .run();
-                    // 生成令牌并登录
-                    const accessToken = await signAccessToken(
-                        { sub: user.sub, username: username, email: email },
-                        env.JWT_KEY,
-                    );
-                    const refreshToken = generateToken();
-                    await storeRefreshToken(
-                        kvStore,
-                        refreshToken,
-                        user.sub,
-                        REFRESH_TOKEN_TTL,
-                    );
-                    const cookieOptions = {
-                        domain: ".undz.cn",
-                        path: "/",
-                        httpOnly: true,
-                        secure: true,
-                        sameSite: "Lax",
-                        maxAge: REFRESH_TOKEN_TTL,
-                    };
-                    const headers = new Headers(cors);
-                    headers.append(
-                        "Set-Cookie",
-                        serialize("access_token", accessToken, cookieOptions),
-                    );
-                    headers.append(
-                        "Set-Cookie",
-                        serialize("refresh_token", refreshToken, cookieOptions),
-                    );
-
-                    return jsonResponse(
-                        {
-                            success: true,
-                            action: "register",
-                            code: 200,
-                            user: { sub: user.sub, username, email },
-                        },
-                        200,
-                        headers,
-                    );
-                }
             }
             if (path.startsWith("/api/oauth/")) {
                 if (path === "/api/oauth/authorize" && method === "GET") {
