@@ -112,7 +112,8 @@ const closeWindow = async () => {
 </script>
 
 <template>
-    <var-app-bar onmousedown="window.hostshell.startDrag()" color="primary" text-color="#fff" style="height: 54px;">
+    <var-app-bar onmousedown="if (window.hostshell) window.hostshell.startDrag()" color="primary" text-color="#fff"
+        style="height: 54px;">
         <template #left>
             <div v-if="isMobile && route.path.startsWith('/user-panel/')" @mousedown.stop><var-button
                     @click="leftPopup = true;" @mousedown.stop text><my-icon icon="menu"

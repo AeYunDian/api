@@ -1,3 +1,4 @@
+// wsRelay.js - Ay WebSocket Relay Worker
 // ============================================================
 //  Ay WS Relay - 单域名 WebSocket 中继
 //  协议: PSP 1.0
@@ -24,6 +25,11 @@ const MESSAGE_TYPES = new Set([
     ...DISCOVERY_TYPES, ...NEGOTIATION_TYPES, ...CONTROL_TYPES, ...EXTENSION_TYPES
 ]);
 
+const MAX_ID_LEN = 128;          // network / peerId / session_id 最大长度
+const MAX_SESSION_ID_LEN = 128;
+
+const VALID_ID_CHARS = /^[a-zA-Z0-9_.:-]+$/;
+const announcedPeers = new Set();
 // 需要点对点转发（在线直投 / 离线入队）的消息类型
 const RELAY_TYPES = new Set([
     "connect_request", "connect_accept", "connect_reject",
@@ -82,7 +88,10 @@ export default {
             }, 200);
         }
 
-        return env.assets?.fetch(request) ?? new Response("Not Found", { status: 404 });
+        if (env.assets?.fetch) {
+            return env.assets.fetch(request);
+        }
+        return jsonResponse({ error: "404 Not Found" }, 404);
     }
 };
 
@@ -124,7 +133,22 @@ export async function initPspTables(db) {
     `).run();
     await db.prepare(`CREATE INDEX IF NOT EXISTS idx_psp_relay_lookup ON psp_relay(network, to_peer_id, expires_at_ms)`).run();
 }
-
+// 抽出公共函数
+function removeSocketFromNetwork(socket, network) {
+    const sockets = networkSubscribers.get(network);
+    if (sockets) {
+        sockets.delete(socket);
+        if (sockets.size === 0) networkSubscribers.delete(network);
+    }
+}
+function isValidId(s, maxLen = MAX_ID_LEN) {
+    return (
+        typeof s === "string" &&
+        s.length > 0 &&
+        s.length <= maxLen &&
+        VALID_ID_CHARS.test(s)
+    );
+}
 // ============================================================
 //  WebSocket 处理
 // ============================================================
@@ -147,6 +171,7 @@ function handleWebSocket(request, env, ctx) {
         const current = livePeers.get(key);
         if (current && current.socket === server) {
             livePeers.delete(key);
+            announcedPeers.delete(key);
             if (env.db) {
                 ctx.waitUntil(
                     deleteAnnouncement(env.db, currentNetwork, currentPeerId)
@@ -185,8 +210,7 @@ function handleWebSocket(request, env, ctx) {
     const detach = () => {
         const subscriberNetwork = cleanupPeerState();
         if (subscriberNetwork) {
-            const sockets = networkSubscribers.get(subscriberNetwork);
-            if (sockets) sockets.delete(server);
+            removeSocketFromNetwork(server, subscriberNetwork);
         }
     };
 
@@ -204,7 +228,20 @@ function handleWebSocket(request, env, ctx) {
 async function handleClientMessage(socket, rawData, env, ctx, prevPeerKey = null, prevNetwork = null) {
     try {
         if (!rawData) return null;
-        if (rawData.length > MAX_MESSAGE_SIZE) return null;
+        const size = typeof rawData === "string"
+            ? new TextEncoder().encode(rawData).byteLength
+            : (rawData.byteLength ?? 0);
+
+        if (size > MAX_MESSAGE_SIZE) {
+            try {
+                socket.send(JSON.stringify({
+                    psp_version: PSP_VERSION, type: "error",
+                    from: RELAY_PEER_ID, to: "client",
+                    body: { error: "Message too large" }
+                }));
+            } catch { }
+            return null;
+        }
 
         let message;
         try {
@@ -224,6 +261,10 @@ async function handleClientMessage(socket, rawData, env, ctx, prevPeerKey = null
                 from: RELAY_PEER_ID, to: message?.from || "unknown",
                 body: { error: "Invalid PSP envelope" }
             }));
+            if (env.DEBUG) {
+                console.warn("[RELAY] Rejected envelope:",
+                    { from: message?.from, network: message?.network, type: message?.type });
+            }
             return null;
         }
 
@@ -237,38 +278,41 @@ async function handleClientMessage(socket, rawData, env, ctx, prevPeerKey = null
         }
 
         // 订阅 network
-        if (!prevPeerKey || prevNetwork !== network) {
-            if (prevNetwork && prevNetwork !== network) {
-                const oldSockets = networkSubscribers.get(prevNetwork);
-                if (oldSockets) oldSockets.delete(socket);
-            }
-            if (!networkSubscribers.has(network)) {
-                networkSubscribers.set(network, new Set());
-            }
-            networkSubscribers.get(network).add(socket);
-            if (env.DEBUG) console.log(`[NET] Peer ${peerId} subscribed to ${network}`);
+        if (prevNetwork && prevNetwork !== network) {
+            const oldSockets = networkSubscribers.get(prevNetwork);
+            if (oldSockets) oldSockets.delete(socket);
+            if (prevPeerKey) livePeers.delete(prevPeerKey);
         }
 
-        // 更新 live 状态
-        livePeers.set(peerKey, { peerId, network, socket, lastSeen: Date.now() });
+        if (!networkSubscribers.has(network)) {
+            networkSubscribers.set(network, new Set());
+        }
+        networkSubscribers.get(network).add(socket);
 
+        // 更新 live 状态
+        const isHeartbeat = announcedPeers.has(peerKey) && prevPeerKey === peerKey;
         if (type === "announce") {
+            livePeers.set(peerKey, { peerId, network, socket, lastSeen: Date.now() });
             if (db) {
                 await upsertAnnouncement(db, message);
                 await deliverQueuedRelayMessages(db, socket, network, peerId);
             }
-            // 仅当是新 peer 加入时才广播，心跳不广播
-            const isHeartbeat = prevPeerKey === peerKey;
+
+            // wasLive && 同 socket 同 peer = 真心跳
+            // wasLive = false（withdraw/bye 后重新 announce）= 需要广播
             if (!isHeartbeat && db) {
                 if (env.DEBUG) console.log(`[NET] Broadcasting peer_list for ${network} after new announce from ${peerId}`);
+                announcedPeers.add(peerKey);
                 broadcastPeerList(db, network).catch((err) => { if (env.DEBUG) console.error("[Broadcast error]", err?.message) });
+
             }
 
-        } else if (type === "withdraw") {
+        } else if (type === "withdraw" || type === "bye") {
             if (db) await deleteAnnouncement(db, network, peerId);
+            announcedPeers.delete(peerKey);
             livePeers.delete(peerKey);
+            removeSocketFromNetwork(socket, network);
             if (db) broadcastPeerList(db, network).catch(() => { });
-
         } else if (type === "discover") {
             let peers = [];
             if (db) peers = await findPeers(db, network, peerId);
@@ -289,12 +333,6 @@ async function handleClientMessage(socket, rawData, env, ctx, prevPeerKey = null
                 ttl_ms: DEFAULT_TTL_MS, body: {}
             }));
             if (db) await deliverQueuedRelayMessages(db, socket, network, peerId);
-
-        } else if (type === "bye") {
-            if (db) await deleteAnnouncement(db, network, peerId);
-            livePeers.delete(peerKey);
-            if (db) broadcastPeerList(db, network).catch(() => { });
-
         } else if (RELAY_TYPES.has(type)) {
             if (!message.to) return { peerKey, network, peerId };
             if (message.to === peerId) return { peerKey, network, peerId };
@@ -376,6 +414,10 @@ async function broadcastPeerList(db, network) {
             sendPeerList(socket, network, peers);
         } catch {
             sockets.delete(socket);
+            if (sockets.size === 0) networkSubscribers.delete(network);
+            for (const [k, v] of livePeers) {
+                if (v.socket === socket) livePeers.delete(k);
+            }
         }
     }
 }
@@ -510,8 +552,11 @@ function validEnvelope(msg) {
         typeof msg === "object" && msg !== null &&
         msg.psp_version === PSP_VERSION &&
         typeof msg.type === "string" && MESSAGE_TYPES.has(msg.type) &&
-        typeof msg.from === "string" && msg.from.trim() &&
-        typeof msg.network === "string" && msg.network.trim() &&
+        isValidId(msg.from) &&
+        isValidId(msg.network) &&
+        (msg.to === undefined || msg.to === null || isValidId(msg.to)) &&
+        (msg.session_id === undefined || msg.session_id === null ||
+            isValidId(msg.session_id, MAX_SESSION_ID_LEN)) &&
         typeof msg.message_id === "string" &&
         typeof msg.timestamp === "number"
     );

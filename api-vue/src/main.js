@@ -16,29 +16,33 @@ const appModules = {
     account: () => import('./account/App.vue'),
     console: () => import('./console/App.vue'),
     relay: () => import('./relay/App.vue'),
+    ai: () => import('./ai/App.vue'),
     default: () => import('./default/App.vue'),
 }
 const routerModules = {
     account: () => import('./account/router/index.js'),
+    ai: () => import('./ai/router/index.js'),
     console: () => import('./console/router/index.js'),
-    relay: () => import('./relay/router/index.js'),
-    default: () => import('./default/router/index.js'),
 }
 const titles = {
     account: 'AyAccountCenter',
     console: 'AyConsole',
     relay: 'AyRelay',
-    default: 'Ay Services'
+    ai: 'AyIntelligence',
+    default: '404 Not Found',
 }
 
-const DEFAULT_APP = 'default'
-
 function getAppName() {
+    if (hostname.includes('ai')) return 'ai'
     if (hostname.includes('relay')) return 'relay'
     if (hostname.includes('console')) return 'console'
     if (hostname.includes('online')) return 'account'
     return DEFAULT_APP
 }
+
+const DEFAULT_APP = 'default'
+
+
 
 
 function preloadAllRoutes(router) {
@@ -70,24 +74,32 @@ async function loadApp(retryCount = 0) {
         if (!appModules[appName]) {
             throw new Error(`未知应用: ${appName}`)
         }
+        const appModulePromise = appModules[appName]()
+        const routerModulePromise = routerModules[appName]
+            ? routerModules[appName]()
+            : Promise.resolve(null)
         const [AppModule, RouterModule] = await Promise.all([
-            appModules[appName](),
-            routerModules[appName]()
+            appModulePromise,
+            routerModulePromise
         ])
         const App = AppModule.default
-        const router = RouterModule.default
+        const router = RouterModule?.default || null
 
         const app = createApp(App)
         app.use(createPinia())
         const { useThemeStore } = await import('@/shared/stores/theme')
         const themeStore = useThemeStore();
         themeStore.initializeTheme();
-        app.use(router)
+        if (router) {
+            app.use(router)
+        }
         app.component('MyIcon', MyIcon)
         appInstance = app;
         app.mount('#app');
-        preloadAllRoutes(router);
         document.title = titles[appName] || 'Ay Services'
+        if (router) {
+            preloadAllRoutes(router);
+        }
 
     } catch (err) {
         try {

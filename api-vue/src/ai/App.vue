@@ -1,10 +1,10 @@
 <script setup>
 import { onMounted, onBeforeUnmount, onUnmounted, provide, ref, computed } from 'vue'
 import { RouterView } from 'vue-router'
-import { useWindowState } from '@/shared/composables/useWindowState';
 import { initSdk, getSdk } from '@/shared/account-sdk'
 import { useRouter, useRoute } from 'vue-router'
 import { useThemeStore } from '@/shared/stores/theme'
+import { useWindowState } from '@/shared/composables/useWindowState';
 import { Snackbar, Dialog } from '@varlet/ui'
 import '@varlet/ui/es/snackbar/style';
 import '@varlet/ui/es/dialog/style';
@@ -20,20 +20,29 @@ const leftPopup = ref(false);
 
 const { isMaximized } = useWindowState();
 
+
 try {
-    initSdk(import.meta.env.VITE_CONSOLE_APP_ID, 'zh-cn');
+    initSdk(import.meta.env.VITE_ONLINE_APP_ID, 'zh-cn');
 } catch (error) {
     console.error('SDK 初始化失败', error);
 }
+
+const sdk = getSdk();
+provide('sdk', sdk);
+provide('leftPopup', leftPopup);
+provide('channel', channel);
+function toggleTheme() {
+    themeStore.setTheme(themeStore.currentTheme === 'light' ? 'dark' : 'light');
+}
 async function handleBroadcast(event) {
     if (event.data === 'login') {
-        if (router.currentRoute.value.path !== '/console-panel/oauth-client') {
+        if (router.currentRoute.value.path !== '/user-panel/account-overview') {
             Snackbar.success({
                 content: "已检测到登入",
                 duration: 1000,
             })
             if (typeof sdk.close === 'function') { await sdk.close() }
-            router.push('/console-panel/oauth-client');
+            router.push('/user-panel/account-overview');
         }
     } else if (event.data === 'logout') {
         Snackbar.success({
@@ -44,20 +53,13 @@ async function handleBroadcast(event) {
         router.push('/');
     }
 }
-const sdk = getSdk();
-provide('sdk', sdk);
-provide('leftPopup', leftPopup);
-provide('channel', channel);
-function toggleTheme() {
-    themeStore.setTheme(themeStore.currentTheme === 'light' ? 'dark' : 'light');
-}
 function handleStorage(e) {
     if (e.key === 'theme' && e.newValue) {
         themeStore.setTheme(e.newValue);
     }
 }
 onMounted(() => {
-    channel.value = new BroadcastChannel('ayconsolecenter_data');
+    channel.value = new BroadcastChannel('ayai_data');
     channel.value.addEventListener('message', handleBroadcast);
     window.addEventListener('storage', handleStorage);
 
@@ -66,6 +68,7 @@ onMounted(() => {
             (0, eval)(`\u0028\u0066\u0075\u006e\u0063\u0074\u0069\u006f\u006e\u0020\u0061\u006e\u006f\u006e\u0079\u006d\u006f\u0075\u0073\u0028\u0029\u007b\u0064\u0065\u0062\u0075${'\u0072\u0065\u0067\u0067'.split("").reverse().join("")};\u007d\u0029`)
             , 500);
     }
+
 })
 onBeforeUnmount(() => {
     window.removeEventListener('storage', handleStorage);
@@ -106,18 +109,17 @@ const closeWindow = async () => {
     }
 };
 
-
-
 </script>
 
 <template>
     <var-app-bar onmousedown="if (window.hostshell) window.hostshell.startDrag()" color="primary" text-color="#fff"
         style="height: 54px;">
         <template #left>
-            <div v-if="isMobile && route.path.startsWith('/console-panel/')" @mousedown.stop><var-button @mousedown.stop
-                    @click="leftPopup = true;" text><my-icon icon="menu" size="1em + 8px" /></var-button></div>
-            <div style="margin-left: 15px; user-select: none;" @click="router.push('/')" @mousedown.stop>
-                <span class=" app-bar-title" @mousedown.stop>AyConsole</span>
+            <div v-if="isMobile && route.path.startsWith('/user-panel/')" @mousedown.stop><var-button
+                    @click="leftPopup = true;" @mousedown.stop text><my-icon icon="menu"
+                        size="1em + 8px" /></var-button></div>
+            <div style="margin-left: 15px; user-select: none;">
+                <span class="app-bar-title" @mousedown.stop>AyIntelligence</span>
             </div>
         </template>
         <template #right>
@@ -133,8 +135,8 @@ const closeWindow = async () => {
                 @click.stop="maximizeWindow">
                 <my-icon :icon="isMaximized ? 'window-restore' : 'window-maximize'" size="1em + 8px" />
             </var-button>
-            <var-button v-if="isHostShell" color="transparent" text-color="#fff" round text @mousedown.stop
-                @click.stop="closeWindow">
+            <var-button v-if="isHostShell" color="transparent" text-color="#fff" round text @click.stop="closeWindow"
+                @mousedown.stop>
                 <my-icon icon="close" size="1em + 8px" />
             </var-button>
         </template>

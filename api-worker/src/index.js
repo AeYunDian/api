@@ -10,6 +10,7 @@ import i2UndzCn from './i2.undz.cn.js';
 import ayOnline from './ayOnline.js';
 import ayConsole from './ayConsole.js';
 import ayRelay from './wsRelay.js';
+import ai from './ai.js';
 
 // import shundzcn from './sh.undz.cn.js'
 
@@ -60,6 +61,9 @@ export default {
 
             // jsdelivr 代理服务
             if (hostname === 'cdn.undz.cn') return await uniCDN.fetch(request, env);
+
+            if (hostname === 'ai.undz.cn') return await ai.fetch(request, env);
+
 
             // 直接走前端404
             if (hostname === 'mail.undz.cn' || hostname === 'mail.io.hb.cn') return env.assets.fetch(request);
