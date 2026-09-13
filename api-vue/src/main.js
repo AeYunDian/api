@@ -13,6 +13,7 @@ if (isHostShell() && !url.searchParams.has('notinithostshell')) {
 
 const hostname = window.location.hostname
 const appModules = {
+    index: () => import('./index/App.vue'),
     account: () => import('./account/App.vue'),
     console: () => import('./console/App.vue'),
     relay: () => import('./relay/App.vue'),
@@ -20,6 +21,7 @@ const appModules = {
     default: () => import('./default/App.vue'),
 }
 const routerModules = {
+    index: () => import('./index/router/index.js'),
     account: () => import('./account/router/index.js'),
     ai: () => import('./ai/router/index.js'),
     console: () => import('./console/router/index.js'),
@@ -33,6 +35,7 @@ const titles = {
 }
 
 function getAppName() {
+    if (hostname === "undz.cn" || hostname === "dev.undz.cn") return 'index'
     if (hostname.includes('ai')) return 'ai'
     if (hostname.includes('relay')) return 'relay'
     if (hostname.includes('console')) return 'console'

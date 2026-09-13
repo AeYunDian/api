@@ -30,6 +30,7 @@ export default {
 
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
+
         const hostname = url.hostname;
         //     let _tm_path;
         // try {
@@ -51,6 +52,7 @@ export default {
         // const cookies = parse(cookie);
 
         try {
+            if (hostname === "undz.cn") return env.assets.fetch(request);
             // 图床服务
             if (hostname === 'i0.undz.cn') return await i0UndzCn.fetch(request);
             if (hostname === 'i1.undz.cn') return await i1UndzCn.fetch(request);

@@ -1,0 +1,238 @@
+:root {
+  /* ==================== 一、主题色（经典政务蓝，默认） ==================== */
+  --gov-red: #e4393c; /* 主题红（考试院红钮/红头） */
+  --gov-red-deep: #c00101; /* 深红/印章红 */
+  --gov-blue: #1879d2; /* 主蓝（KS 主题蓝） */
+  --gov-blue-deep: #015293; /* 深蓝（GOV 标题色） */
+  --gov-blue-navy: #0d47a1; /* 导航渐变末端 */
+  --gov-blue-2e: #2e5586; /* header/footer 分隔线（GOV） */
+  --gov-blue-hover: #2691e2; /* 导航 hover / 亮蓝 */
+  --gov-blue-link: #0b67a6; /* 链接蓝/分页 active */
+  --gov-blue-light: #e8f2fb; /* 浅蓝底（按钮 hover 辅助） */
+
+  /* ==================== 二、中性色 ==================== */
+  --gov-bg: #ffffff; /* 页面白底 */
+  --gov-bg-gray: #f7f7f7; /* 浅灰底（表头/次级区域） */
+  --gov-bg-blue: #f3faff; /* 浅蓝底（工单头/信息块） */
+  --gov-bg-deep-gray: #e0e0e0; /* 深灰底（禁用态） */
+  --gov-text: #333333; /* 正文 */
+  --gov-text-sub: #666666; /* 次要文字 */
+  --gov-text-muted: #999999; /* 弱化文字（时间/状态） */
+  --gov-text-inv: #ffffff; /* 反色文字（深底上） */
+  --gov-link: #333333; /* 默认链接色 */
+  --gov-link-hover: var(--gov-blue-deep); /* 链接 hover */
+  --gov-text-sub-inv: #cfe3f5; /* 深蓝底上的次要文字 */
+
+  /* ==================== 三、边框 ==================== */
+  --gov-border: #dddddd; /* 常规边框（表格/表单） */
+  --gov-border-deep: #cccccc; /* 深一档（模块容器） */
+  --gov-border-strong: #2e5586; /* 强调边框（header/footer 分隔） */
+  --gov-border-blue: #a8cef0; /* 蓝色边框（输入框 focus 辅助） */
+  --gov-border-input: #999999; /* 输入框默认边框 */
+  --gov-border-warn: #e0b0b0; /* 警告边框（错误提示框） */
+
+  /* ==================== 四、字体（五套，各司其职） ==================== */
+  /* 正文字体：黑体系（无衬线） */
+  --gov-font-hei:
+    "Microsoft YaHei", "微软雅黑", SimHei, "黑体", Arial, sans-serif;
+
+  /* 公文正文：宋体系（衬线），用于长段落阅读 */
+  --gov-font-serif: SimSun, "宋体", "Songti SC", serif;
+
+  /* 政务标题：黑体优先，回退宋体，用于大标题/导航/面板标题 */
+  --gov-font-title:
+    "Microsoft YaHei", "微软雅黑", SimHei, "黑体", "SimSun", "宋体", sans-serif;
+
+  /* 数字/编码：等宽感字体，用于时间、统计、编号 */
+  --gov-font-num: Tahoma, Geneva, Arial, sans-serif;
+
+  /* ★ WindowsXP 原版像素点阵字体（宋体 12px 点阵 + 关闭抗锯齿） */
+  --gov-font-xp: SimSun, NSimSun, "新宋体", "宋体", serif;
+
+  /* ==================== 五、字号阶梯 ==================== */
+  --gov-fs-xs: 12px; /* 辅助信息/时间/状态 */
+  --gov-fs-sm: 13px; /* 次要说明/表格小字 */
+  --gov-fs-base: 14px; /* 正文默认 */
+  --gov-fs-md: 15px; /* 稍大正文/工单头 */
+  --gov-fs-lg: 16px; /* 小标题/表单长文本 */
+  --gov-fs-xl: 18px; /* 导航栏/面板标题 */
+  --gov-fs-2xl: 24px; /* 页面大标题 */
+  --gov-fs-3xl: 30px; /* 站点主标题 */
+
+  /* 原 gov.css 命名（保留向后兼容） */
+  --gov-size-body: 14px;
+  --gov-size-small: 12px;
+  --gov-line-height: 1.6;
+
+  /* ==================== 六、尺寸 ==================== */
+  --gov-page-width: 1200px; /* 主容器宽 */
+  --gov-container: 1200px; /* 别名，兼容旧代码 */
+  --gov-topbar-h: 36px; /* 顶部工具条高 */
+  --gov-nav-h: 50px; /* 主导航高 */
+
+  /* 圆角：模块直角，小控件不超过 6px */
+  --gov-radius: 0px;
+  --gov-radius-btn: 0px;
+  --gov-radius-sm: 2px;
+  --gov-radius-md: 4px;
+  --gov-radius-pill: 6px;
+
+  /* ==================== 七、间距 ==================== */
+  --gov-gap-xs: 4px;
+  --gov-gap-sm: 8px;
+  --gov-gap-md: 12px;
+  --gov-gap-lg: 16px;
+  --gov-gap-xl: 24px;
+  --gov-gap-2xl: 32px;
+
+  /* ==================== 八、组件专色 ==================== */
+  /* 按钮（参照教育局 #0069c5 / 考试院 #e4393c / 政府网 #4b8abd） */
+  --gov-btn-primary: #0069c5;
+  --gov-btn-primary-hover: #0070d1;
+  --gov-btn-primary-border: #0b4a85;
+  --gov-btn-red: #e4393c;
+  --gov-btn-red-hover: #d9000b;
+  --gov-btn-red-border: #a00b0b;
+  --gov-btn-gray: #e0e0e0;
+  --gov-btn-gray-hover: #d0d0d0;
+  --gov-btn-gray-border: #999999;
+
+  /* 表格 */
+  --gov-th-bg: #f7f9fb; /* 表头背景 */
+  --gov-zebra: #f9f9f9; /* 斑马纹 */
+  --gov-row-hover: #e9f2fb; /* 行 hover */
+
+  /* 导航渐变（备用，主流平色） */
+  --gov-nav-grad: linear-gradient(180deg, #1874cd 0%, #0d47a1 100%);
+
+  /* 印章红 */
+  --gov-stamp-red: #d40215;
+
+  /* ★ 顶栏专属深蓝（九江网 headerTop） */
+  --gov-topbar-bg: #014886;
+  --gov-topbar-text: #ffffff;
+
+  /* ★ 主导航金色分隔线（政府网识别符号） */
+  --gov-nav-gold: #e6b422;
+
+  /* ★ 徽标红（header 印章） */
+  --gov-seal-red: #c00101;
+
+  /* ★ 状态色（成功/处理中/失败） */
+  --gov-state-ok: #2e8b57;
+  --gov-state-warn: #d98a00;
+  --gov-state-err: var(--gov-red);
+
+  /* ★ 代码块 */
+  --gov-code-bg: #f6f6f6;
+  --gov-code-border: #e0e0e0;
+
+  /* ★ 思考块（黄底） */
+  --gov-think-bg: #fdf9ec;
+  --gov-think-border: #e8d9a8;
+  --gov-think-text: #8a6d1a;
+
+  /* ★ 工具块（蓝底） */
+  --gov-tool-bg: #f3faff;
+  --gov-tool-border: #b8cfe8;
+}
+
+/* ====================================================================
+   主题变体（通过 <body data-theme="..."> 切换）
+   ==================================================================== */
+
+/* ---- 主题：党政中国红 ---- */
+body[data-theme="party-red"] {
+  --gov-blue: #c00101;
+  --gov-blue-deep: #a00808;
+  --gov-blue-navy: #7a0c0c;
+  --gov-blue-2e: #c00101;
+  --gov-blue-hover: #e4393c;
+  --gov-blue-link: #a00808;
+  --gov-blue-light: #fdf3f3;
+  --gov-border-strong: #c00101;
+  --gov-link-hover: #a00808;
+  --gov-nav-grad: linear-gradient(180deg, #d33336 0%, #8a0f0f 100%);
+  --gov-btn-primary: #c00101;
+  --gov-btn-primary-hover: #8a0f0f;
+  --gov-row-hover: #fdecec;
+  --gov-bg-blue: #fdf3f3;
+  --gov-stamp-red: #c00101;
+  --gov-topbar-bg: #8a0f0f;
+  --gov-seal-red: #c00101;
+}
+
+/* ---- 主题：生态履职绿 ---- */
+body[data-theme="eco-green"] {
+  --gov-blue: #1a7a4a;
+  --gov-blue-deep: #0e5c36;
+  --gov-blue-navy: #0a4628;
+  --gov-blue-2e: #1a7a4a;
+  --gov-blue-hover: #2e9c5f;
+  --gov-blue-link: #0e5c36;
+  --gov-blue-light: #e8f6ee;
+  --gov-border-strong: #1a7a4a;
+  --gov-link-hover: #0e5c36;
+  --gov-nav-grad: linear-gradient(180deg, #2e9c5f 0%, #0a4628 100%);
+  --gov-btn-primary: #1a7a4a;
+  --gov-btn-primary-hover: #0e5c36;
+  --gov-row-hover: #e8f6ee;
+  --gov-bg-blue: #f0faf4;
+  --gov-stamp-red: #1a7a4a;
+  --gov-topbar-bg: #0a4628;
+  --gov-seal-red: #0e5c36;
+}
+
+/* ---- 主题：工业监管灰 ---- */
+body[data-theme="industry-gray"] {
+  --gov-blue: #4a5a6a;
+  --gov-blue-deep: #2f3e4d;
+  --gov-blue-navy: #22303d;
+  --gov-blue-2e: #4a5a6a;
+  --gov-blue-hover: #5f7488;
+  --gov-blue-link: #2f3e4d;
+  --gov-blue-light: #eceff2;
+  --gov-border-strong: #4a5a6a;
+  --gov-link-hover: #2f3e4d;
+  --gov-nav-grad: linear-gradient(180deg, #5f7488 0%, #22303d 100%);
+  --gov-btn-primary: #4a5a6a;
+  --gov-btn-primary-hover: #2f3e4d;
+  --gov-row-hover: #eceff2;
+  --gov-bg-blue: #f4f6f8;
+  --gov-stamp-red: #4a5a6a;
+  --gov-topbar-bg: #22303d;
+  --gov-seal-red: #2f3e4d;
+}
+
+/* ---- 主题：经典政务蓝（默认，可显式声明） ---- */
+/* body[data-theme="classic-blue"] {
+  
+} */
+
+/* ====================================================================
+   工具类（与令牌配套，供组件复用）
+   ==================================================================== */
+
+.xp-dot {
+  font-family: var(--gov-font-xp);
+  font-size: 12px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  font-smooth: never;
+  text-rendering: optimizeSpeed;
+}
+
+/* 数字/编码类 */
+.gov-num {
+  font-family: var(--gov-font-num);
+}
+
+/* 公文宋体 */
+.gov-serif {
+  font-family: var(--gov-font-serif);
+}
+
+/* 政务标题 */
+.gov-title-font {
+  font-family: var(--gov-font-title);
+}
