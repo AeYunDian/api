@@ -32,22 +32,35 @@
   --gov-border-warn: #e0b0b0; /* 警告边框（错误提示框） */
 
   /* ==================== 四、字体（五套，各司其职） ==================== */
-  /* 正文字体：黑体系（无衬线） */
+
+  /* 正文：黑体系（无衬线）—— 不变，手机上用系统苹方/思源 */
   --gov-font-hei:
-    "Microsoft YaHei", "微软雅黑", SimHei, "黑体", Arial, sans-serif;
+    -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "微软雅黑", SimHei, "黑体", "Noto Sans CJK SC",
+    "Source Han Sans SC", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
 
-  /* 公文正文：宋体系（衬线），用于长段落阅读 */
-  --gov-font-serif: SimSun, "宋体", "Songti SC", serif;
+  /* 公文正文：宋体系（衬线）
+     ★ 中文用 Google Fonts 思源宋体，英文/数字用 Tinos（新罗马替代） */
+  --gov-font-serif:
+    "Noto Serif SC", "Tinos", "Songti SC", "STSong", SimSun, "宋体",
+    "Times New Roman", serif;
 
-  /* 政务标题：黑体优先，回退宋体，用于大标题/导航/面板标题 */
+  /* 政务标题：黑体优先，回退宋体 —— 不变 */
   --gov-font-title:
-    "Microsoft YaHei", "微软雅黑", SimHei, "黑体", "SimSun", "宋体", sans-serif;
+    -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "微软雅黑", SimHei, "黑体", "Noto Sans CJK SC",
+    "Source Han Sans SC", SimSun, "宋体", system-ui, sans-serif;
 
-  /* 数字/编码：等宽感字体，用于时间、统计、编号 */
-  --gov-font-num: Tahoma, Geneva, Arial, sans-serif;
+  /* 数字/编码：★ 新罗马替代 Tinos */
+  --gov-font-num:
+    "Tinos", "Times New Roman", "Liberation Serif", "SF Mono", "SFMono-Regular",
+    ui-monospace, Menlo, Monaco, Consolas, "Courier New", Tahoma, serif;
 
-  /* ★ WindowsXP 原版像素点阵字体（宋体 12px 点阵 + 关闭抗锯齿） */
-  --gov-font-xp: SimSun, NSimSun, "新宋体", "宋体", serif;
+  /* ★ XP 像素点阵字体：桌面保留宋体点阵，手机降级为思源宋体 */
+  --gov-font-xp:
+    SimSun, NSimSun, "新宋体", "宋体", "Noto Serif SC", -apple-system,
+    BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC",
+    sans-serif;
 
   /* ==================== 五、字号阶梯 ==================== */
   --gov-fs-xs: 12px; /* 辅助信息/时间/状态 */
