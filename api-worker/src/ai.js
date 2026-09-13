@@ -218,7 +218,7 @@ async function handleChat(request, env) {
 
     try {
         if (stream) {
-            const upstream = await env.AI.run(MODEL_ID, aiOptions, {
+            const upstream = await env.AI.run(MODEL_ID, { ...aiOptions, stream: true }, {
                 returnRawResponse: true,
             });
 
