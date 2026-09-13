@@ -271,9 +271,9 @@ function openPath(path) {
         <div class="var--box var-dialog">
             <div class="var-dialog__title">OAuth 应用接入文档</div>
             <div style="padding: 16px 24px 16px;" class="var-dialog__message">
-                <p class="doc-link" @click="openPath('/doc/oauth2.v2.md')">《OAuth 应用接入文档 第二版》</p>
-                <p class="doc-link" @click="openPath('/doc/oauth2.v1tov2.md')">《OAuth 应用接入文档第一到第二版的更新摘要》</p>
-                <p class="doc-link" @click="openPath('/doc/oauth2.v1.md')" style="text-decoration: line-through;"
+                <p class="doc-link" @click="openPath('/doc/oauth2.v2')">《OAuth 应用接入文档 第二版》</p>
+                <p class="doc-link" @click="openPath('/doc/oauth2.v1tov2')">《OAuth 应用接入文档第一到第二版的更新摘要》</p>
+                <p class="doc-link" @click="openPath('/doc/oauth2.v1')" style="text-decoration: line-through;"
                     title="此文档已过时，不再推荐">《OAuth
                     服务文档 第一版》</p>
             </div>
