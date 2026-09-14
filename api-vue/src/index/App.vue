@@ -4,6 +4,7 @@ import SiteHeader from '@/index/components/layout/SiteHeader.vue'
 import MainNav from '@/index/components/layout/MainNav.vue'
 import MarqueeBar from '@/index/components/layout/MarqueeBar.vue'
 import SiteFooter from '@/index/components/layout/SiteFooter.vue'
+import CookieConsent from '@/index/components/common/CookieConsent.vue'
 import './styles/tokens.css'
 import './styles/base.css'
 </script>
@@ -24,6 +25,7 @@ import './styles/base.css'
         </main>
 
         <SiteFooter />
+        <!-- <CookieConsent /> -->
     </div>
 </template>
 

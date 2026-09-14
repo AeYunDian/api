@@ -1,15 +1,57 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getPost, getRecent, renderMarkdown } from '@/index/content'
+import { getPost, getRecent, renderMarkdown, bindMarkdownTabs, posts } from '@/index/content'
 import GovPanel from '@/index/components/common/GovPanel.vue'
 import Breadcrumb from '@/index/components/common/Breadcrumb.vue'
+import '@/index/styles/markdown.css'
 
 const route = useRoute()
 const router = useRouter()
 const post = computed(() => getPost(route.params.slug))
 const html = computed(() => post.value ? renderMarkdown(post.value.content) : '')
-const related = computed(() => getRecent(6).filter(p => p.slug !== route.params.slug).slice(0, 3))
+
+/* ★ 新增：渲染后绑定 Tabs 交互 */
+function bindTabs() {
+    nextTick(() => bindMarkdownTabs())
+}
+onMounted(bindTabs)
+watch(html, bindTabs)
+
+const related = computed(() => {
+    if (!post.value) return []
+    const cur = post.value
+    const others = posts.filter(p => p.slug !== cur.slug)
+    if (!others.length) return []
+
+    // 1) 打分：同分类 +10，每共同标签 +3
+    const scored = others.map(p => {
+        let score = 0
+        if (p.category === cur.category) score += 10
+        const common = p.tags.filter(t => cur.tags.includes(t))
+        score += common.length * 3
+        return { post: p, score }
+    })
+
+    // 2) 按分数降序，同分按日期降序
+    scored.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score
+        return b.post.date.localeCompare(a.post.date)
+    })
+
+    // 3) 先取有分数（真正相关）的，不足 3 篇再用最新的补齐
+    const picked = scored.filter(x => x.score > 0).slice(0, 3).map(x => x.post)
+    if (picked.length < 3) {
+        const taken = new Set(picked.map(p => p.slug))
+        const fill = others
+            .filter(p => !taken.has(p.slug))
+            .sort((a, b) => b.date.localeCompare(a.date))
+            .slice(0, 3 - picked.length)
+        picked.push(...fill)
+    }
+
+    return picked
+})
 </script>
 
 <template>
@@ -37,7 +79,7 @@ const related = computed(() => getRecent(6).filter(p => p.slug !== route.params.
                     </div>
                 </header>
 
-                <article class="art-body" v-html="html" />
+                <article class="md-body art-body" v-html="html" />
 
                 <footer class="art-foot">
                     <button class="art-foot__btn" @click="router.back()">‹ 返回上一页</button>
@@ -45,7 +87,7 @@ const related = computed(() => getRecent(6).filter(p => p.slug !== route.params.
                 </footer>
             </GovPanel>
 
-            <aside class="sidebar">
+            <aside class="sidebar" v-if="related.length">
                 <GovPanel title="相关阅读">
                     <ul class="rel">
                         <li v-for="r in related" :key="r.slug">
@@ -94,111 +136,6 @@ const related = computed(() => getRecent(6).filter(p => p.slug !== route.params.
     margin-right: var(--gov-gap-xs);
 }
 
-.art-body :deep(h2) {
-    font-size: var(--gov-fs-lg);
-    color: var(--gov-blue-deep);
-    margin: var(--gov-gap-xl) 0 var(--gov-gap-md);
-    padding-left: var(--gov-gap-sm);
-    border-left: 3px solid var(--gov-blue);
-}
-
-.art-body :deep(h3) {
-    font-size: var(--gov-fs-md);
-    margin: var(--gov-gap-lg) 0 var(--gov-gap-sm);
-}
-
-.art-body :deep(p) {
-    margin-bottom: var(--gov-gap-md);
-    line-height: 1.9;
-}
-
-.art-body :deep(ul),
-.art-body :deep(ol) {
-    padding-left: 1.6em;
-    margin-bottom: var(--gov-gap-md);
-}
-
-.art-body :deep(ul) {
-    list-style: disc;
-}
-
-.art-body :deep(ol) {
-    list-style: decimal;
-}
-
-.art-body :deep(li) {
-    margin-bottom: var(--gov-gap-xs);
-    line-height: 1.9;
-}
-
-.art-body :deep(a) {
-    color: var(--gov-blue);
-}
-
-.art-body :deep(code) {
-    font-family: var(--gov-font-num);
-    font-size: .92em;
-    background: var(--gov-bg-gray);
-    padding: 1px 5px;
-    border: 1px solid var(--gov-border);
-    border-radius: var(--gov-radius-sm);
-}
-
-.art-body :deep(pre) {
-    background: #f5f7fa;
-    border: 1px solid var(--gov-border);
-    padding: var(--gov-gap-md);
-    overflow-x: auto;
-    margin-bottom: var(--gov-gap-md);
-}
-
-.art-body :deep(pre code) {
-    background: none;
-    border: none;
-    padding: 0;
-    font-size: var(--gov-fs-sm);
-}
-
-.art-body :deep(blockquote) {
-    border-left: 3px solid var(--gov-blue);
-    background: var(--gov-bg-gray);
-    padding: var(--gov-gap-sm) var(--gov-gap-md);
-    margin: var(--gov-gap-md) 0;
-    color: var(--gov-text-sub);
-}
-
-.art-body :deep(table) {
-    width: 100%;
-    border-collapse: collapse;
-    margin: var(--gov-gap-md) 0;
-    border: 1px solid var(--gov-border);
-}
-
-.art-body :deep(th),
-.art-body :deep(td) {
-    border: 1px solid var(--gov-border);
-    padding: .7rem;
-    text-align: left;
-    font-size: var(--gov-fs-sm);
-}
-
-.art-body :deep(th) {
-    background: var(--gov-bg-gray);
-    color: var(--gov-blue-deep);
-    font-weight: 700;
-}
-
-.art-body :deep(img) {
-    border: 1px solid var(--gov-border);
-    margin: var(--gov-gap-md) 0;
-}
-
-.art-body :deep(hr) {
-    border: none;
-    border-top: 1px dashed var(--gov-border);
-    margin: var(--gov-gap-xl) 0;
-}
-
 .art-foot {
     display: flex;
     gap: var(--gov-gap-md);
@@ -207,15 +144,12 @@ const related = computed(() => getRecent(6).filter(p => p.slug !== route.params.
     margin-top: var(--gov-gap-xl);
 }
 
-
 .art-foot__btn {
     height: 30px;
     padding: 0 var(--gov-gap-lg);
-    background: var(--gov-bg);
-    align-items: center;
-    display: flex;
-    color: var(--gov-text);
     border: 1px solid var(--gov-border-deep);
+    background: var(--gov-bg);
+    color: var(--gov-text);
     font-size: var(--gov-fs-sm);
     border-radius: var(--gov-radius);
 }

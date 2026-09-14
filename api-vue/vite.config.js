@@ -35,7 +35,8 @@ export default defineConfig({
         }),
         autoImport({
             resolvers: [VarletImportResolver({ autoImport: true })]
-        })
+        }),
+
     ],
     build: {
         outDir: '../api-assets',

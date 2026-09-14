@@ -1,5 +1,9 @@
 <script setup>
 import DocLayout from '@/index/components/common/DocLayout.vue'
+function resetConsent() {
+    localStorage.removeItem('gov_cookie_consent')
+    location.reload()
+}
 </script>
 
 <template>
@@ -96,5 +100,9 @@ import DocLayout from '@/index/components/common/DocLayout.vue'
 
         <h2>九、法律信息</h2>
         <p>除非本文件中另有规定，否则本政策仅适用于本网站。</p>
+
+        <h2>十、重新设置授权</h2>
+        <p>如果您希望重新选择 Cookie 授权偏好，可以点击下方按钮。</p>
+        <button class="gov-btn gray" @click="resetConsent">重新设置 Cookie 授权</button>
     </DocLayout>
 </template>
