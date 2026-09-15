@@ -1,48 +1,56 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { detectCountry, isChina } from '@/index/shared/ipDetect.js'
 import MyIcon from '@/shared/MyIcon.vue'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 
 const visible = ref(false)
 const country = ref('')
-
 const CONSENT_KEY = 'gov_cookie_consent'
 
-onMounted(async () => {
-    if (window.location.pathname === "/cookies") return;
-    // 已授权过 → 不再弹
-    const saved = localStorage.getItem(CONSENT_KEY)
-    if (saved) return
+function readConsent() {
+    try { return localStorage.getItem(CONSENT_KEY) } catch { return null }
+}
+function writeConsent(v) {
+    try { localStorage.setItem(CONSENT_KEY, v) } catch { }
+}
 
-    // 检测 IP 国家
-    const geo = await detectCountry()
-    if (!geo || !geo.country) return   // 检测失败 → 不弹
-
-    country.value = geo.country
-
-    // 非中国 → 弹窗；中国 → 自动同意（仅记录必要项）
-    if (isChina(geo.country)) {
-        visible.value = true
-    } else {
-        localStorage.setItem(CONSENT_KEY, 'auto-cn')
+let checking = false
+async function checkConsent(path) {
+    if (path === '/cookies') {
+        visible.value = false
+        return
     }
+    if (readConsent()) return
+    if (checking) return
+    checking = true
+    try {
+        const geo = await detectCountry()
+        if (!geo?.country) return
+        country.value = geo.country
+        if (!isChina(geo.country)) {
+            visible.value = true
+        }
+    } catch (e) {
+        visible.value = true
+    } finally {
+        checking = false
+    }
+}
+
+onMounted(() => {
+    checkConsent(router.currentRoute.value.path)
 })
 
-function accept() {
-    localStorage.setItem(CONSENT_KEY, 'all')
-    visible.value = false
-}
+const stop = router.afterEach((to) => {
+    checkConsent(to.path)
+})
+onUnmounted(stop)
 
-function acceptNecessary() {
-    localStorage.setItem(CONSENT_KEY, 'necessary')
-    visible.value = false
-}
-
-function goPolicy() {
-    visible.value = false
-    window.location = '/cookies'
-}
+function accept() { writeConsent('all'); visible.value = false }
+function acceptNecessary() { writeConsent('necessary'); visible.value = false }
 </script>
 
 <template>
@@ -53,10 +61,17 @@ function goPolicy() {
                     <span class="cc-head__icon">
                         <MyIcon icon="cookie" />
                     </span>
-                    <h2 class="cc-head__title">Cookie 使用授权</h2>
+                    <h2 class="cc-head__title">我们重视您的隐私</h2>
                 </div>
                 <div class="cc-body">
-                    <p class="cc-msg">本站使用 Cookie 和本地存储来提升您的浏览体验、记住语言偏好并分析访问情况。</p>
+                    <p class="cc-msg">
+                        我们和我们的第三方供应商使用 Cookie 和类似技术来存储和访问唯一标识符、个人信息等信息，以提供、维护和改进我们的服务与广告。
+                        如果您同意，我们将个性化您看到的内容和广告。
+                        您可以选择“我接受”以同意这些用途。
+                    </p>
+                    <p class="cc-detail">
+                        您也可以选择“仅同意必要项”，继续使用基础功能。相关说明请查看《Cookie 政策》。
+                    </p>
                     <p class="cc-detail">根据您所在地区的法律法规，我们需要征得您的同意。您可以随时在 Cookie 政策页面中更改您的选择。</p>
                     <p class="cc-country" v-if="country">
                         检测到您来自 {{ country }}
@@ -65,7 +80,7 @@ function goPolicy() {
                 <div class="cc-foot">
                     <button class="cc-btn cc-btn--ghost" @click="acceptNecessary">仅同意必要项</button>
                     <button class="cc-btn cc-btn--primary" @click="accept">同意全部</button>
-                    <a class="cc-policy" href="#/cookies" @click.prevent="goPolicy">您已拒绝非必要 Cookie。</a>
+                    <RouterLink class="cc-policy" to="/cookies">《Cookie 政策》</RouterLink>
                 </div>
             </div>
         </div>

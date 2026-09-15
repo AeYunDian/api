@@ -25,7 +25,7 @@ import './styles/base.css'
         </main>
 
         <SiteFooter />
-        <!-- <CookieConsent /> -->
+        <CookieConsent />
     </div>
 </template>
 
