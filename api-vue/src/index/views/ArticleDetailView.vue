@@ -1,7 +1,7 @@
 <script setup>
-import { computed, onMounted, watch, nextTick } from 'vue'
+import { computed, onMounted, watch, nextTick, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getPost, getRecent, renderMarkdown, bindMarkdownTabs, posts } from '@/index/content'
+import { getPost, renderMarkdown, bindMarkdownTabs, listedPosts } from '@/index/content'
 import GovPanel from '@/index/components/common/GovPanel.vue'
 import Breadcrumb from '@/index/components/common/Breadcrumb.vue'
 import '@/index/styles/markdown.css'
@@ -10,7 +10,22 @@ const route = useRoute()
 const router = useRouter()
 const post = computed(() => getPost(route.params.slug))
 const html = computed(() => post.value ? renderMarkdown(post.value.content) : '')
-
+let metaEl = null
+function syncRobots() {
+    const unlisted = post.value && !post.value.listed
+    if (unlisted && !metaEl) {
+        metaEl = document.createElement('meta')
+        metaEl.setAttribute('name', 'robots')
+        metaEl.setAttribute('content', 'noindex, nofollow')
+        document.head.appendChild(metaEl)
+    } else if (!unlisted && metaEl) {
+        metaEl.remove()
+        metaEl = null
+    }
+}
+onMounted(syncRobots)
+watch(() => route.params.slug, syncRobots)
+onUnmounted(() => { metaEl?.remove(); metaEl = null })
 /* ★ 新增：渲染后绑定 Tabs 交互 */
 function bindTabs() {
     nextTick(() => bindMarkdownTabs())
@@ -21,7 +36,7 @@ watch(html, bindTabs)
 const related = computed(() => {
     if (!post.value) return []
     const cur = post.value
-    const others = posts.filter(p => p.slug !== cur.slug)
+    const others = listedPosts.filter(p => p.slug !== cur.slug)
     if (!others.length) return []
 
     // 1) 打分：同分类 +10，每共同标签 +3
@@ -52,6 +67,9 @@ const related = computed(() => {
 
     return picked
 })
+function printPage() {
+    window.print();
+}
 </script>
 
 <template>
@@ -82,8 +100,11 @@ const related = computed(() => {
                 <article class="md-body art-body" v-html="html" />
 
                 <footer class="art-foot">
-                    <button class="art-foot__btn" @click="router.back()">‹ 返回上一页</button>
+                    <button class="art-foot__btn" @click="router.back()">
+                        <MyIcon icon="arrow-left" />&nbsp;返回上一页
+                    </button>
                     <router-link to="/articles" class="art-foot__btn">文章列表</router-link>
+                    <button class="art-foot__btn" @click="printPage">打印页面</button>
                 </footer>
             </GovPanel>
 
@@ -102,6 +123,7 @@ const related = computed(() => {
         <GovPanel v-else title="提示">
             <p>文章不存在或已被删除。<router-link to="/articles">返回文章列表</router-link></p>
         </GovPanel>
+
     </div>
 </template>
 
@@ -138,6 +160,7 @@ const related = computed(() => {
 
 .art-foot {
     display: flex;
+    align-items: center;
     gap: var(--gov-gap-md);
     padding-top: var(--gov-gap-lg);
     border-top: 1px solid var(--gov-border);
@@ -145,6 +168,8 @@ const related = computed(() => {
 }
 
 .art-foot__btn {
+    display: flex;
+    align-items: center;
     height: 30px;
     padding: 0 var(--gov-gap-lg);
     border: 1px solid var(--gov-border-deep);

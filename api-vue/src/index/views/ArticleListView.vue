@@ -1,21 +1,26 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { posts } from '@/index/content'
+import { listedPosts } from '@/index/content'
 import GovPanel from '@/index/components/common/GovPanel.vue'
 import Breadcrumb from '@/index/components/common/Breadcrumb.vue'
 import Pagination from '@/index/components/common/Pagination.vue'
 import ArticleItem from '@/index/components/blog/ArticleItem.vue'
 import ArticleSidebar from '@/index/components/blog/ArticleSidebar.vue'
-
+import { useRouter } from 'vue-router'
+const router = useRouter()
+onMounted(() => {
+    const q = (route.query.q ?? '').toString().trim()
+    if (q) router.replace({ path: '/search', query: { q } })
+})
 const route = useRoute()
 const page = ref(1)
 const SIZE = 6
 
 const filtered = computed(() => {
     const q = (route.query.q ?? '').toString().trim().toLowerCase()
-    if (!q) return posts
-    return posts.filter(p =>
+    if (!q) return listedPosts
+    return listedPosts.filter(p =>
         p.title.toLowerCase().includes(q) ||
         p.summary.toLowerCase().includes(q) ||
         p.tags.some(t => t.toLowerCase().includes(q)))

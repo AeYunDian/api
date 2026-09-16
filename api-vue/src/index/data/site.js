@@ -1,8 +1,8 @@
 export const site = {
     name: '韵典综合平台',
-    subtitle: '知识分享 · 信息发布 · 资源聚合',
+    subtitle: 'AeYunDian Integrated Platform',
     seal: '韵',
-    slogan: '以文会友 · 以知促行 · 记录与分享',
+    slogan: '求真、向善、尚美',
     icp: '萌ICP备20263044号',
     // police: '',
     org: '韵典综合平台运营中心',
@@ -16,7 +16,9 @@ export const site = {
 export const navItems = [
     { name: 'home', label: '首页', path: '/' },
     { name: 'articles', label: '文章', path: '/articles' },
+    { name: 'resources', label: '资源', path: '/resources' },
     { name: 'archive', label: '归档', path: '/archive' },
+    { name: 'search', label: '搜索', path: '/search' },
     { name: 'about', label: '关于', path: '/about' },
     { name: 'contact', label: '联系我', path: '/contact' },
 ]

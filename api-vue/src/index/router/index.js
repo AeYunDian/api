@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getPost } from '@/index/content'
-
+import { getResource } from '@/index/resources'
 const PLATFORM = '韵典综合平台'
 
 const routes = [
@@ -10,6 +10,24 @@ const routes = [
     { path: '/categories/:slug', name: 'category', component: () => import('@/index/views/CategoryView.vue'), meta: { title: '分类' } },
     { path: '/tags/:slug', name: 'tag', component: () => import('@/index/views/TagView.vue'), meta: { title: '标签' } },
     { path: '/archive', name: 'archive', component: () => import('@/index/views/ArchiveView.vue'), meta: { title: '归档', nav: 'archive' } },
+    {
+        path: '/search',
+        name: 'search',
+        component: () => import('@/index/views/SearchView.vue'),
+        meta: { title: '搜索', nav: 'search' },
+    },
+    {
+        path: '/resources',
+        name: 'resources',
+        component: () => import('@/index/views/ResourceListView.vue'),
+        meta: { title: '资源', nav: 'resources' },
+    },
+    {
+        path: '/resources/:slug',
+        name: 'resource',
+        component: () => import('@/index/views/ResourceDetailView.vue'),
+        meta: { title: '资源详情' },
+    },
 
     /* 站点信息类 */
     { path: '/about', name: 'about', component: () => import('@/index/views/AboutView.vue'), meta: { title: '关于本站', nav: 'about' } },
@@ -35,6 +53,10 @@ router.afterEach((to) => {
     if (to.name === 'article') {
         const post = getPost(to.params.slug)
         if (post) pageTitle = post.title
+    }
+    if (to.name === 'resource') {
+        const resource = getResource(to.params.slug)
+        if (resource) pageTitle = resource.title
     }
     document.title = pageTitle ? `${pageTitle} - ${PLATFORM}` : PLATFORM
 })

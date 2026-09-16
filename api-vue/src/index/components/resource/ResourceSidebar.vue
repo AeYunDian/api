@@ -1,40 +1,57 @@
 <script setup>
 import { computed } from 'vue'
-import { listedPosts as posts, categories, tags } from '@/index/content'
+import { listedResources, resourceCategories, resourcePlatforms } from '@/index/resources'
 import GovPanel from '@/index/components/common/GovPanel.vue'
 
-const catCount = computed(() => categories.map(c => ({ name: c, count: posts.filter(p => p.category === c).length })))
-const tagList = computed(() => tags.map(t => ({ name: t, count: posts.filter(p => p.tags.includes(t)).length })))
-const hot = computed(() => [...posts].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5))
+const catCount = computed(() =>
+    resourceCategories.map(c => ({
+        name: c,
+        count: listedResources.filter(r => r.category === c).length,
+    }))
+)
+
+const platformCount = computed(() =>
+    resourcePlatforms.map(p => ({
+        name: p,
+        count: listedResources.filter(r => r.platforms.includes(p)).length,
+    }))
+)
+
+const hot = computed(() => listedResources.slice(0, 5))
 </script>
 
 <template>
     <aside class="sidebar">
-        <GovPanel title="文章分类">
+        <GovPanel title="资源分类" v-if="catCount.length">
             <ul class="list">
                 <li v-for="c in catCount" :key="c.name">
-                    <router-link :to="`/categories/${encodeURIComponent(c.name)}`" class="list__link">
-                        <span>{{ c.name }}</span><span class="list__count">{{ c.count }}</span>
+                    <router-link :to="`/resources?category=${encodeURIComponent(c.name)}`" class="list__link">
+                        <span>{{ c.name }}</span>
+                        <span class="list__count">{{ c.count }}</span>
                     </router-link>
                 </li>
             </ul>
         </GovPanel>
 
-        <GovPanel title="标签云">
+        <GovPanel title="支持平台" v-if="platformCount.length">
             <div class="tagcloud">
-                <router-link v-for="t in tagList" :key="t.name" :to="`/tags/${encodeURIComponent(t.name)}`"
-                    class="tagcloud__item">{{ t.name }} ({{ t.count }})</router-link>
+                <router-link v-for="p in platformCount" :key="p.name"
+                    :to="`/resources?platform=${encodeURIComponent(p.name)}`" class="tagcloud__item">{{ p.name }} ({{
+                        p.count }})</router-link>
             </div>
         </GovPanel>
 
-        <GovPanel title="最新发布">
+        <GovPanel title="最新收录" v-if="hot.length">
             <ol class="hot">
-                <li v-for="(p, i) in hot" :key="p.slug">
+                <li v-for="(r, i) in hot" :key="r.slug">
                     <span class="hot__idx" :class="{ 'is-top': i < 3 }">{{ i + 1 }}</span>
-                    <router-link :to="`/articles/${p.slug}`" class="hot__link">{{ p.title }}</router-link>
+                    <router-link :to="`/resources/${r.slug}`" class="hot__link">
+                        {{ r.title }}
+                    </router-link>
                 </li>
             </ol>
         </GovPanel>
+
         <GovPanel title="常用办事通道" tone="red">
             <a class="volume" href="//online.undz.cn">账户中心</a>
             <a class="volume" href="//console.undz.cn">控制台</a>
@@ -52,23 +69,6 @@ const hot = computed(() => [...posts].sort((a, b) => b.date.localeCompare(a.date
     padding: var(--gov-gap-sm) 0;
     border-bottom: 1px dashed var(--gov-border);
     font-size: var(--gov-fs-sm);
-}
-
-a.volume:hover {
-    background: var(--gov-bg-blue);
-    color: var(--gov-blue-deep);
-}
-
-a.volume {
-
-    border-bottom: 1px dashed var(--gov-border);
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 9px 6px;
-    cursor: pointer;
-    color: #333;
 }
 
 .list li:last-child .list__link {
@@ -137,10 +137,31 @@ a.volume {
     color: #fff;
 }
 
+.hot__link {
+    color: var(--gov-text);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.hot__link:hover {
+    color: var(--gov-blue);
+}
+
+a.volume {
+    border-bottom: 1px dashed var(--gov-border);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 6px;
+    cursor: pointer;
+    color: #333;
+}
+
 a.volume::before {
     content: "";
-    font-size: 14px;
-    list-style: none;
     flex: none;
     width: 0;
     height: 0;
@@ -149,16 +170,8 @@ a.volume::before {
     border-left: 6px solid var(--gov-blue);
 }
 
-.hot__link {
-    color: var(--gov-text);
-    display: -webkit-box;
-    line-clamp: 2;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.hot__link:hover {
-    color: var(--gov-blue);
+a.volume:hover {
+    background: var(--gov-bg-blue);
+    color: var(--gov-blue-deep);
 }
 </style>

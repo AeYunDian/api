@@ -7,7 +7,8 @@ const keyword = ref('')
 const router = useRouter()
 function search() {
     const q = keyword.value.trim()
-    router.push({ path: '/articles', query: q ? { q } : {} })
+    if (!q) return
+    router.push({ path: '/search', query: { q } })
 }
 </script>
 

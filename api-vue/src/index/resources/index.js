@@ -1,6 +1,7 @@
 /* ============================================================
-   静态内容层：构建时把 posts/ 下所有 .md 打进包
-   —— 支持 VuePress 风格容器（::: warning / ::: tabs / ::: center）
+   资源内容层
+   —— 构建时把 resources/posts/*.md 打进包
+   —— frontmatter 支持：字符串 / 布尔 / 内联数组 / 多行数组 / 对象数组
    —— 跳过 draft: true
    ============================================================ */
 
@@ -12,7 +13,20 @@ const modules = import.meta.glob('./posts/*.md', {
     eager: true,
 })
 
-/* ---------- Frontmatter 解析（支持多行数组） ---------- */
+/* ---------- 工具：去引号 ---------- */
+function strip(s) {
+    return String(s).trim().replace(/^["']|["']$/g, '')
+}
+
+/* ---------- 工具：标量解析 ---------- */
+function parseScalar(v) {
+    const s = String(v).trim()
+    if (s === 'true') return true
+    if (s === 'false') return false
+    return strip(s)
+}
+
+/* ---------- Frontmatter 解析（支持对象数组） ---------- */
 function parseFrontmatter(raw) {
     const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(raw)
     if (!m) return { data: {}, body: raw }
@@ -21,41 +35,65 @@ function parseFrontmatter(raw) {
     const data = {}
     let currentKey = null
     let currentList = null
+    let currentObj = null
 
     for (const line of lines) {
-        const listMatch = /^\s*-\s+(.*)$/.exec(line)
-        if (listMatch && currentKey) {
-            if (!currentList) { currentList = []; data[currentKey] = currentList }
-            currentList.push(listMatch[1].trim().replace(/^["']|["']$/g, ''))
+        if (!line.trim()) continue
+
+        // 1) 对象数组的新条目：  - name: xxx
+        const objStart = /^\s*-\s+([a-zA-Z][\w-]*)\s*:\s*(.*)$/.exec(line)
+        if (objStart && currentKey) {
+            if (!Array.isArray(data[currentKey])) data[currentKey] = []
+            currentObj = { [objStart[1]]: parseScalar(objStart[2]) }
+            data[currentKey].push(currentObj)
+            currentList = null
             continue
         }
 
-        const kvMatch = /^([a-zA-Z][\w-]*)\s*:\s*(.*)$/.exec(line)
-        if (kvMatch) {
-            const key = kvMatch[1]
-            const val = kvMatch[2].trim()
+        // 2) 对象内的后续字段：      url: yyy（缩进）
+        const objKV = /^\s+([a-zA-Z][\w-]*)\s*:\s*(.*)$/.exec(line)
+        if (objKV && currentObj) {
+            currentObj[objKV[1]] = parseScalar(objKV[2])
+            continue
+        }
+
+        // 3) 简单列表项：  - item
+        const listItem = /^\s*-\s+(.*)$/.exec(line)
+        if (listItem && currentKey && !currentObj) {
+            if (!currentList) {
+                currentList = []
+                data[currentKey] = currentList
+            }
+            currentList.push(strip(listItem[1]))
+            continue
+        }
+
+        // 4) 顶层 key: value
+        const kv = /^([a-zA-Z][\w-]*)\s*:\s*(.*)$/.exec(line)
+        if (kv) {
+            const key = kv[1]
+            const val = kv[2].trim()
             currentKey = key
             currentList = null
+            currentObj = null
 
             if (val === '') {
-                data[key] = []
-                currentList = data[key]
+                data[key] = []          // 占位，后面按元素类型填充
             } else if (val.startsWith('[') && val.endsWith(']')) {
                 data[key] = val.slice(1, -1)
-                    .split(',').map(s => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean)
-            } else if (val === 'true' || val === 'false') {
-                data[key] = val === 'true'
+                    .split(',')
+                    .map(s => strip(s))
+                    .filter(Boolean)
             } else {
-                data[key] = val.replace(/^["']|["']$/g, '')
+                data[key] = parseScalar(val)
             }
         }
     }
     return { data, body: m[2] }
 }
 
-/* ---------- VuePress 容器 → HTML（注意处理顺序：内层先于外层） ---------- */
+/* ---------- VuePress 风格容器（与文章内容层一致） ---------- */
 function preprocessContainers(src) {
-    // 1) 先处理不嵌套的简单容器
     src = src.replace(
         /^:::\s*center\s*$\n([\s\S]*?)^:::\s*$/gm,
         (_, inner) => `<div class="md-center">\n\n${inner.trim()}\n\n</div>`
@@ -76,8 +114,6 @@ function preprocessContainers(src) {
         /^:::\s*(?:danger|error)\s*$\n([\s\S]*?)^:::\s*$/gm,
         (_, inner) => `<div class="md-alert md-alert--danger">\n\n${inner.trim()}\n\n</div>`
     )
-
-    // 2) 再处理 tabs（此时内部若含 center，已变成 <div class="md-center">）
     src = src.replace(
         /^:::\s*tabs\s*$\n([\s\S]*?)^:::\s*$/gm,
         (_, body) => {
@@ -98,19 +134,17 @@ function preprocessContainers(src) {
             return `<div class="md-tabs">\n<div class="md-tabs__nav">${nav}</div>\n<div class="md-tabs__panels">${panels}</div>\n</div>`
         }
     )
-
     return src
 }
 
-/* ---------- MarkdownIt 实例 ---------- */
 const md = new MarkdownIt({
-    html: true,       // 允许容器 HTML（文章来自仓库，作者可控）
+    html: true,
     linkify: true,
     breaks: true,
 })
 
-/* ---------- 构建文章对象 ---------- */
-function buildPost(filePath, raw) {
+/* ---------- 构建资源对象 ---------- */
+function buildResource(filePath, raw) {
     const slug = filePath.replace('./posts/', '').replace(/\.md$/, '')
     const { data, body } = parseFrontmatter(raw)
 
@@ -121,14 +155,28 @@ function buildPost(filePath, raw) {
 
     const catRaw = data.category ?? data.categories ?? '未分类'
     const category = Array.isArray(catRaw) ? catRaw[0] : catRaw
+
     const tagsRaw = data.tags ?? data.tag ?? []
     const tags = Array.isArray(tagsRaw) ? tagsRaw : [tagsRaw]
 
-    // 文件名里的日期作为兜底：xxx.2026-05-20.md
+    const platformsRaw = data.platforms ?? data.platform ?? []
+    const platforms = Array.isArray(platformsRaw) ? platformsRaw : [platformsRaw]
+
+    const downloadsRaw = data.downloads ?? []
+    const downloads = Array.isArray(downloadsRaw)
+        ? downloadsRaw
+            .filter(d => d && typeof d === 'object' && d.url)
+            .map(d => ({
+                name: d.name || '下载',
+                url: d.url,
+                platform: d.platform || '',
+                size: d.size || '',
+                version: d.version || '',
+            }))
+        : []
+
     const fileDate = /\.(\d{4}-\d{2}-\d{2})\.md$/.exec(filePath)?.[1]
-    const date = data.date
-        ? String(data.date).slice(0, 10)
-        : (fileDate || '1970-01-01')
+    const date = data.date ? String(data.date).slice(0, 10) : (fileDate || '1970-01-01')
 
     return {
         slug,
@@ -136,6 +184,14 @@ function buildPost(filePath, raw) {
         date,
         category,
         tags,
+        platforms,
+        version: data.version || '',
+        license: data.license || '',
+        size: data.size || '',
+        official: data.official || '',
+        repo: data.repo || '',
+        docs: data.docs || '',
+        downloads,
         listed: data.listed !== false,
         summary: data.summary || body
             .replace(/^---[\s\S]*?---/g, '')
@@ -144,61 +200,55 @@ function buildPost(filePath, raw) {
             .replace(/[#>*`\[\]()\-!\n]/g, ' ')
             .trim().slice(0, 100),
         featured: Boolean(data.featured),
-        readingMinutes: Math.max(1, Math.round(body.length / 350)),
         content: body.trim(),
     }
 }
 /* ---------- 全量（详情页用，含 listed:false） ---------- */
-export const posts = Object.entries(modules)
-    .map(([file, raw]) => buildPost(file, raw))
+export const resources = Object.entries(modules)
+    .map(([file, raw]) => buildResource(file, raw))
     .filter(Boolean)
     .sort((a, b) => b.date.localeCompare(a.date))
 
-/* ---------- 列表可见（列表/分类/标签/归档/推荐/侧边栏） ---------- */
-export const listedPosts = posts.filter(p => p.listed)
+/* ---------- 列表可见（总览/侧边栏/推荐用） ---------- */
+export const listedResources = resources.filter(r => r.listed)
 
-/* ---------- 聚合：仅统计列表可见 ---------- */
-export const categories = [...new Set(listedPosts.map(p => p.category))]
+/* ---------- 聚合：仅统计列表可见的资源 ---------- */
+export const resourceCategories = [...new Set(listedResources.map(r => r.category))]
     .filter(Boolean).sort()
 
-export const tags = [...new Set(listedPosts.flatMap(p => p.tags))]
+export const resourcePlatforms = [...new Set(listedResources.flatMap(r => r.platforms))]
     .filter(Boolean).sort()
 
-/* ---------- 查询：详情页走全量 ---------- */
-export function getPost(slug) {
-    return posts.find(p => p.slug === slug)
+export const resourceTags = [...new Set(listedResources.flatMap(r => r.tags))]
+    .filter(Boolean).sort()
+
+/* ---------- 查询 ---------- */
+// 详情页：全量查询，保证 listed:false 可直达
+export function getResource(slug) {
+    return resources.find(r => r.slug === slug)
 }
 
-/* ---------- 查询：列表相关走 listedPosts ---------- */
-export function getPostsByCategory(cat) {
-    return listedPosts.filter(p => p.category === cat)
+// 列表相关：只在 listedResources 里查
+export function getListedResourcesByCategory(cat) {
+    return listedResources.filter(r => r.category === cat)
 }
-export function getPostsByTag(tag) {
-    return listedPosts.filter(p => p.tags.includes(tag))
+export function getListedResourcesByPlatform(p) {
+    return listedResources.filter(r => r.platforms.includes(p))
 }
-export function getFeatured() {
-    return listedPosts.filter(p => p.featured)
+export function getFeaturedResources() {
+    return listedResources.filter(r => r.featured)
 }
-export function getRecent(n = 6) {
-    return listedPosts.slice(0, n)
-}
-
-export function getArchive() {
-    const map = {}
-    for (const p of listedPosts) {
-        const y = p.date.slice(0, 4)
-            ; (map[y] ??= []).push(p)
-    }
-    return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]))
+export function getRecentResources(n = 6) {
+    return listedResources.slice(0, n)
 }
 
 /* ---------- Markdown 渲染 ---------- */
-export function renderMarkdown(src) {
+export function renderResourceMarkdown(src) {
     return md.render(preprocessContainers(src))
 }
 
-/* ---------- Tabs 交互绑定（页面挂载后调用） ---------- */
-export function bindMarkdownTabs(root = document) {
+/* ---------- Tabs 交互绑定 ---------- */
+export function bindResourceTabs(root = document) {
     root.querySelectorAll('.md-tabs').forEach(tabs => {
         if (tabs.dataset.bound) return
         tabs.dataset.bound = '1'
