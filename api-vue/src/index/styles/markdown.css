@@ -286,6 +286,7 @@
 
   /* ---------- 2. 隐藏全站导航与交互元素 ---------- */
   .topbar,
+  .crumb,
   .site-header,
   .mainnav,
   .marquee,

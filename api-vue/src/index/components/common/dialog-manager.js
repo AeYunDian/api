@@ -2,7 +2,7 @@
    弹窗管理器
    —— 新增：滚动条宽度补偿，避免锁定时页面横向跳动
    ============================================================ */
-
+import { isMobileByUA } from "@/shared/utils/device";
 let zSeed = 10000;
 let uidSeed = 0;
 const stack = [];
@@ -42,7 +42,9 @@ export function hasDialog() {
 
 /* ---------- 滚动条宽度 ---------- */
 function getScrollbarWidth() {
-  return window.innerWidth - document.documentElement.clientWidth;
+  return isMobileByUA()
+    ? 0
+    : window.innerWidth - document.documentElement.clientWidth;
 }
 
 /* ---------- 锁定：引用计数 + padding 补偿 ---------- */

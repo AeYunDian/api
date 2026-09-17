@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { showAlert } from '@/index/components/common/dialog'
+import { isMobileByUA } from '@/shared/utils/device'
+import { useDevice } from "@/shared/composables/useDevice";
+const { mobileByUA } = useDevice();
 
 const now = ref('')
 const visits = ref('000000')
@@ -37,18 +40,14 @@ function addFavorite() {
     const hotkey = isMac ? 'Command + D' : 'Ctrl + D'
     showAlert(`加入收藏失败，请使用 ${hotkey} 手动添加。`)
 }
-const isMobile =
-    /Android|iPhone|iPod|Mobile|HarmonyOS|MicroMessenger|BlackBerry|IEMobile|Opera Mini/i.test(
-        navigator.userAgent,
-    ) ||
-    (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
 function toggleBigFont() {
     const root = document.documentElement
     const on = root.classList.toggle('big-font')
     localStorage.setItem('gov_big_font', on ? '1' : '0')
 }
 onMounted(() => {
-    if (localStorage.getItem('gov_big_font') === '1' && !isMobile) {
+    if (localStorage.getItem('gov_big_font') === '1' && !isMobileByUA) {
         document.documentElement.classList.add('big-font')
     }
     tick()
@@ -75,7 +74,7 @@ onUnmounted(() => clearInterval(timer))
                 <a href="#" @click.prevent="setHomePage">设为首页</a>
                 <span class="topbar__sep">|</span>
                 <a href="#" @click.prevent="addFavorite">加入收藏</a>
-                <template v-if="!isMobile">
+                <template v-if="!mobileByUA">
                     <span class="topbar__sep">|</span>
                     <a href="#" id="wzaElder">适老化长辈模式</a>
                     <span class="topbar__sep">|</span>

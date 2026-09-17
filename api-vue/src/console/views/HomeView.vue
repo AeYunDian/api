@@ -1,7 +1,7 @@
 <script setup>
 import { inject, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { isHostShell } from '@/shared/utils/hostshell';
+import { isHostShell } from '@/shared/utils/device';
 let intervalId = null
 const sdk = inject('sdk');
 const router = useRouter();

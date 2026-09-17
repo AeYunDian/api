@@ -1,7 +1,7 @@
 // views/UserPanel.vue
 <script setup>
 import { onMounted, onUnmounted, ref, provide, inject, computed } from 'vue';
-import { isHostShell } from '@/shared/utils/hostshell';
+import { isHostShell } from '@/shared/utils/device';
 import { useRouter, useRoute, RouterView } from 'vue-router';
 import { useWindowSize } from '@vueuse/core';
 const router = useRouter();

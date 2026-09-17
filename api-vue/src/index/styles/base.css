@@ -22,7 +22,6 @@ html.big-font {
   --gov-line-height: 1.85;
   font-size: var(--gov-fs-base);
 }
-
 html.big-font .topbar,
 html.big-font .topbar__clock,
 html.big-font .marquee,

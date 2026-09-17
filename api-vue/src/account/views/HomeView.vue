@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, inject } from 'vue';
 import { getSdk } from '@/shared/account-sdk'
 import { useRouter } from 'vue-router'
-import { isHostShell } from '@/shared/utils/hostshell';
+import { isHostShell } from '@/shared/utils/device';
 const channel = inject('channel');
 const sdk = getSdk()
 const router = useRouter()

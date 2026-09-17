@@ -1,9 +1,10 @@
 // views/UserPanel.vue
 <script setup>
 import { onMounted, onUnmounted, ref, provide, inject, computed } from 'vue';
-import { isHostShell } from '@/shared/utils/hostshell';
+import { isHostShell } from '@/shared/utils/device';
 import { useRouter, useRoute, RouterView } from 'vue-router';
-import { useWindowSize } from '@vueuse/core';
+import { useDevice } from "@/shared/composables/useDevice";
+const { mobileByWidth } = useDevice();
 const router = useRouter();
 const route = useRoute()
 let intervalId = null;
@@ -12,8 +13,6 @@ const leftPopup = inject('leftPopup');
 const channel = inject('channel');
 const sdk = inject('sdk');
 
-const { width } = useWindowSize();
-const isMobile = computed(() => width.value < 768);
 provide('user', user);
 const refreshUser = async () => {
     const { valid, data } = await checkLogin();
@@ -101,14 +100,14 @@ function openConsole() {
 }
 </script>
 <template>
-    <div class="bg-orbs" v-if="!isMobile">
+    <div class="bg-orbs" v-if="!mobileByWidth">
         <div class="orb orb-1"></div>
         <div class="orb orb-2"></div>
         <div class="orb orb-3"></div>
         <div class="orb orb-4"></div>
     </div>
 
-    <var-popup v-if="isMobile" position="left" v-model:show="leftPopup">
+    <var-popup v-if="mobileByWidth" position="left" v-model:show="leftPopup">
         <div class="left-popup">
             <var-cell title="账号概览" :border="true" @click="leftPopup = false; switchScreens('/account-overview')"
                 v-ripple :class="{ active: route.path === '/user-panel/account-overview' }">
@@ -171,7 +170,7 @@ function openConsole() {
             </var-cell>
         </div>
     </var-popup>
-    <div v-if="isMobile" style="height: 100%;">
+    <div v-if="mobileByWidth" style="height: 100%;">
         <div class="main-content" style="height: 100%;">
             <router-view v-if="user" />
             <div v-else class="loading-placeholder">加载中...</div>

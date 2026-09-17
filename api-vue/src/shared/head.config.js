@@ -1,30 +1,5 @@
 // src/shared/head.config.js
-
-function isMobile() {
-  const ua = navigator.userAgent;
-  // 常规移动端关键字
-  if (
-    /Android|iPhone|iPod|Mobile|HarmonyOS|MicroMessenger|BlackBerry|IEMobile|Opera Mini/i.test(
-      ua,
-    )
-  ) {
-    return true;
-  }
-  // iPad iOS 13+：UA 里有 Macintosh，但触点数 > 1
-  if (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) {
-    return true;
-  }
-  return false;
-}
-
-// 声明式资源注入表
-// 每条 = { apps, phase?, tag, attrs }
-//   apps  : 哪些应用加载，对应 getAppName() 的返回值
-//   phase : 'before' | 'after'，相对 app.mount('#app') 的位置，默认 'before'
-//   tag   : HTML 标签名
-//   attrs : 标签属性，attrs.id 同时用作幂等去重标记
-//
-// 数组顺序 = 同阶段内的加载顺序，有依赖时靠顺序保证。
+import { isMobileByUA } from "./utils/device";
 
 export const head = [
   // =========== 挂载前 ============
@@ -32,9 +7,9 @@ export const head = [
   // account-sdk 不依赖 DOM，挂载前加载
   {
     apps: ["*"],
-    phase: "before",
+    phase: "beforeLoadModule",
     tag: "script",
-    attrs: { src: "/lib/account-sdk.min.js", id: "account-sdk" },
+    attrs: { src: "/lib/account-sdk.min.js", id: "account-sdk", async: true },
   },
 
   // 字体样式，越早加载越好（避免 FOUT）
@@ -47,7 +22,7 @@ export const head = [
     },
   },
   {
-    apps: ["*"],
+    apps: ["index"],
     tag: "link",
     attrs: {
       rel: "stylesheet",
@@ -63,11 +38,11 @@ export const head = [
     },
   },
   // jQuery 不依赖 DOM，挂载前加载
-  ...(!isMobile()
+  ...(!isMobileByUA()
     ? [
         {
           apps: ["index"],
-          phase: "before",
+          phase: "beforeMount",
           tag: "script",
           attrs: { src: "/canyou/js/jquery.min.js", id: "canyou-jquery" },
         },
@@ -76,11 +51,11 @@ export const head = [
 
   // ============ 挂载后 ============
   // wza.min.js 需要 #wzayd 已存在于 DOM，必须在 mount 之后加载
-  ...(!isMobile()
+  ...(!isMobileByUA()
     ? [
         {
           apps: ["index"],
-          phase: "after",
+          phase: "afterMount",
           tag: "script",
           attrs: {
             src: "/canyou/js/wzatool-pc.js",

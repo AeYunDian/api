@@ -6,12 +6,13 @@ import { initSdk, getSdk } from '@/shared/account-sdk'
 import { useRouter, useRoute } from 'vue-router'
 import { useThemeStore } from '@/shared/stores/theme'
 import { Snackbar, Dialog } from '@varlet/ui'
+import { useDevice } from "@/shared/composables/useDevice";
+const { mobileByWidth } = useDevice();
 import '@varlet/ui/es/snackbar/style';
 import '@varlet/ui/es/dialog/style';
 import '@/shared/assets/base.css'
-import { useWindowSize } from '@vueuse/core';
-const { width } = useWindowSize();
-const isMobile = computed(() => width.value < 768);
+
+
 const route = useRoute();
 const router = useRouter();
 const themeStore = useThemeStore();
@@ -114,8 +115,9 @@ const closeWindow = async () => {
     <var-app-bar onmousedown="if (window.hostshell) window.hostshell.startDrag()" color="primary" text-color="#fff"
         style="height: 54px;">
         <template #left>
-            <div v-if="isMobile && route.path.startsWith('/console-panel/')" @mousedown.stop><var-button @mousedown.stop
-                    @click="leftPopup = true;" text><my-icon icon="menu" size="1em + 8px" /></var-button></div>
+            <div v-if="mobileByWidth && route.path.startsWith('/console-panel/')" @mousedown.stop><var-button
+                    @mousedown.stop @click="leftPopup = true;" text><my-icon icon="menu"
+                        size="1em + 8px" /></var-button></div>
             <div style="margin-left: 15px; user-select: none;" @click="router.push('/')" @mousedown.stop>
                 <span class=" app-bar-title" @mousedown.stop>AyConsole</span>
             </div>

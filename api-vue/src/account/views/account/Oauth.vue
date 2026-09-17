@@ -1,16 +1,17 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { Dialog, Snackbar } from '@varlet/ui';
 import { formatTime } from '@/shared/utils/format';
 import { getOAuthApps, revokeOAuthApp, revokeOAuthTokens } from '@/account/utils/api';
+import { useDevice } from "@/shared/composables/useDevice";
+const { mobileByWidth } = useDevice();
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
-import { useWindowSize } from '@vueuse/core';
 const refreshState = ref(false);
 const apps = ref([]);
 const loading = ref(false);
-const { width } = useWindowSize();
-const isMobile = computed(() => width.value < 768);
+
+
 async function handleRevokeAll() {
     const action = await Dialog({
         title: '确认',
@@ -100,14 +101,14 @@ function translateScope(scope) {
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <h3>{{ app.name }}</h3>
                                 <var-button type="danger" @click="handleRevoke(app.client_id, app.name)"
-                                    :size="isMobile ? 'small' : 'normal'">
+                                    :size="mobileByWidth ? 'small' : 'normal'">
                                     撤销授权
                                 </var-button>
                             </div>
                             <div style="font-size: 14px; color: var(--color-text-secondary);">
                                 <p>授权范围: {{ translateScope(app.scope) }}</p>
                                 <p>授权时间: {{ app.authorized_at ? formatTime(app.authorized_at * 1000) : '未知'
-                                }}</p>
+                                    }}</p>
                                 <p>登录设备数: {{ app.token_count }}</p>
                             </div>
                         </div>

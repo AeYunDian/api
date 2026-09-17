@@ -1,6 +1,12 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { site } from '@/index/data/site'
+import { getMemorialText, watchMemorial } from '@/shared/utils/memorial'
+
+const memorialText = ref(getMemorialText())
+const isMemorial = computed(() => !!memorialText.value)
+const memorialMessages = computed(() => [memorialText.value, site.slogan])
+const memorialIndex = ref(0)
 
 const messages = [
     '韵典综合平台博客子应用正式上线，欢迎体验。',
@@ -10,41 +16,96 @@ const messages = [
 ]
 
 const track = ref(null)
-const hovered = ref(false)      // ★ 新增：悬浮状态
+const hovered = ref(false)
 let offset = 0
-let raf
+let memorialTimer = 0
+let raf = 0
+let stopWatch
 
 function loop() {
-    if (!track.value) return
+    raf = requestAnimationFrame(loop)        // ★ 先调度，track 消失也不会断链
+    if (!track.value || hovered.value) return
+    const w = track.value.scrollWidth / 2
+    offset -= 0.7
+    if (-offset >= w) offset = 0
+    track.value.style.transform = `translateX(${offset}px)`
+}
 
-    // 悬浮时冻结 offset（不推进），但 raf 继续跑，以便鼠标移开后立即恢复
-    if (!hovered.value) {
-        const w = track.value.scrollWidth / 2
-        offset -= 0.7                       // 速度：每帧 0.7px
-        if (-offset >= w) offset = 0
-        track.value.style.transform = `translateX(${offset}px)`
-    }
-
+function startScroll() {
+    if (raf) return
+    offset = 0
     raf = requestAnimationFrame(loop)
+}
+
+function stopScroll() {
+    if (raf) cancelAnimationFrame(raf)
+    raf = 0
+}
+
+function startMemorialTicker() {
+    stopMemorialTicker()
+    memorialIndex.value = 0
+    memorialTimer = window.setInterval(() => {
+        memorialIndex.value =
+            (memorialIndex.value + 1) % memorialMessages.value.length   // ★ .value
+    }, 5000)
+}
+
+function stopMemorialTicker() {
+    if (memorialTimer) {
+        clearInterval(memorialTimer)
+        memorialTimer = 0
+    }
+}
+
+function syncMode() {
+    if (isMemorial.value) {
+        stopScroll()
+        startMemorialTicker()
+    } else {
+        stopMemorialTicker()
+        startScroll()
+    }
 }
 
 function onEnter() { hovered.value = true }
 function onLeave() { hovered.value = false }
 
-onMounted(() => { raf = requestAnimationFrame(loop) })
-onUnmounted(() => cancelAnimationFrame(raf))
-</script>
+// isMemorial 变化时切模式（跨天自动跑）
+watch(isMemorial, syncMode)
 
+onMounted(() => {
+    stopWatch = watchMemorial((text) => {
+        if (text === memorialText.value) return
+        memorialText.value = text          // ★ 触发 isMemorial 重算 → syncMode
+    })
+    syncMode()
+})
+
+onUnmounted(() => {
+    stopWatch?.()
+    stopMemorialTicker()
+    stopScroll()
+})
+</script>
 <template>
     <div class="marquee">
         <div class="gov-container marquee__inner">
             <span class="marquee__label">重要通知</span>
             <!-- ★ 关键：给 viewport 挂 mouseenter/mouseleave -->
             <div class="marquee__viewport" @mouseenter="onEnter" @mouseleave="onLeave">
-                <div ref="track" class="marquee__track">
-                    <span v-for="(m, i) in messages" :key="'a' + i" class="marquee__item">{{ m }}</span>
-                    <span v-for="(m, i) in messages" :key="'b' + i" class="marquee__item">{{ m }}</span>
-                </div>
+                <template v-if="isMemorial">
+                    <transition name="slide-up" mode="out-in">
+                        <span :key="memorialIndex" class="marquee__item marquee__item--memorial">{{
+                            memorialMessages[memorialIndex] }}</span>
+                    </transition>
+                </template>
+                <template v-else>
+                    <div ref="track" class="marquee__track">
+                        <span v-for="(m, i) in messages" :key="'a' + i" class="marquee__item">{{ m }}</span>
+                        <span v-for="(m, i) in messages" :key="'b' + i" class="marquee__item">{{ m }}</span>
+                    </div>
+                </template>
             </div>
         </div>
     </div>
@@ -116,5 +177,29 @@ onUnmounted(() => cancelAnimationFrame(raf))
     color: #444;
     /* ★ 用 #444 而不是 --gov-text-sub */
     font-size: 12px;
+}
+
+.marquee__item--memorial {
+    display: block;
+    color: var(--gov-red, #e4393c);
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+    transition: transform 0.35s ease;
+}
+
+.slide-up-enter-from {
+    transform: translateY(100%);
+    /* 从下方进入 */
+}
+
+.slide-up-leave-to {
+    transform: translateY(-100%);
+    /* 向上滑出 */
 }
 </style>
