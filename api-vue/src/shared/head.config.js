@@ -63,22 +63,30 @@ export const head = [
     },
   },
   // jQuery 不依赖 DOM，挂载前加载
-  {
-    apps: ["index"],
-    phase: "before",
-    tag: "script",
-    attrs: { src: "/canyou/js/jquery.min.js", id: "canyou-jquery" },
-  },
+  ...(!isMobile()
+    ? [
+        {
+          apps: ["index"],
+          phase: "before",
+          tag: "script",
+          attrs: { src: "/canyou/js/jquery.min.js", id: "canyou-jquery" },
+        },
+      ]
+    : []),
 
   // ============ 挂载后 ============
   // wza.min.js 需要 #wzayd 已存在于 DOM，必须在 mount 之后加载
-  {
-    apps: ["index"],
-    phase: "after",
-    tag: "script",
-    attrs: {
-      src: isMobile() ? "/canyou/js/wzatool-mp.js" : "/canyou/js/wzatool-pc.js",
-      id: "rrbayJs",
-    },
-  },
+  ...(!isMobile()
+    ? [
+        {
+          apps: ["index"],
+          phase: "after",
+          tag: "script",
+          attrs: {
+            src: "/canyou/js/wzatool-pc.js",
+            id: "rrbayJs",
+          },
+        },
+      ]
+    : []),
 ];
