@@ -1,195 +1,211 @@
-<style>
-    body {
-        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-        line-height: 1.6;
-        padding: 20px;
-        max-width: 800px;
-        margin: auto;
-    }
+<!DOCTYPE html>
+<html lang="zh-CN">
 
-    h1,
-    h2,
-    h3,
-    h4 {
-        color: #333;
-    }
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 800px;
+            margin: auto;
+        }
 
-    code {
-        background-color: #f8f8f8;
-        padding: 2px 4px;
-        border-radius: 4px;
-        font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-    }
+        h1,
+        h2,
+        h3,
+        h4 {
+            color: #333;
+        }
 
-    pre {
-        background-color: #f8f8f8;
-        padding: 10px;
-        border-radius: 4px;
-        overflow-x: auto;
-    }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+        }
 
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 20px;
-    }
+        pre {
+            background-color: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
 
-    th,
-    td {
-        border: 1px solid #ddd;
-        padding: 8px;
-    }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
 
-    th {
-        background-color: #f2f2f2;
-    }
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
 
-    .table-wrapper {
-        overflow-x: auto;
-    }
-</style>
-<h1>OAuth2 服务文档 (online.undz.cn)</h1>
-<p>本文档描述基于 <code>online.undz.cn</code> 实现的 OAuth2 授权服务，符合 <a href="https://datatracker.ietf.org/doc/html/rfc6749">RFC
-        6749</a>。<br>
-    服务支持 <strong>授权码模式</strong>（<code>authorization_code</code>）和
-    <strong>刷新令牌模式</strong>（<code>refresh_token</code>），并提供用户信息、邮件信息、令牌撤销等扩展端点。
-</p>
-<p>所有 API 端点均支持跨域（CORS），并接受 <code>application/json</code> 或 <code>application/x-www-form-urlencoded</code> 请求（根据端点而定）。
-</p>
-<hr>
-<h2>1. 授权端点 (Authorization Endpoint)</h2>
-<h3><code>GET /api/oauth/authorize</code></h3>
-<p>启动 OAuth2 授权流程，用于获取用户授权并返回授权码（<code>code</code>）。</p>
-<h4>请求参数 (Query String)</h4>
-<div class="table-wrapper">
-    <table>
-        <thead>
-            <tr>
-                <th>参数名</th>
-                <th>类型</th>
-                <th>必填</th>
-                <th>说明</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><code>client_id</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>客户端应用唯一标识（如 <code>app_chat</code>）</td>
-            </tr>
-            <tr>
-                <td><code>redirect_uri</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>回调地址，需与客户端注册时一致</td>
-            </tr>
-            <tr>
-                <td><code>response_type</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>固定值 <code>code</code></td>
-            </tr>
-            <tr>
-                <td><code>state</code></td>
-                <td>string</td>
-                <td>❌</td>
-                <td>可选，用于防 CSRF，原样返回</td>
-            </tr>
-            <tr>
-                <td><code>scope</code></td>
-                <td>string</td>
-                <td>❌</td>
-                <td>请求的权限范围（空格分隔），如 <code>profile email</code>。默认为 <code>openid profile email</code>，但需客户端支持</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-<h4>处理流程</h4>
-<ol>
-    <li>验证 <code>client_id</code> 和 <code>redirect_uri</code> 是否匹配注册信息。</li>
-    <li>检查当前用户是否已登录（通过 Cookie 中的 <code>access_token</code>）。</li>
-    <li>若未登录，重定向至登录页面 <code>/oauth2/login</code>，登录成功后返回本授权页。</li>
-    <li>若用户已登录但被禁止，清除 Cookie 并重定向至登录页。</li>
-    <li>若用户已登录且授权通过：
-        <ul>
-            <li>如果客户端是受信任的（<code>trusted=1</code>），直接生成授权码并重定向至 <code>redirect_uri?code=xxx&amp;state=xxx</code>。</li>
-            <li>否则，创建一条授权请求记录并重定向至 <code>/oauth2/consent</code> 让用户手动确认。</li>
-        </ul>
-    </li>
-    <li>若用户拒绝授权，返回错误到 <code>redirect_uri</code>（通过 <code>error=access_denied</code> 参数）。</li>
-</ol>
-<h4>可能返回</h4>
-<ul>
-    <li><strong>302 Found</strong> – 重定向到 <code>redirect_uri</code> 携带 <code>code</code> 和 <code>state</code>（成功）。</li>
-    <li><strong>302 Found</strong> – 重定向到错误页面（如 <code>/oauth2/invalid_client</code>）或 <code>redirect_uri</code> 携带错误参数。
-    </li>
-    <li><strong>302 Found</strong> – 重定向到登录页面 <code>/oauth2/login</code>（未登录或 token 失效）。</li>
-</ul>
-<blockquote>
-    <p><strong>注意</strong>：此端点不直接返回 JSON，而是通过 HTTP 重定向完成流程。</p>
-</blockquote>
-<hr>
-<h2>2. 令牌端点 (Token Endpoint)</h2>
-<h3><code>POST /api/oauth/token</code></h3>
-<p>用于交换授权码为访问令牌，或刷新访问令牌。</p>
-<h4>请求方式</h4>
-<p>支持 <code>application/json</code> 或 <code>application/x-www-form-urlencoded</code>。<br>
-    推荐使用 <code>application/x-www-form-urlencoded</code>（标准 OAuth2）。</p>
-<h4>2.1 授权码模式 (grant_type=authorization_code)</h4>
-<p><strong>请求参数</strong> (Body)</p>
-<div class="table-wrapper">
-    <table>
-        <thead>
-            <tr>
-                <th>参数名</th>
-                <th>类型</th>
-                <th>必填</th>
-                <th>说明</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><code>grant_type</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>固定值 <code>authorization_code</code></td>
-            </tr>
-            <tr>
-                <td><code>code</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>从授权端点获取的授权码</td>
-            </tr>
-            <tr>
-                <td><code>redirect_uri</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>必须与获取授权码时使用的相同</td>
-            </tr>
-            <tr>
-                <td><code>client_id</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>应用 ID</td>
-            </tr>
-            <tr>
-                <td><code>client_secret</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>应用密钥</td>
-            </tr>
-            <tr>
-                <td><code>state</code></td>
-                <td>string</td>
-                <td>❌</td>
-                <td>可选，用于验证</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-<p><strong>响应 (成功)</strong></p>
-<pre><code class="language-json">{
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+
+    <h1>OAuth2 服务文档 (online.undz.cn)</h1>
+    <p>本文档描述基于 <code>online.undz.cn</code> 实现的 OAuth2 授权服务，符合 <a
+            href="https://datatracker.ietf.org/doc/html/rfc6749">RFC
+            6749</a>。<br>
+        服务支持 <strong>授权码模式</strong>（<code>authorization_code</code>）和
+        <strong>刷新令牌模式</strong>（<code>refresh_token</code>），并提供用户信息、邮件信息、令牌撤销等扩展端点。
+    </p>
+    <p>所有 API 端点均支持跨域（CORS），并接受 <code>application/json</code> 或 <code>application/x-www-form-urlencoded</code>
+        请求（根据端点而定）。
+    </p>
+    <hr>
+    <h2>1. 授权端点 (Authorization Endpoint)</h2>
+    <h3><code>GET /api/oauth/authorize</code></h3>
+    <p>启动 OAuth2 授权流程，用于获取用户授权并返回授权码（<code>code</code>）。</p>
+    <h4>请求参数 (Query String)</h4>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>参数名</th>
+                    <th>类型</th>
+                    <th>必填</th>
+                    <th>说明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>client_id</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>客户端应用唯一标识（如 <code>app_chat</code>）</td>
+                </tr>
+                <tr>
+                    <td><code>redirect_uri</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>回调地址，需与客户端注册时一致</td>
+                </tr>
+                <tr>
+                    <td><code>response_type</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>固定值 <code>code</code></td>
+                </tr>
+                <tr>
+                    <td><code>state</code></td>
+                    <td>string</td>
+                    <td>❌</td>
+                    <td>可选，用于防 CSRF，原样返回</td>
+                </tr>
+                <tr>
+                    <td><code>scope</code></td>
+                    <td>string</td>
+                    <td>❌</td>
+                    <td>请求的权限范围（空格分隔），如 <code>profile email</code>。默认为 <code>openid profile email</code>，但需客户端支持</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <h4>处理流程</h4>
+    <ol>
+        <li>验证 <code>client_id</code> 和 <code>redirect_uri</code> 是否匹配注册信息。</li>
+        <li>检查当前用户是否已登录（通过 Cookie 中的 <code>access_token</code>）。</li>
+        <li>若未登录，重定向至登录页面 <code>/oauth2/login</code>，登录成功后返回本授权页。</li>
+        <li>若用户已登录但被禁止，清除 Cookie 并重定向至登录页。</li>
+        <li>若用户已登录且授权通过：
+            <ul>
+                <li>如果客户端是受信任的（<code>trusted=1</code>），直接生成授权码并重定向至 <code>redirect_uri?code=xxx&amp;state=xxx</code>。
+                </li>
+                <li>否则，创建一条授权请求记录并重定向至 <code>/oauth2/consent</code> 让用户手动确认。</li>
+            </ul>
+        </li>
+        <li>若用户拒绝授权，返回错误到 <code>redirect_uri</code>（通过 <code>error=access_denied</code> 参数）。</li>
+    </ol>
+    <h4>可能返回</h4>
+    <ul>
+        <li><strong>302 Found</strong> – 重定向到 <code>redirect_uri</code> 携带 <code>code</code> 和 <code>state</code>（成功）。
+        </li>
+        <li><strong>302 Found</strong> – 重定向到错误页面（如 <code>/oauth2/invalid_client</code>）或 <code>redirect_uri</code>
+            携带错误参数。
+        </li>
+        <li><strong>302 Found</strong> – 重定向到登录页面 <code>/oauth2/login</code>（未登录或 token 失效）。</li>
+    </ul>
+    <blockquote>
+        <p><strong>注意</strong>：此端点不直接返回 JSON，而是通过 HTTP 重定向完成流程。</p>
+    </blockquote>
+    <hr>
+    <h2>2. 令牌端点 (Token Endpoint)</h2>
+    <h3><code>POST /api/oauth/token</code></h3>
+    <p>用于交换授权码为访问令牌，或刷新访问令牌。</p>
+    <h4>请求方式</h4>
+    <p>支持 <code>application/json</code> 或 <code>application/x-www-form-urlencoded</code>。<br>
+        推荐使用 <code>application/x-www-form-urlencoded</code>（标准 OAuth2）。</p>
+    <h4>2.1 授权码模式 (grant_type=authorization_code)</h4>
+    <p><strong>请求参数</strong> (Body)</p>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>参数名</th>
+                    <th>类型</th>
+                    <th>必填</th>
+                    <th>说明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>grant_type</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>固定值 <code>authorization_code</code></td>
+                </tr>
+                <tr>
+                    <td><code>code</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>从授权端点获取的授权码</td>
+                </tr>
+                <tr>
+                    <td><code>redirect_uri</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>必须与获取授权码时使用的相同</td>
+                </tr>
+                <tr>
+                    <td><code>client_id</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>应用 ID</td>
+                </tr>
+                <tr>
+                    <td><code>client_secret</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>应用密钥</td>
+                </tr>
+                <tr>
+                    <td><code>state</code></td>
+                    <td>string</td>
+                    <td>❌</td>
+                    <td>可选，用于验证</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <p><strong>响应 (成功)</strong></p>
+    <pre><code class="language-json">{
   "access_token": "eyJhbGciOiJIUzI1NiIs...",
   "token_type": "Bearer",
   "expires_in": 900,
@@ -202,186 +218,186 @@
   }
 }
 </code></pre>
-<div class="table-wrapper">
-    <table>
-        <thead>
-            <tr>
-                <th>字段</th>
-                <th>说明</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><code>access_token</code></td>
-                <td>JWT 访问令牌，有效期 15 分钟</td>
-            </tr>
-            <tr>
-                <td><code>token_type</code></td>
-                <td>固定 <code>Bearer</code></td>
-            </tr>
-            <tr>
-                <td><code>expires_in</code></td>
-                <td>过期秒数（900）</td>
-            </tr>
-            <tr>
-                <td><code>refresh_token</code></td>
-                <td>用于刷新访问令牌，有效期 15 天</td>
-            </tr>
-            <tr>
-                <td><code>scope</code></td>
-                <td>实际授权的权限范围</td>
-            </tr>
-            <tr>
-                <td><code>user</code></td>
-                <td>用户基本信息（仅包含被授权 scope 的字段）</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-<p><strong>可能返回 (错误)</strong></p>
-<ul>
-    <li><code>400 Bad Request</code> – 缺少参数或 grant_type 不支持。</li>
-    <li><code>401 Unauthorized</code> – <code>client_id</code> 或 <code>client_secret</code> 无效。</li>
-    <li><code>403 Forbidden</code> – 用户账号已被封禁，响应包含 <code>ban_reason</code>。</li>
-    <li><code>400 Bad Request</code> – 授权码无效或已过期。</li>
-    <li><code>400 Bad Request</code> – <code>redirect_uri</code> 不匹配。</li>
-</ul>
-<p><strong>错误响应示例</strong></p>
-<pre><code class="language-json">{
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>字段</th>
+                    <th>说明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>access_token</code></td>
+                    <td>JWT 访问令牌，有效期 15 分钟</td>
+                </tr>
+                <tr>
+                    <td><code>token_type</code></td>
+                    <td>固定 <code>Bearer</code></td>
+                </tr>
+                <tr>
+                    <td><code>expires_in</code></td>
+                    <td>过期秒数（900）</td>
+                </tr>
+                <tr>
+                    <td><code>refresh_token</code></td>
+                    <td>用于刷新访问令牌，有效期 15 天</td>
+                </tr>
+                <tr>
+                    <td><code>scope</code></td>
+                    <td>实际授权的权限范围</td>
+                </tr>
+                <tr>
+                    <td><code>user</code></td>
+                    <td>用户基本信息（仅包含被授权 scope 的字段）</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <p><strong>可能返回 (错误)</strong></p>
+    <ul>
+        <li><code>400 Bad Request</code> – 缺少参数或 grant_type 不支持。</li>
+        <li><code>401 Unauthorized</code> – <code>client_id</code> 或 <code>client_secret</code> 无效。</li>
+        <li><code>403 Forbidden</code> – 用户账号已被封禁，响应包含 <code>ban_reason</code>。</li>
+        <li><code>400 Bad Request</code> – 授权码无效或已过期。</li>
+        <li><code>400 Bad Request</code> – <code>redirect_uri</code> 不匹配。</li>
+    </ul>
+    <p><strong>错误响应示例</strong></p>
+    <pre><code class="language-json">{
   "error": "invalid_grant",
   "error_description": "Invalid or expired authorization code"
 }
 </code></pre>
-<pre><code class="language-json">{
+    <pre><code class="language-json">{
   "error": "access_denied",
   "error_description": "User account is banned. Reason: ...",
   "ban_reason": "违反社区规定"
 }
 </code></pre>
-<hr>
-<h4>2.2 刷新令牌模式 (grant_type=refresh_token)</h4>
-<p><strong>请求参数</strong> (Body)</p>
-<div class="table-wrapper">
-    <table>
-        <thead>
-            <tr>
-                <th>参数名</th>
-                <th>类型</th>
-                <th>必填</th>
-                <th>说明</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><code>grant_type</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>固定值 <code>refresh_token</code></td>
-            </tr>
-            <tr>
-                <td><code>refresh_token</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>之前获得的刷新令牌</td>
-            </tr>
-            <tr>
-                <td><code>client_id</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>应用 ID</td>
-            </tr>
-            <tr>
-                <td><code>client_secret</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>应用密钥</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-<p><strong>响应 (成功)</strong></p>
-<pre><code class="language-json">{
+    <hr>
+    <h4>2.2 刷新令牌模式 (grant_type=refresh_token)</h4>
+    <p><strong>请求参数</strong> (Body)</p>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>参数名</th>
+                    <th>类型</th>
+                    <th>必填</th>
+                    <th>说明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>grant_type</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>固定值 <code>refresh_token</code></td>
+                </tr>
+                <tr>
+                    <td><code>refresh_token</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>之前获得的刷新令牌</td>
+                </tr>
+                <tr>
+                    <td><code>client_id</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>应用 ID</td>
+                </tr>
+                <tr>
+                    <td><code>client_secret</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>应用密钥</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <p><strong>响应 (成功)</strong></p>
+    <pre><code class="language-json">{
   "access_token": "eyJhbGciOiJIUzI1NiIs...",
   "token_type": "Bearer",
   "expires_in": 900,
   "scope": "profile email"
 }
 </code></pre>
-<blockquote>
-    <p>注意：刷新后不返回新的 <code>refresh_token</code>（除非服务端另有设计，当前实现不返回新刷新令牌）。</p>
-</blockquote>
-<p><strong>可能返回</strong></p>
-<ul>
-    <li><code>200 OK</code> – 成功返回新访问令牌。</li>
-    <li><code>400 Bad Request</code> – 缺少参数或 grant_type 错误。</li>
-    <li><code>401 Unauthorized</code> – 客户端凭据无效。</li>
-    <li><code>403 Forbidden</code> – 用户被封禁。</li>
-    <li><code>400 Bad Request</code> – 刷新令牌无效或已过期。</li>
-</ul>
-<hr>
-<h2>3. 资源端点 (Resource Endpoints)</h2>
-<h3><code>GET /api/oauth/user/profile</code></h3>
-<p>获取已授权用户的公开资料（需包含 <code>profile</code> 或 <code>openid</code> scope）。</p>
-<h4>请求头</h4>
-<p><code>Authorization: Bearer &lt;access_token&gt;</code></p>
-<h4>响应 (成功)</h4>
-<pre><code class="language-json">{
+    <blockquote>
+        <p>注意：刷新后不返回新的 <code>refresh_token</code>（除非服务端另有设计，当前实现不返回新刷新令牌）。</p>
+    </blockquote>
+    <p><strong>可能返回</strong></p>
+    <ul>
+        <li><code>200 OK</code> – 成功返回新访问令牌。</li>
+        <li><code>400 Bad Request</code> – 缺少参数或 grant_type 错误。</li>
+        <li><code>401 Unauthorized</code> – 客户端凭据无效。</li>
+        <li><code>403 Forbidden</code> – 用户被封禁。</li>
+        <li><code>400 Bad Request</code> – 刷新令牌无效或已过期。</li>
+    </ul>
+    <hr>
+    <h2>3. 资源端点 (Resource Endpoints)</h2>
+    <h3><code>GET /api/oauth/user/profile</code></h3>
+    <p>获取已授权用户的公开资料（需包含 <code>profile</code> 或 <code>openid</code> scope）。</p>
+    <h4>请求头</h4>
+    <p><code>Authorization: Bearer &lt;access_token&gt;</code></p>
+    <h4>响应 (成功)</h4>
+    <pre><code class="language-json">{
   "id": 1,
   "username": "alice"
 }
 </code></pre>
-<h4>可能返回</h4>
-<ul>
-    <li><code>200 OK</code> – 成功返回用户 ID 和用户名。</li>
-    <li><code>401 Unauthorized</code> – 缺少或无效的 Token。</li>
-    <li><code>403 Forbidden</code> – Token 有效但 scope 不包含 <code>profile</code> 或 <code>openid</code>。</li>
-</ul>
-<hr>
-<h3><code>GET /api/oauth/user/email</code></h3>
-<p>获取已授权用户的邮箱（需包含 <code>email</code> scope）。</p>
-<h4>请求头</h4>
-<p><code>Authorization: Bearer &lt;access_token&gt;</code></p>
-<h4>响应 (成功)</h4>
-<pre><code class="language-json">{
+    <h4>可能返回</h4>
+    <ul>
+        <li><code>200 OK</code> – 成功返回用户 ID 和用户名。</li>
+        <li><code>401 Unauthorized</code> – 缺少或无效的 Token。</li>
+        <li><code>403 Forbidden</code> – Token 有效但 scope 不包含 <code>profile</code> 或 <code>openid</code>。</li>
+    </ul>
+    <hr>
+    <h3><code>GET /api/oauth/user/email</code></h3>
+    <p>获取已授权用户的邮箱（需包含 <code>email</code> scope）。</p>
+    <h4>请求头</h4>
+    <p><code>Authorization: Bearer &lt;access_token&gt;</code></p>
+    <h4>响应 (成功)</h4>
+    <pre><code class="language-json">{
   "email": "alice@example.com"
 }
 </code></pre>
-<h4>可能返回</h4>
-<ul>
-    <li><code>200 OK</code> – 成功返回邮箱。</li>
-    <li><code>401 Unauthorized</code> – 缺少或无效的 Token。</li>
-    <li><code>403 Forbidden</code> – Token 有效但 scope 不包含 <code>email</code>。</li>
-</ul>
-<hr>
-<h2>4. 授权确认 (Consent) 端点</h2>
-<p>这些端点用于非信任客户端的用户授权确认流程。</p>
-<h3><code>GET /api/oauth/consent-data</code></h3>
-<p>获取待确认的授权请求详情（用于渲染确认页面）。</p>
-<h4>请求参数 (Query)</h4>
-<div class="table-wrapper">
-    <table>
-        <thead>
-            <tr>
-                <th>参数名</th>
-                <th>类型</th>
-                <th>必填</th>
-                <th>说明</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><code>request_id</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>从授权端点重定向获得的请求 ID</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-<h4>请求头</h4>
-<p>需携带 Cookie 中的 <code>access_token</code>（用户必须已登录）。</p>
-<h4>响应 (成功)</h4>
-<pre><code class="language-json">{
+    <h4>可能返回</h4>
+    <ul>
+        <li><code>200 OK</code> – 成功返回邮箱。</li>
+        <li><code>401 Unauthorized</code> – 缺少或无效的 Token。</li>
+        <li><code>403 Forbidden</code> – Token 有效但 scope 不包含 <code>email</code>。</li>
+    </ul>
+    <hr>
+    <h2>4. 授权确认 (Consent) 端点</h2>
+    <p>这些端点用于非信任客户端的用户授权确认流程。</p>
+    <h3><code>GET /api/oauth/consent-data</code></h3>
+    <p>获取待确认的授权请求详情（用于渲染确认页面）。</p>
+    <h4>请求参数 (Query)</h4>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>参数名</th>
+                    <th>类型</th>
+                    <th>必填</th>
+                    <th>说明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>request_id</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>从授权端点重定向获得的请求 ID</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <h4>请求头</h4>
+    <p>需携带 Cookie 中的 <code>access_token</code>（用户必须已登录）。</p>
+    <h4>响应 (成功)</h4>
+    <pre><code class="language-json">{
   "client_name": "聊天助手",
   "scope": "profile email",
   "consent_token": "abc123...",
@@ -390,116 +406,116 @@
   "state": "xyz"
 }
 </code></pre>
-<div class="table-wrapper">
-    <table>
-        <thead>
-            <tr>
-                <th>字段</th>
-                <th>说明</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><code>client_name</code></td>
-                <td>应用名称（来自注册信息）</td>
-            </tr>
-            <tr>
-                <td><code>scope</code></td>
-                <td>请求的权限范围</td>
-            </tr>
-            <tr>
-                <td><code>consent_token</code></td>
-                <td>用于提交确认的唯一令牌</td>
-            </tr>
-            <tr>
-                <td><code>client_id</code></td>
-                <td>应用 ID</td>
-            </tr>
-            <tr>
-                <td><code>redirect_uri</code></td>
-                <td>回调地址</td>
-            </tr>
-            <tr>
-                <td><code>state</code></td>
-                <td>原始 state 参数（若有）</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-<h4>可能返回</h4>
-<ul>
-    <li><code>200 OK</code> – 成功返回数据。</li>
-    <li><code>400 Bad Request</code> – 缺少 <code>request_id</code> 或请求无效。</li>
-    <li><code>401 Unauthorized</code> – 未登录。</li>
-    <li><code>403 Forbidden</code> – 当前登录用户与请求发起者不匹配。</li>
-</ul>
-<hr>
-<h3><code>POST /api/oauth/consent/approve</code></h3>
-<p>用户同意授权。</p>
-<h4>请求体 (JSON)</h4>
-<div class="table-wrapper">
-    <table>
-        <thead>
-            <tr>
-                <th>参数名</th>
-                <th>类型</th>
-                <th>必填</th>
-                <th>说明</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><code>request_id</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>请求 ID</td>
-            </tr>
-            <tr>
-                <td><code>consent_token</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>从 <code>consent-data</code> 获取的令牌</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-<h4>请求头</h4>
-<p>需携带 Cookie 中的 <code>access_token</code>（用户必须已登录）。</p>
-<h4>响应 (成功)</h4>
-<pre><code class="language-json">{
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>字段</th>
+                    <th>说明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>client_name</code></td>
+                    <td>应用名称（来自注册信息）</td>
+                </tr>
+                <tr>
+                    <td><code>scope</code></td>
+                    <td>请求的权限范围</td>
+                </tr>
+                <tr>
+                    <td><code>consent_token</code></td>
+                    <td>用于提交确认的唯一令牌</td>
+                </tr>
+                <tr>
+                    <td><code>client_id</code></td>
+                    <td>应用 ID</td>
+                </tr>
+                <tr>
+                    <td><code>redirect_uri</code></td>
+                    <td>回调地址</td>
+                </tr>
+                <tr>
+                    <td><code>state</code></td>
+                    <td>原始 state 参数（若有）</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <h4>可能返回</h4>
+    <ul>
+        <li><code>200 OK</code> – 成功返回数据。</li>
+        <li><code>400 Bad Request</code> – 缺少 <code>request_id</code> 或请求无效。</li>
+        <li><code>401 Unauthorized</code> – 未登录。</li>
+        <li><code>403 Forbidden</code> – 当前登录用户与请求发起者不匹配。</li>
+    </ul>
+    <hr>
+    <h3><code>POST /api/oauth/consent/approve</code></h3>
+    <p>用户同意授权。</p>
+    <h4>请求体 (JSON)</h4>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>参数名</th>
+                    <th>类型</th>
+                    <th>必填</th>
+                    <th>说明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>request_id</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>请求 ID</td>
+                </tr>
+                <tr>
+                    <td><code>consent_token</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>从 <code>consent-data</code> 获取的令牌</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <h4>请求头</h4>
+    <p>需携带 Cookie 中的 <code>access_token</code>（用户必须已登录）。</p>
+    <h4>响应 (成功)</h4>
+    <pre><code class="language-json">{
   "redirect_url": "https://chat.undz.cn/oauth/callback?code=xxx&amp;state=xyz"
 }
 </code></pre>
-<p>服务端将生成授权码并跳转至该 URL。</p>
-<h4>可能返回</h4>
-<ul>
-    <li><code>200 OK</code> – 成功，返回重定向 URL。</li>
-    <li><code>400 Bad Request</code> – 缺少参数或请求无效。</li>
-    <li><code>401 Unauthorized</code> – 未登录。</li>
-    <li><code>403 Forbidden</code> – 用户不匹配。</li>
-</ul>
-<hr>
-<h3><code>POST /api/oauth/consent/deny</code></h3>
-<p>用户拒绝授权。</p>
-<h4>请求体 (JSON) 同上</h4>
-<h4>响应 (成功)</h4>
-<pre><code class="language-json">{
+    <p>服务端将生成授权码并跳转至该 URL。</p>
+    <h4>可能返回</h4>
+    <ul>
+        <li><code>200 OK</code> – 成功，返回重定向 URL。</li>
+        <li><code>400 Bad Request</code> – 缺少参数或请求无效。</li>
+        <li><code>401 Unauthorized</code> – 未登录。</li>
+        <li><code>403 Forbidden</code> – 用户不匹配。</li>
+    </ul>
+    <hr>
+    <h3><code>POST /api/oauth/consent/deny</code></h3>
+    <p>用户拒绝授权。</p>
+    <h4>请求体 (JSON) 同上</h4>
+    <h4>响应 (成功)</h4>
+    <pre><code class="language-json">{
   "redirect_url": "https://chat.undz.cn/oauth/callback?error=access_denied&amp;state=xyz"
 }
 </code></pre>
-<h4>可能返回</h4>
-<ul>
-    <li><code>200 OK</code> – 成功返回重定向 URL（带错误参数）。</li>
-    <li>其他错误同上。</li>
-</ul>
-<hr>
-<h2>5. 令牌验证端点</h2>
-<h3><code>GET /api/oauth/verify</code></h3>
-<p>验证访问令牌的有效性，并返回用户信息。</p>
-<h4>请求头</h4>
-<p><code>Authorization: Bearer &lt;access_token&gt;</code> 或 Cookie 中的 <code>access_token</code>（优先 Bearer）。</p>
-<h4>响应 (成功)</h4>
-<pre><code class="language-json">{
+    <h4>可能返回</h4>
+    <ul>
+        <li><code>200 OK</code> – 成功返回重定向 URL（带错误参数）。</li>
+        <li>其他错误同上。</li>
+    </ul>
+    <hr>
+    <h2>5. 令牌验证端点</h2>
+    <h3><code>GET /api/oauth/verify</code></h3>
+    <p>验证访问令牌的有效性，并返回用户信息。</p>
+    <h4>请求头</h4>
+    <p><code>Authorization: Bearer &lt;access_token&gt;</code> 或 Cookie 中的 <code>access_token</code>（优先 Bearer）。</p>
+    <h4>响应 (成功)</h4>
+    <pre><code class="language-json">{
   "valid": true,
   "user": {
     "id": 1,
@@ -510,151 +526,151 @@
   }
 }
 </code></pre>
-<h4>可能返回</h4>
-<ul>
-    <li><code>200 OK</code> – 令牌有效，返回用户信息（字段取决于 scope）。</li>
-    <li><code>401 Unauthorized</code> – 令牌缺失或无效。</li>
-</ul>
-<hr>
-<h2>6. 令牌撤销端点</h2>
-<h3><code>POST /api/oauth/revoke</code></h3>
-<p>撤销刷新令牌（依据 RFC 7009）。</p>
-<h4>请求方式</h4>
-<p>支持 <code>application/json</code> 或 <code>application/x-www-form-urlencoded</code>。</p>
-<h4>请求参数</h4>
-<div class="table-wrapper">
-    <table>
-        <thead>
-            <tr>
-                <th>参数名</th>
-                <th>类型</th>
-                <th>必填</th>
-                <th>说明</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><code>token</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>要撤销的刷新令牌</td>
-            </tr>
-            <tr>
-                <td><code>token_type_hint</code></td>
-                <td>string</td>
-                <td>❌</td>
-                <td>可指定 <code>refresh_token</code> 或 <code>access_token</code>，默认 <code>refresh_token</code></td>
-            </tr>
-            <tr>
-                <td><code>client_id</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>应用 ID</td>
-            </tr>
-            <tr>
-                <td><code>client_secret</code></td>
-                <td>string</td>
-                <td>✅</td>
-                <td>应用密钥</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-<h4>响应 (成功)</h4>
-<pre><code class="language-json">{}
+    <h4>可能返回</h4>
+    <ul>
+        <li><code>200 OK</code> – 令牌有效，返回用户信息（字段取决于 scope）。</li>
+        <li><code>401 Unauthorized</code> – 令牌缺失或无效。</li>
+    </ul>
+    <hr>
+    <h2>6. 令牌撤销端点</h2>
+    <h3><code>POST /api/oauth/revoke</code></h3>
+    <p>撤销刷新令牌（依据 RFC 7009）。</p>
+    <h4>请求方式</h4>
+    <p>支持 <code>application/json</code> 或 <code>application/x-www-form-urlencoded</code>。</p>
+    <h4>请求参数</h4>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>参数名</th>
+                    <th>类型</th>
+                    <th>必填</th>
+                    <th>说明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>token</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>要撤销的刷新令牌</td>
+                </tr>
+                <tr>
+                    <td><code>token_type_hint</code></td>
+                    <td>string</td>
+                    <td>❌</td>
+                    <td>可指定 <code>refresh_token</code> 或 <code>access_token</code>，默认 <code>refresh_token</code></td>
+                </tr>
+                <tr>
+                    <td><code>client_id</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>应用 ID</td>
+                </tr>
+                <tr>
+                    <td><code>client_secret</code></td>
+                    <td>string</td>
+                    <td>✅</td>
+                    <td>应用密钥</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <h4>响应 (成功)</h4>
+    <pre><code class="language-json">{}
 </code></pre>
-<p>状态码 <code>200 OK</code>。</p>
-<h4>可能返回</h4>
-<ul>
-    <li><code>200 OK</code> – 撤销成功（即使 token 不存在也视为成功）。</li>
-    <li><code>401 Unauthorized</code> – 客户端凭据无效。</li>
-    <li><code>400 Bad Request</code> – 缺少参数。</li>
-</ul>
-<hr>
-<h2>7. 辅助 HTML 页面</h2>
-<p>除了 API，服务还提供以下用户交互页面（均为 GET 请求，返回 HTML）：</p>
-<ul>
-    <li><code>/oauth2/login</code> – 用户登录页面，会显示应用名称和 scope。</li>
-    <li><code>/oauth2/consent</code> – 授权确认页面（仅对非信任客户端）。</li>
-    <li><code>/oauth2/invalid_client</code> – 客户端无效错误页。</li>
-    <li><code>/oauth2/invalid_request</code> – 请求参数错误页。</li>
-    <li><code>/oauth2/invalid_redirect_uri</code> – 回调地址不匹配错误页。</li>
-</ul>
-<p>这些页面在授权流程中自动重定向，一般无需直接调用。</p>
-<hr>
-<h2>8. 错误码汇总</h2>
-<p>OAuth2 标准错误码及本服务扩展：</p>
-<div class="table-wrapper">
-    <table>
-        <thead>
-            <tr>
-                <th>错误码</th>
-                <th>HTTP 状态</th>
-                <th>描述</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><code>invalid_request</code></td>
-                <td>400</td>
-                <td>缺少必要参数或参数格式错误</td>
-            </tr>
-            <tr>
-                <td><code>invalid_client</code></td>
-                <td>401</td>
-                <td>客户端凭据错误</td>
-            </tr>
-            <tr>
-                <td><code>invalid_grant</code></td>
-                <td>400</td>
-                <td>授权码或刷新令牌无效/过期</td>
-            </tr>
-            <tr>
-                <td><code>unauthorized_client</code></td>
-                <td>400</td>
-                <td>客户端无权使用该授权模式</td>
-            </tr>
-            <tr>
-                <td><code>unsupported_grant_type</code></td>
-                <td>400</td>
-                <td>不支持的 grant_type</td>
-            </tr>
-            <tr>
-                <td><code>access_denied</code></td>
-                <td>403</td>
-                <td>用户拒绝授权或账号被封禁</td>
-            </tr>
-            <tr>
-                <td><code>insufficient_scope</code></td>
-                <td>403</td>
-                <td>令牌 scope 不足</td>
-            </tr>
-            <tr>
-                <td><code>server_error</code></td>
-                <td>500</td>
-                <td>服务器内部错误</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-<blockquote>
-    <p>当返回 <code>access_denied</code> 且原因为封禁时，响应体将额外包含 <code>ban_reason</code> 字段。</p>
-</blockquote>
-<hr>
-<h2>9. 完整授权流程示例</h2>
-<h3>步骤 1：发起授权</h3>
-<p>浏览器访问：</p>
-<pre><code>https://online.undz.cn/api/oauth/authorize?client_id=app_chat&amp;redirect_uri=https://chat.undz.cn/oauth/callback&amp;response_type=code&amp;state=abc123
+    <p>状态码 <code>200 OK</code>。</p>
+    <h4>可能返回</h4>
+    <ul>
+        <li><code>200 OK</code> – 撤销成功（即使 token 不存在也视为成功）。</li>
+        <li><code>401 Unauthorized</code> – 客户端凭据无效。</li>
+        <li><code>400 Bad Request</code> – 缺少参数。</li>
+    </ul>
+    <hr>
+    <h2>7. 辅助 HTML 页面</h2>
+    <p>除了 API，服务还提供以下用户交互页面（均为 GET 请求，返回 HTML）：</p>
+    <ul>
+        <li><code>/oauth2/login</code> – 用户登录页面，会显示应用名称和 scope。</li>
+        <li><code>/oauth2/consent</code> – 授权确认页面（仅对非信任客户端）。</li>
+        <li><code>/oauth2/invalid_client</code> – 客户端无效错误页。</li>
+        <li><code>/oauth2/invalid_request</code> – 请求参数错误页。</li>
+        <li><code>/oauth2/invalid_redirect_uri</code> – 回调地址不匹配错误页。</li>
+    </ul>
+    <p>这些页面在授权流程中自动重定向，一般无需直接调用。</p>
+    <hr>
+    <h2>8. 错误码汇总</h2>
+    <p>OAuth2 标准错误码及本服务扩展：</p>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>错误码</th>
+                    <th>HTTP 状态</th>
+                    <th>描述</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>invalid_request</code></td>
+                    <td>400</td>
+                    <td>缺少必要参数或参数格式错误</td>
+                </tr>
+                <tr>
+                    <td><code>invalid_client</code></td>
+                    <td>401</td>
+                    <td>客户端凭据错误</td>
+                </tr>
+                <tr>
+                    <td><code>invalid_grant</code></td>
+                    <td>400</td>
+                    <td>授权码或刷新令牌无效/过期</td>
+                </tr>
+                <tr>
+                    <td><code>unauthorized_client</code></td>
+                    <td>400</td>
+                    <td>客户端无权使用该授权模式</td>
+                </tr>
+                <tr>
+                    <td><code>unsupported_grant_type</code></td>
+                    <td>400</td>
+                    <td>不支持的 grant_type</td>
+                </tr>
+                <tr>
+                    <td><code>access_denied</code></td>
+                    <td>403</td>
+                    <td>用户拒绝授权或账号被封禁</td>
+                </tr>
+                <tr>
+                    <td><code>insufficient_scope</code></td>
+                    <td>403</td>
+                    <td>令牌 scope 不足</td>
+                </tr>
+                <tr>
+                    <td><code>server_error</code></td>
+                    <td>500</td>
+                    <td>服务器内部错误</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <blockquote>
+        <p>当返回 <code>access_denied</code> 且原因为封禁时，响应体将额外包含 <code>ban_reason</code> 字段。</p>
+    </blockquote>
+    <hr>
+    <h2>9. 完整授权流程示例</h2>
+    <h3>步骤 1：发起授权</h3>
+    <p>浏览器访问：</p>
+    <pre><code>https://online.undz.cn/api/oauth/authorize?client_id=app_chat&amp;redirect_uri=https://chat.undz.cn/oauth/callback&amp;response_type=code&amp;state=abc123
 </code></pre>
-<h3>步骤 2：用户登录（若未登录）</h3>
-<p>自动跳转至 <code>/oauth2/login</code>，登录后返回步骤 1。</p>
-<h3>步骤 3：用户确认（若客户端非信任）</h3>
-<p>跳转至 <code>/oauth2/consent</code>，用户点击“同意”后调用 <code>/api/oauth/consent/approve</code>。</p>
-<h3>步骤 4：获取授权码</h3>
-<p>最终重定向到 <code>redirect_uri?code=xxxx&amp;state=abc123</code>。</p>
-<h3>步骤 5：交换令牌</h3>
-<p>客户端后端发起：</p>
-<pre><code class="language-http">POST /api/oauth/token
+    <h3>步骤 2：用户登录（若未登录）</h3>
+    <p>自动跳转至 <code>/oauth2/login</code>，登录后返回步骤 1。</p>
+    <h3>步骤 3：用户确认（若客户端非信任）</h3>
+    <p>跳转至 <code>/oauth2/consent</code>，用户点击“同意”后调用 <code>/api/oauth/consent/approve</code>。</p>
+    <h3>步骤 4：获取授权码</h3>
+    <p>最终重定向到 <code>redirect_uri?code=xxxx&amp;state=abc123</code>。</p>
+    <h3>步骤 5：交换令牌</h3>
+    <p>客户端后端发起：</p>
+    <pre><code class="language-http">POST /api/oauth/token
 Content-Type: application/x-www-form-urlencoded
 
 <p>grant_type=authorization_code
@@ -663,15 +679,15 @@ Content-Type: application/x-www-form-urlencoded
 &amp;client_id=app_chat
 &amp;client_secret=...
 </code></pre>
-</p>
-<p>获得 <code>access_token</code> 和 <code>refresh_token</code>。</p>
-<h3>步骤 6：使用访问令牌请求资源</h3>
-<pre><code class="language-http">GET /api/oauth/user/profile
+    </p>
+    <p>获得 <code>access_token</code> 和 <code>refresh_token</code>。</p>
+    <h3>步骤 6：使用访问令牌请求资源</h3>
+    <pre><code class="language-http">GET /api/oauth/user/profile
 Authorization: Bearer eyJhbGciOi...
 </code></pre>
-<h3>步骤 7：刷新令牌</h3>
-<p>当 access_token 过期：</p>
-<pre><code class="language-http">POST /api/oauth/token
+    <h3>步骤 7：刷新令牌</h3>
+    <p>当 access_token 过期：</p>
+    <pre><code class="language-http">POST /api/oauth/token
 Content-Type: application/x-www-form-urlencoded
 
 <p>grant_type=refresh_token
@@ -679,17 +695,18 @@ Content-Type: application/x-www-form-urlencoded
 &amp;client_id=app_chat
 &amp;client_secret=...
 </code></pre>
-</p>
-<p>获得新的 <code>access_token</code>。</p>
-<hr>
-<h2>10. 安全注意事项</h2>
-<ul>
-    <li><strong>始终使用 HTTPS</strong>（生产环境强制）。</li>
-    <li><strong>client_secret</strong> 必须妥善保管，绝不能在前端暴露。</li>
-    <li><strong>state</strong> 参数用于防止 CSRF，客户端必须验证其与发起请求时一致。</li>
-    <li>访问令牌有效期短（15 分钟），刷新令牌应安全存储。</li>
-    <li>用户可随时通过 <code>/api/oauth/revoke</code> 撤销令牌。</li>
-    <li>服务端会定期清理过期的授权码和 consent 请求。</li>
-</ul>
-<hr>
-<p>本 OAuth2 服务完整支持标准流程，并提供了丰富的用户管理功能接口，可安全集成到任意 Web 或移动应用中。</p>
+    </p>
+    <p>获得新的 <code>access_token</code>。</p>
+    <hr>
+    <h2>10. 安全注意事项</h2>
+    <ul>
+        <li><strong>始终使用 HTTPS</strong>（生产环境强制）。</li>
+        <li><strong>client_secret</strong> 必须妥善保管，绝不能在前端暴露。</li>
+        <li><strong>state</strong> 参数用于防止 CSRF，客户端必须验证其与发起请求时一致。</li>
+        <li>访问令牌有效期短（15 分钟），刷新令牌应安全存储。</li>
+        <li>用户可随时通过 <code>/api/oauth/revoke</code> 撤销令牌。</li>
+        <li>服务端会定期清理过期的授权码和 consent 请求。</li>
+    </ul>
+    <hr>
+    <p>本 OAuth2 服务完整支持标准流程，并提供了丰富的用户管理功能接口，可安全集成到任意 Web 或移动应用中。</p>
+</body>

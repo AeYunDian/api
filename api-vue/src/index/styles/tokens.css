@@ -58,9 +58,9 @@
 
   /* ★ XP 像素点阵字体：桌面保留宋体点阵，手机降级为思源宋体 */
   --gov-font-xp:
-    SimSun, NSimSun, "新宋体", "宋体", "Noto Serif SC", -apple-system,
-    BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC",
-    sans-serif;
+    "govwf_fz_7081407_361750289", SimSun, NSimSun, "新宋体", "宋体",
+    "Noto Serif SC", -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
 
   /* ==================== 五、字号阶梯 ==================== */
   --gov-fs-xs: 12px; /* 辅助信息/时间/状态 */

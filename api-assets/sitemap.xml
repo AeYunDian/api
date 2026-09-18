@@ -55,13 +55,19 @@
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://undz.cn/articles/site-design-compliance-2017-47</loc>
+    <loc>https://undz.cn/articles/markdown-vue-usage-2026-09-18</loc>
+    <lastmod>2026-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://undz.cn/articles/site-design-compliance-2026-09-16</loc>
     <lastmod>2026-09-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://undz.cn/articles/welcome</loc>
+    <loc>https://undz.cn/articles/welcome-2026-09-13</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

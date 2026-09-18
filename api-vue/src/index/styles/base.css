@@ -1,3 +1,5 @@
+@import "highlight.js/styles/github.css";
+
 *,
 *::before,
 *::after {
@@ -156,28 +158,4 @@ ol {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
-}
-html.big-font {
-  --gov-fs-xs: 14px;
-  --gov-fs-sm: 15px;
-  --gov-fs-base: 16px;
-  --gov-fs-md: 17px;
-  --gov-fs-lg: 18px;
-  --gov-fs-xl: 20px;
-  --gov-fs-2xl: 27px;
-  --gov-fs-3xl: 34px;
-  --gov-line-height: 1.85;
-  font-size: var(--gov-fs-base);
-}
-
-html.big-font .topbar,
-html.big-font .topbar__clock,
-html.big-font .marquee,
-html.big-font .marquee__item {
-  font-size: 14px;
-}
-
-html.big-font .gov-table td,
-html.big-font .gov-table th {
-  padding: 10px 12px;
 }

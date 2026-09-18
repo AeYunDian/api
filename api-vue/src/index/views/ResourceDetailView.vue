@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { getResource, renderResourceMarkdown, bindResourceTabs, listedResources } from '@/index/resources'
 import GovPanel from '@/index/components/common/GovPanel.vue'
 import Breadcrumb from '@/index/components/common/Breadcrumb.vue'
-import MyIcon from '@/shared/MyIcon.vue'
 import '@/index/styles/markdown.css'
 
 const route = useRoute()
@@ -121,7 +120,7 @@ const related = computed(() => {
                                 <th>{{ row.label }}</th>
                                 <td>
                                     <a v-if="row.link" :href="row.link" target="_blank" rel="noopener">{{ row.value
-                                        }}</a>
+                                    }}</a>
                                     <span v-else :class="{ 'res-num': row.mono }">{{ row.value }}</span>
                                 </td>
                             </tr>
@@ -138,7 +137,7 @@ const related = computed(() => {
                                 <span class="dl-item__name">{{ d.name }}</span>
                                 <span v-if="d.platform" class="dl-item__badge">{{ d.platform }}</span>
                                 <span v-if="d.version" class="dl-item__badge dl-item__badge--light">{{ d.version
-                                    }}</span>
+                                }}</span>
                                 <span v-if="d.size" class="dl-item__size">{{ d.size }}</span>
                                 <span class="dl-item__arrow">›</span>
                             </a>

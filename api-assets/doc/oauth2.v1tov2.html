@@ -1,69 +1,80 @@
-<style>
-    body {
-        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-        line-height: 1.6;
-        padding: 20px;
-        max-width: 800px;
-        margin: auto;
-    }
+<!DOCTYPE html>
+<html lang="zh-CN">
 
-    h1,
-    h2,
-    h3,
-    h4 {
-        color: #333;
-    }
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 800px;
+            margin: auto;
+        }
 
-    code {
-        background-color: #f8f8f8;
-        padding: 2px 4px;
-        border-radius: 4px;
-        font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-    }
+        h1,
+        h2,
+        h3,
+        h4 {
+            color: #333;
+        }
 
-    pre {
-        background-color: #f8f8f8;
-        padding: 10px;
-        border-radius: 4px;
-        overflow-x: auto;
-    }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+        }
 
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 20px;
-    }
+        pre {
+            background-color: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
 
-    th,
-    td {
-        border: 1px solid #ddd;
-        padding: 8px;
-    }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
 
-    th {
-        background-color: #f2f2f2;
-    }
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
 
-    .table-wrapper {
-        overflow-x: auto;
-    }
-</style>
-<h1>OAuth 服务文档更新摘要</h1>
-<blockquote>
-    <p>基于 <code>online.undz.cn</code> GitHub 提交版本：6bfb3697a24be14c7bc9e0c3830d5a40c8af02fd，对比旧版 OAuth 文档，列出所有
-        <strong>新增、变更和弃用</strong> 内容。<br>
-        <strong>新增重要变更</strong>：所有返回用户标识的字段统一从 <code>id</code> 改为 <code>sub</code>（遵循 OpenID Connect 标准）。
-    </p>
-</blockquote>
-<hr>
-<h2>1. 新增端点</h2>
-<h3><code>GET /api/oauth/userinfo</code>（标准 OIDC 用户信息端点）</h3>
-<ul>
-    <li><strong>用途</strong>：获取已授权用户的完整信息，根据 <code>scope</code> 返回不同字段。</li>
-    <li><strong>替代</strong>：旧的 <code>/user/profile</code> 和 <code>/user/email</code> 端点（现标记为弃用）。</li>
-    <li><strong>请求</strong>：<code>Authorization: Bearer &lt;access_token&gt;</code></li>
-    <li><strong>响应示例</strong>：
-        <pre><code class="language-json">{
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+
+    <h1>OAuth 服务文档更新摘要</h1>
+    <blockquote>
+        <p>基于 <code>online.undz.cn</code> GitHub 提交版本：6bfb3697a24be14c7bc9e0c3830d5a40c8af02fd，对比旧版 OAuth 文档，列出所有
+            <strong>新增、变更和弃用</strong> 内容。<br>
+            <strong>新增重要变更</strong>：所有返回用户标识的字段统一从 <code>id</code> 改为 <code>sub</code>（遵循 OpenID Connect 标准）。
+        </p>
+    </blockquote>
+    <hr>
+    <h2>1. 新增端点</h2>
+    <h3><code>GET /api/oauth/userinfo</code>（标准 OIDC 用户信息端点）</h3>
+    <ul>
+        <li><strong>用途</strong>：获取已授权用户的完整信息，根据 <code>scope</code> 返回不同字段。</li>
+        <li><strong>替代</strong>：旧的 <code>/user/profile</code> 和 <code>/user/email</code> 端点（现标记为弃用）。</li>
+        <li><strong>请求</strong>：<code>Authorization: Bearer &lt;access_token&gt;</code></li>
+        <li><strong>响应示例</strong>：
+            <pre><code class="language-json">{
   "sub": 12345,
   "username": "alice",
   "gender": "female",
@@ -72,98 +83,105 @@
   "email": "alice@example.com"
 }
 </code></pre>
-    </li>
-    <li><strong>字段说明</strong>：
-        <ul>
-            <li>必须包含 <code>openid</code> scope，否则返回 <code>insufficient_scope</code>。</li>
-            <li>仅当 <code>profile</code> scope 时返回
-                <code>username</code>、<code>gender</code>、<code>avatar</code>、<code>description</code>。</li>
-            <li>仅当 <code>email</code> scope 时返回 <code>email</code>。</li>
-        </ul>
-    </li>
-    <li><strong>错误</strong>：<code>401</code>（无效令牌）、<code>403</code>（scope 不足）。</li>
-</ul>
-<hr>
-<h2>2. 弃用端点（仍可用，但将在 <strong>2026-10-01</strong> 移除）</h2>
-<ul>
-    <li><code>GET /api/oauth/user/profile</code> → 迁移至 <code>/userinfo</code></li>
-    <li><code>GET /api/oauth/user/email</code> → 迁移至 <code>/userinfo</code></li>
-</ul>
-<blockquote>
-    <p>这两个端点目前仍正常工作，但响应中会包含弃用警告消息，建议尽快切换。</p>
-</blockquote>
-<hr>
-<h2>3. 响应字段变更（重要）</h2>
-<h3>3.1 用户标识字段统一改为 <code>sub</code></h3>
-<ul>
-    <li><strong>所有涉及用户标识的返回字段</strong>，从旧版的 <code>id</code> <strong>统一变更为 <code>sub</code></strong>。</li>
-    <li>影响范围：
-        <ul>
-            <li><strong>令牌交换</strong>（<code>/api/oauth/token</code>）成功响应中的 <code>user</code> 对象：<code>id</code> →
-                <code>sub</code></li>
-            <li><strong>用户信息端点</strong>（<code>/api/oauth/userinfo</code>）中的主键：<code>sub</code>（此前可能无此字段）</li>
-            <li><strong>验证端点</strong>（<code>/api/oauth/verify</code>）中的用户信息：<code>id</code> → <code>sub</code></li>
-            <li><strong>已弃用的 <code>/user/profile</code></strong> 端点：<code>id</code> → <code>sub</code>（目前仍返回
-                <code>id</code> 并带警告，但最终会统一）</li>
-        </ul>
-    </li>
-    <li>此变更使服务更符合 OpenID Connect 规范，请客户端适配。</li>
-</ul>
-<h3>3.2 令牌交换响应中的 <code>user</code> 字段现在基于 scope 返回</h3>
-<ul>
-    <li><strong>新增</strong>：<code>user</code> 对象现在<strong>完全基于请求的 scope</strong> 返回：
-        <ul>
-            <li>仅当 <code>profile</code> 或 <code>openid</code> 时包含 <code>username</code>。</li>
-            <li>仅当 <code>email</code> 时包含 <code>email</code>。</li>
-        </ul>
-    </li>
-    <li><strong>未变更</strong>：<code>access_token</code>、<code>refresh_token</code>、<code>expires_in</code>、<code>scope</code>
-        依旧返回。</li>
-</ul>
-<h3>3.3 错误响应增强</h3>
-<ul>
-    <li>当用户被封禁时（<code>access_denied</code>），新增 <strong><code>ban_reason</code></strong> 字段，提供具体封禁原因。</li>
-    <li>示例：
-        <pre><code class="language-json">{
+        </li>
+        <li><strong>字段说明</strong>：
+            <ul>
+                <li>必须包含 <code>openid</code> scope，否则返回 <code>insufficient_scope</code>。</li>
+                <li>仅当 <code>profile</code> scope 时返回
+                    <code>username</code>、<code>gender</code>、<code>avatar</code>、<code>description</code>。
+                </li>
+                <li>仅当 <code>email</code> scope 时返回 <code>email</code>。</li>
+            </ul>
+        </li>
+        <li><strong>错误</strong>：<code>401</code>（无效令牌）、<code>403</code>（scope 不足）。</li>
+    </ul>
+    <hr>
+    <h2>2. 弃用端点（仍可用，但将在 <strong>2026-10-01</strong> 移除）</h2>
+    <ul>
+        <li><code>GET /api/oauth/user/profile</code> → 迁移至 <code>/userinfo</code></li>
+        <li><code>GET /api/oauth/user/email</code> → 迁移至 <code>/userinfo</code></li>
+    </ul>
+    <blockquote>
+        <p>这两个端点目前仍正常工作，但响应中会包含弃用警告消息，建议尽快切换。</p>
+    </blockquote>
+    <hr>
+    <h2>3. 响应字段变更（重要）</h2>
+    <h3>3.1 用户标识字段统一改为 <code>sub</code></h3>
+    <ul>
+        <li><strong>所有涉及用户标识的返回字段</strong>，从旧版的 <code>id</code> <strong>统一变更为 <code>sub</code></strong>。</li>
+        <li>影响范围：
+            <ul>
+                <li><strong>令牌交换</strong>（<code>/api/oauth/token</code>）成功响应中的 <code>user</code> 对象：<code>id</code> →
+                    <code>sub</code>
+                </li>
+                <li><strong>用户信息端点</strong>（<code>/api/oauth/userinfo</code>）中的主键：<code>sub</code>（此前可能无此字段）</li>
+                <li><strong>验证端点</strong>（<code>/api/oauth/verify</code>）中的用户信息：<code>id</code> → <code>sub</code></li>
+                <li><strong>已弃用的 <code>/user/profile</code></strong> 端点：<code>id</code> → <code>sub</code>（目前仍返回
+                    <code>id</code> 并带警告，但最终会统一）
+                </li>
+            </ul>
+        </li>
+        <li>此变更使服务更符合 OpenID Connect 规范，请客户端适配。</li>
+    </ul>
+    <h3>3.2 令牌交换响应中的 <code>user</code> 字段现在基于 scope 返回</h3>
+    <ul>
+        <li><strong>新增</strong>：<code>user</code> 对象现在<strong>完全基于请求的 scope</strong> 返回：
+            <ul>
+                <li>仅当 <code>profile</code> 或 <code>openid</code> 时包含 <code>username</code>。</li>
+                <li>仅当 <code>email</code> 时包含 <code>email</code>。</li>
+            </ul>
+        </li>
+        <li><strong>未变更</strong>：<code>access_token</code>、<code>refresh_token</code>、<code>expires_in</code>、<code>scope</code>
+            依旧返回。</li>
+    </ul>
+    <h3>3.3 错误响应增强</h3>
+    <ul>
+        <li>当用户被封禁时（<code>access_denied</code>），新增 <strong><code>ban_reason</code></strong> 字段，提供具体封禁原因。</li>
+        <li>示例：
+            <pre><code class="language-json">{
   "error": "access_denied",
   "error_description": "User account is banned. Reason: 违反社区规则。",
   "ban_reason": "违反社区规则"
 }
 </code></pre>
-    </li>
-</ul>
-<hr>
-<h2>4. 授权端点（<code>/api/oauth/authorize</code>）行为微调</h2>
-<ul>
-    <li><strong>新增重定向页</strong>：当账号被封禁时，会重定向至 <code>/oauth2/account_banned</code>（而非旧版的错误回调），页面会显示封禁原因。</li>
-    <li><strong>未登录且被封禁</strong>：会清除现有 Cookie 并重定向至登录页，确保用户无法继续使用。</li>
-</ul>
-<blockquote>
-    <p>这些属于 UI 流程变更，不影响 API 调用方（调用方仍收到重定向）。</p>
-</blockquote>
-<hr>
-<h2>5. 其他变化</h2>
-<ul>
-    <li><strong>授权确认（Consent）流程</strong>：未变动，依旧使用
-        <code>/consent-data</code>、<code>/consent/approve</code>、<code>/consent/deny</code>。</li>
-    <li><strong>撤销端点（<code>/revoke</code>）</strong>：行为不变，但内部支持 <code>token_type_hint</code> 更完善（若提示
-        <code>access_token</code> 直接返回成功）。</li>
-    <li><strong>验证端点（<code>/verify</code>）</strong>：现返回 <code>user</code> 对象包含 <code>scope</code> 和
-        <code>client_id</code>，便于客户端调试。</li>
-</ul>
-<hr>
-<h2>6. 安全与兼容性</h2>
-<ul>
-    <li><strong>scope 必须包含 <code>openid</code></strong>：所有资源请求（包括 <code>/userinfo</code>）现在强制要求 <code>openid</code>
-        scope，否则返回 <code>insufficient_scope</code>。</li>
-    <li><strong>旧客户端</strong>：若之前未请求 <code>openid</code>，需调整授权请求的 <code>scope</code> 参数。</li>
-    <li><strong><code>id</code>→<code>sub</code> 迁移</strong>：请客户端全面检查并更新对用户标识字段的引用。</li>
-</ul>
-<hr>
-<h2>7. 文档建议</h2>
-<ul>
-    <li>新接入应用<strong>优先使用 <code>/userinfo</code></strong> 获取用户信息，避免使用已弃用端点。</li>
-    <li>所有应用应检查 <code>ban_reason</code> 字段，并在用户被封禁时给予适当提示。</li>
-    <li><strong>立即更新</strong>所有解析用户ID的代码，从 <code>id</code> 改为 <code>sub</code>，以免兼容性问题。</li>
-</ul>
-<hr>
+        </li>
+    </ul>
+    <hr>
+    <h2>4. 授权端点（<code>/api/oauth/authorize</code>）行为微调</h2>
+    <ul>
+        <li><strong>新增重定向页</strong>：当账号被封禁时，会重定向至 <code>/oauth2/account_banned</code>（而非旧版的错误回调），页面会显示封禁原因。</li>
+        <li><strong>未登录且被封禁</strong>：会清除现有 Cookie 并重定向至登录页，确保用户无法继续使用。</li>
+    </ul>
+    <blockquote>
+        <p>这些属于 UI 流程变更，不影响 API 调用方（调用方仍收到重定向）。</p>
+    </blockquote>
+    <hr>
+    <h2>5. 其他变化</h2>
+    <ul>
+        <li><strong>授权确认（Consent）流程</strong>：未变动，依旧使用
+            <code>/consent-data</code>、<code>/consent/approve</code>、<code>/consent/deny</code>。
+        </li>
+        <li><strong>撤销端点（<code>/revoke</code>）</strong>：行为不变，但内部支持 <code>token_type_hint</code> 更完善（若提示
+            <code>access_token</code> 直接返回成功）。
+        </li>
+        <li><strong>验证端点（<code>/verify</code>）</strong>：现返回 <code>user</code> 对象包含 <code>scope</code> 和
+            <code>client_id</code>，便于客户端调试。
+        </li>
+    </ul>
+    <hr>
+    <h2>6. 安全与兼容性</h2>
+    <ul>
+        <li><strong>scope 必须包含 <code>openid</code></strong>：所有资源请求（包括 <code>/userinfo</code>）现在强制要求 <code>openid</code>
+            scope，否则返回 <code>insufficient_scope</code>。</li>
+        <li><strong>旧客户端</strong>：若之前未请求 <code>openid</code>，需调整授权请求的 <code>scope</code> 参数。</li>
+        <li><strong><code>id</code>→<code>sub</code> 迁移</strong>：请客户端全面检查并更新对用户标识字段的引用。</li>
+    </ul>
+    <hr>
+    <h2>7. 文档建议</h2>
+    <ul>
+        <li>新接入应用<strong>优先使用 <code>/userinfo</code></strong> 获取用户信息，避免使用已弃用端点。</li>
+        <li>所有应用应检查 <code>ban_reason</code> 字段，并在用户被封禁时给予适当提示。</li>
+        <li><strong>立即更新</strong>所有解析用户ID的代码，从 <code>id</code> 改为 <code>sub</code>，以免兼容性问题。</li>
+    </ul>
+    <hr>
+</body>

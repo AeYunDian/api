@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { listedPosts } from '@/index/content'
+import { searchPosts } from '@/index/content'
 import { listedResources } from '@/index/resources'
 import GovPanel from '@/index/components/common/GovPanel.vue'
 import Breadcrumb from '@/index/components/common/Breadcrumb.vue'
@@ -115,7 +115,7 @@ const matchResource = (r, q) =>
     r.platforms.some(p => p.toLowerCase().includes(q))
 
 const postResults = computed(() =>
-    query.value ? listedPosts.filter(p => matchPost(p, query.value)) : []
+    query.value ? searchPosts(query.value) : []
 )
 const resourceResults = computed(() =>
     query.value ? listedResources.filter(r => matchResource(r, query.value)) : []

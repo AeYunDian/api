@@ -10,6 +10,7 @@ import './styles/base.css'
 </script>
 
 <template>
+
     <div class="app-shell">
         <TopBar />
         <SiteHeader />

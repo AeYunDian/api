@@ -5,7 +5,6 @@ import { getClients, registerClient, deleteClient, getUsers, transferOAuthClient
 import { formatTime } from '@/shared/utils/format';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
-import MyIcon from '@/shared/MyIcon.vue';
 
 const user = inject('user');
 const loading = ref(false);

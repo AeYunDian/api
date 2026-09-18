@@ -1,15 +1,23 @@
 <script setup>
-import { computed, onMounted, watch, nextTick, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, watch, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getPost, renderMarkdown, bindMarkdownTabs, listedPosts } from '@/index/content'
+import { getPost, listedPosts } from '@/index/content'
 import GovPanel from '@/index/components/common/GovPanel.vue'
 import Breadcrumb from '@/index/components/common/Breadcrumb.vue'
+
 import '@/index/styles/markdown.css'
 
 const route = useRoute()
 const router = useRouter()
+
 const post = computed(() => getPost(route.params.slug))
-const html = computed(() => post.value ? renderMarkdown(post.value.content) : '')
+
+/* 异步组件：由 unplugin-vue-markdown 提供 */
+const MarkdownComp = computed(() =>
+    post.value?.component ? defineAsyncComponent(post.value.component) : null
+)
+
+/* ---------- robots meta：listed:false 时禁止收录 ---------- */
 let metaEl = null
 function syncRobots() {
     const unlisted = post.value && !post.value.listed
@@ -25,21 +33,18 @@ function syncRobots() {
 }
 onMounted(syncRobots)
 watch(() => route.params.slug, syncRobots)
-onUnmounted(() => { metaEl?.remove(); metaEl = null })
-/* ★ 新增：渲染后绑定 Tabs 交互 */
-function bindTabs() {
-    nextTick(() => bindMarkdownTabs())
-}
-onMounted(bindTabs)
-watch(html, bindTabs)
+onUnmounted(() => {
+    metaEl?.remove()
+    metaEl = null
+})
 
+/* ---------- 相关阅读 ---------- */
 const related = computed(() => {
     if (!post.value) return []
     const cur = post.value
     const others = listedPosts.filter(p => p.slug !== cur.slug)
     if (!others.length) return []
 
-    // 1) 打分：同分类 +10，每共同标签 +3
     const scored = others.map(p => {
         let score = 0
         if (p.category === cur.category) score += 10
@@ -48,13 +53,11 @@ const related = computed(() => {
         return { post: p, score }
     })
 
-    // 2) 按分数降序，同分按日期降序
     scored.sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score
         return b.post.date.localeCompare(a.post.date)
     })
 
-    // 3) 先取有分数（真正相关）的，不足 3 篇再用最新的补齐
     const picked = scored.filter(x => x.score > 0).slice(0, 3).map(x => x.post)
     if (picked.length < 3) {
         const taken = new Set(picked.map(p => p.slug))
@@ -67,8 +70,9 @@ const related = computed(() => {
 
     return picked
 })
+
 function printPage() {
-    window.print();
+    window.print()
 }
 </script>
 
@@ -97,7 +101,9 @@ function printPage() {
                     </div>
                 </header>
 
-                <article class="md-body art-body" v-html="html" />
+                <article class="md-body art-body">
+                    <component :is="MarkdownComp" v-if="MarkdownComp" />
+                </article>
 
                 <footer class="art-foot">
                     <button class="art-foot__btn" @click="router.back()">
@@ -123,7 +129,6 @@ function printPage() {
         <GovPanel v-else title="提示">
             <p>文章不存在或已被删除。<router-link to="/articles">返回文章列表</router-link></p>
         </GovPanel>
-
     </div>
 </template>
 

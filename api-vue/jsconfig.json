@@ -1,8 +1,20 @@
 {
-  "compilerOptions": {
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "exclude": ["node_modules", "dist"]
+    "compilerOptions": {
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ]
+        }
+    },
+    "include": [
+        "src/**/*.js",
+        "src/**/*.ts",
+        "src/**/*.vue",
+        "src/**/*.md"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "../api-assets"
+    ]
 }

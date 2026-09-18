@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { showAlert } from '@/index/components/common/dialog'
 
 const now = ref('')
 const visits = ref('000000')
@@ -15,7 +16,7 @@ function tick() {
 function setHomePage() {
     // 现代浏览器不允许 JS 修改主页，只能提示用户手动设置
     const url = window.location.origin + '/'
-    alert(`设为首页失败，请在浏览器设置中手动添加：\n\n${url}\n\n（Chrome/Edge：设置 → 外观 → 显示"主页"按钮）`)
+    showAlert(`设为首页失败，请在浏览器设置中手动添加：\n\n${url}\n\n（Chrome/Edge：设置 → 外观 → 显示"主页"按钮）`)
 }
 
 /* —— 加入收藏 —— */
@@ -34,18 +35,10 @@ function addFavorite() {
     // 3) 现代浏览器
     const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent)
     const hotkey = isMac ? 'Command + D' : 'Ctrl + D'
-    alert(`加入收藏失败，请使用 ${hotkey} 手动添加。`)
+    showAlert(`加入收藏失败，请使用 ${hotkey} 手动添加。`)
 }
 
-function toggleAria() {
-    const root = document.documentElement
-    const on = root.classList.toggle('big-font')
-    localStorage.setItem('gov_big_font', on ? '1' : '0')
-}
 onMounted(() => {
-    if (localStorage.getItem('gov_big_font') === '1') {
-        document.documentElement.classList.add('big-font')
-    }
     tick()
     timer = setInterval(tick, 1000)
     const stored = localStorage.getItem('gov_visits')
@@ -71,7 +64,12 @@ onUnmounted(() => clearInterval(timer))
                 <span class="topbar__sep">|</span>
                 <a href="#" @click.prevent="addFavorite">加入收藏</a>
                 <span class="topbar__sep">|</span>
-                <a href="#" @click.prevent="toggleAria">无障碍浏览</a>
+                <a href="#" id="wzaElder">适老化长辈模式</a>
+                <span class="topbar__sep">|</span>
+
+                <!-- <a href="#" @click.prevent="toggleAria">无障碍浏览</a> -->
+                <a href="#" id="wzayd">无障碍浏览</a>
+
             </div>
             <div class="topbar__slogan">欢迎访问韵典综合平台！</div>
             <div class="topbar__right">

@@ -1,7 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { detectCountry, isChina } from '@/index/shared/ipDetect.js'
-import MyIcon from '@/shared/MyIcon.vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()

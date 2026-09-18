@@ -9,7 +9,6 @@ import {
     lockScroll,
     unlockScroll,
 } from './dialog-manager'
-import MyIcon from '@/shared/MyIcon.vue'
 
 defineOptions({ name: 'GovDialog' })
 
