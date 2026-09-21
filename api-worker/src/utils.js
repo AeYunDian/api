@@ -1,9 +1,8 @@
-export const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36";
+export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36';
 
 export function assertString(str) {
-  if (typeof str !== "string") {
-    throw new TypeError("Expected a string");
+  if (typeof str !== 'string') {
+    throw new TypeError('Expected a string');
   }
 }
 
@@ -19,25 +18,20 @@ export function escapeHtml(str) {
 export async function md5Hex(data) {
   const encoder = new TextEncoder();
   const bytes = encoder.encode(data);
-  const hashBuffer = await crypto.subtle.digest("MD5", bytes);
+  const hashBuffer = await crypto.subtle.digest('MD5', bytes);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
-export function getMainPage(
-  title = "AyUndz API",
-  name = "<h1>AyUndz API</h1>",
-  description = "<p>This is the default page of AyUndz API.</p>",
-  footer = '<p>AyRouter | Powered by <a href="https://cloudflare.com" target="_blank">Cloudflare</a></p>',
-) {
-  const filler = "<!-- " + "x".repeat(256) + " -->";
+export function getMainPage(title = "AyUndz API", name = "<h1>AyUndz API</h1>", description = "<p>This is the default page of AyUndz API.</p>", footer = "<p>AyRouter | Powered by <a href=\"https://cloudflare.com\" target=\"_blank\">Cloudflare</a></p>") {
+  const filler = '<!-- ' + 'x'.repeat(256) + ' -->'
   return `
     <html>
       <head><meta charset="UTF-8"><title>${title}</title></head>
       <body style="text-align: center;">
         ${name}
         ${description}
-        ${footer ? "<hr />" : ""}
-        ${footer ? footer : ""}
+        ${footer ? '<hr />' : ''}
+        ${footer ? footer : ''}
       </body>
     </html>
     <!-- a padding to disable MSIE and Chrome friendly error page -->
@@ -49,69 +43,69 @@ export function getMainPage(
 }
 
 export function anonymizeIp(ipString) {
-  let pureAddress = "";
+  let pureAddress = '';
   const bracketMatch = ipString.match(/^\[([0-9a-fA-F:]+)\](?::\d+)?$/);
   if (bracketMatch) {
     pureAddress = bracketMatch[1];
-  } else {
-    const ipv4Match = ipString.match(
-      /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d+)?$/,
-    );
+  }
+  else {
+    const ipv4Match = ipString.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d+)?$/);
     if (ipv4Match) {
       pureAddress = ipv4Match[1];
-    } else {
+    }
+    else {
       pureAddress = ipString;
     }
   }
 
-  if (pureAddress.includes(".") && !pureAddress.includes(":")) {
-    const parts = pureAddress.split(".");
+  if (pureAddress.includes('.') && !pureAddress.includes(':')) {
+    const parts = pureAddress.split('.');
     if (parts.length === 4) {
-      parts[2] = "*".repeat(parts[2].length);
-      parts[3] = "*".repeat(parts[3].length);
-      return parts.join(".");
+      parts[2] = '*'.repeat(parts[2].length);
+      parts[3] = '*'.repeat(parts[3].length);
+      return parts.join('.');
     }
     return pureAddress; // 回退
   }
 
-  if (pureAddress.includes(":")) {
+  if (pureAddress.includes(':')) {
     const groups = expandIPv6(pureAddress);
-    groups[2] = "*".repeat(groups[2].length);
-    groups[3] = "*".repeat(groups[3].length);
-    groups[6] = "*".repeat(groups[6].length);
-    groups[7] = "*".repeat(groups[7].length);
-    const finalGroups = groups.map((group) => {
-      if (group.includes("*")) return group;
+    groups[2] = '*'.repeat(groups[2].length);
+    groups[3] = '*'.repeat(groups[3].length);
+    groups[6] = '*'.repeat(groups[6].length);
+    groups[7] = '*'.repeat(groups[7].length);
+    const finalGroups = groups.map(group => {
+      if (group.includes('*')) return group;
       const num = parseInt(group, 16);
       return Number.isNaN(num) ? group : num.toString(16);
     });
 
-    return finalGroups.join(":");
+    return finalGroups.join(':');
   }
 
   return ipString;
 }
 
 function expandIPv6(addr) {
-  if (addr === "::") {
-    return new Array(8).fill("0");
+  if (addr === '::') {
+    return new Array(8).fill('0');
   }
 
-  const parts = addr.split(":");
+  const parts = addr.split(':');
   let groups = new Array(8).fill(null);
   let emptyIndex = -1;
   for (let i = 0; i < parts.length; i++) {
-    if (parts[i] === "") {
+    if (parts[i] === '') {
       emptyIndex = i;
       break;
     }
   }
 
   if (emptyIndex === -1) {
-    return parts.map((p) => p || "0");
+    return parts.map(p => p || '0');
   }
 
-  const nonEmptyParts = parts.filter((p) => p !== "");
+  const nonEmptyParts = parts.filter(p => p !== '');
   const missingCount = 8 - nonEmptyParts.length;
 
   const result = [];
@@ -121,11 +115,11 @@ function expandIPv6(addr) {
   }
   // 填充缺失的零组
   for (let i = 0; i < missingCount; i++) {
-    result.push("0");
+    result.push('0');
   }
   // 压缩标记后的部分
   for (let i = emptyIndex + 1; i < parts.length; i++) {
-    if (parts[i] !== "") {
+    if (parts[i] !== '') {
       result.push(parts[i]);
     }
   }
@@ -148,11 +142,11 @@ export async function generatePKCEPair() {
   const verifier = generateToken();
   const encoder = new TextEncoder();
   const data = encoder.encode(verifier);
-  const digest = await crypto.subtle.digest("SHA-256", data);
+  const digest = await crypto.subtle.digest('SHA-256', data);
   const challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
   return { verifier, challenge };
 }
 export function isBase64(str) {
@@ -161,12 +155,10 @@ export function isBase64(str) {
   if (!len || len % 4 !== 0 || notBase64.test(str)) {
     return false;
   }
-  const firstPaddingChar = str.indexOf("=");
-  return (
-    firstPaddingChar === -1 ||
+  const firstPaddingChar = str.indexOf('=');
+  return firstPaddingChar === -1 ||
     firstPaddingChar === len - 1 ||
-    (firstPaddingChar === len - 2 && str[len - 1] === "=")
-  );
+    (firstPaddingChar === len - 2 && str[len - 1] === '=');
 }
 export function toBase64(str) {
   const bytes = new TextEncoder().encode(str);
@@ -176,9 +168,9 @@ export function toBase64(str) {
 export function utf8ToBase64(str) {
   // 将字符串编码为 UTF-8 字节数组
   const encoder = new TextEncoder();
-  const bytes = encoder.encode(str); // Uint8Array
+  const bytes = encoder.encode(str);  // Uint8Array
   // 将字节数组转换为二进制字符串（每个字节转成对应字符）
-  let binary = "";
+  let binary = '';
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
@@ -189,16 +181,16 @@ export function base64ToUtf8(base64Str) {
   // 标准 Base64 解码为二进制字符串
   const binary = atob(base64Str);
   // 将二进制字符串转回 Uint8Array
-  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
   // 使用 TextDecoder 解码为 UTF-8 字符串
   const decoder = new TextDecoder();
   return decoder.decode(bytes);
 }
 // 在文件末尾追加
 export const corsHeaders_GPO = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
 };
 export async function proxyStaticFile(url) {
   try {
@@ -208,124 +200,33 @@ export async function proxyStaticFile(url) {
 
     // 对 4xx 返回明确状态码，而不是抛给 catch
     if (response.status === 404) {
-      return new Response(`Web Server Down`, {
-        status: 404,
-        headers: { "Content-Type": "text/plain" },
-      });
+      return new Response(`Web Server Down`, { status: 404, headers: { 'Content-Type': 'text/plain' } });
     }
     if (response.status >= 400 && response.status < 500) {
-      return new Response(`Web Server Down ${response.status}`, {
-        status: response.status,
-        headers: { "Content-Type": "text/plain" },
-      });
+      return new Response(`Web Server Down ${response.status}`, { status: response.status, headers: { 'Content-Type': 'text/plain' } });
     }
     if (!response.ok) throw new Error(`Web Server Down ${response.status}`);
 
     // 成功响应（2xx）：透传所有头，并添加缓存头（若无）
     const headers = new Headers(response.headers);
-    if (!headers.has("Cache-Control")) {
-      headers.set("Cache-Control", "public, max-age=86400");
+    if (!headers.has('Cache-Control')) {
+      headers.set('Cache-Control', 'public, max-age=86400');
     }
     // 确保 Content-Type 有合理默认值
-    if (!headers.has("Content-Type")) {
-      headers.set("Content-Type", "image/x-icon");
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'image/x-icon');
     }
     return new Response(response.body, { headers });
   } catch {
     // 网络错误或 5xx：返回 503，并告知不可缓存
-    return new Response("`Web server is down", {
+    return new Response('`Web server is down', {
       status: 503,
       headers: {
-        "Content-Type": "text/plain",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
+        'Content-Type': 'text/plain',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
   }
 }
 
-/**
- * Host → 子应用目录 的映射规则
- *
- * 规则顺序即优先级：越具体的放越前面，第一个匹配成功的生效。
- * `app` 的值必须与 api-assets/ 下的子目录名严格一致，
- * 也必须与 vite.config.js 里 VITE_APP 的取值一致。
- */
-const HOST_APP_RULES = [
-  // 主站：裸域
-  { match: (h) => h === "undz.cn" || h === "dev.undz.cn", app: "index" },
-
-  // 各子应用（用 ^ 锚定前缀，避免 xxx-online.undz.cn 之类误匹配）
-  { match: (h) => /^online(-dev)?\./.test(h), app: "account" },
-  { match: (h) => /^console(-dev)?\./.test(h), app: "console" },
-  { match: (h) => /^relay(-dev)?\./.test(h), app: "relay" },
-  { match: (h) => /^ai(-dev)?\./.test(h), app: "ai" },
-
-  // 如有其它带独立 SPA 的域名，在这里补规则
-  // { match: (h) => /^mail(\.|\.io\.hb\.cn)/.test(h), app: "mail" },
-];
-
-/**
- * 根据 Host 把静态资源请求路由到 api-assets/{app}/ 子目录。
- *
- * 用法：仅用于「前端资源请求」（HTML / JS / CSS / 图片），
- *      不要用于 API 路由。
- *
- * 例：
- *   online.undz.cn/about  →  api-assets/account/about/index.html
- *   console.undz.cn/       →  api-assets/console/index.html
- *   undz.cn/               →  api-assets/index/index.html
- *
- * @param {Request} request - 原始请求
- * @param {{ assets: Fetcher }} env - Workers 环境（需有 ASSETS 绑定）
- * @returns {Promise<Response>}
- */
-export async function getAssetsWithDomain(request, env) {
-  // 只处理 GET / HEAD，避免 body 复用问题
-  if (request.method !== "GET" && request.method !== "HEAD") {
-    return new Response("Method Not Allowed", { status: 405 });
-  }
-
-  const originalUrl = new URL(request.url);
-  const hostname = originalUrl.hostname;
-
-  const appName = HOST_APP_RULES.find((r) => r.match(hostname))?.app ?? "index";
-
-  const rawPath = originalUrl.pathname.startsWith("/")
-    ? originalUrl.pathname
-    : `/${originalUrl.pathname}`;
-
-  // ---------- 1. 子应用路径：/{app}/{path} ----------
-  const prefixedUrl = new URL(originalUrl);
-  prefixedUrl.pathname = `/${appName}${rawPath}`;
-  const firstRes = await env.assets.fetch(
-    new Request(prefixedUrl.toString(), {
-      method: request.method,
-      headers: request.headers,
-    }),
-  );
-  if (firstRes.status !== 404) return firstRes;
-
-  // ---------- 2. 原始路径：{path}（共享资源） ----------
-  const secondRes = await env.assets.fetch(
-    new Request(originalUrl.toString(), {
-      method: request.method,
-      headers: request.headers,
-    }),
-  );
-  if (secondRes.status !== 404) return secondRes;
-
-  // ---------- 3. SPA 兜底：/{app}/index.html ----------
-  const fallbackUrl = new URL(originalUrl);
-  fallbackUrl.pathname = `/${appName}/index.html`;
-  fallbackUrl.search = ""; // index.html 不需要原始 query
-
-  return env.assets.fetch(
-    new Request(fallbackUrl.toString(), {
-      method: "GET",
-      headers: request.headers,
-    }),
-  );
-}
-
-export const mobileRegex =
-  /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|windows phone|phone|webos|kindle|tablet/i;
+export const mobileRegex = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|windows phone|phone|webos|kindle|tablet/i;

@@ -5,19 +5,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "dev:index": "cross-env VITE_APP=index   vite",
-        "dev:account": "cross-env VITE_APP=account vite",
-        "dev:console": "cross-env VITE_APP=console vite",
-        "dev:relay": "cross-env VITE_APP=relay   vite",
-        "dev:ai": "cross-env VITE_APP=ai      vite",
-        "dev:default": "cross-env VITE_APP=default      vite",
-        "build:index": "cross-env VITE_APP=index   vite build",
-        "build:account": "cross-env VITE_APP=account vite build",
-        "build:console": "cross-env VITE_APP=console vite build",
-        "build:relay": "cross-env VITE_APP=relay   vite build",
-        "build:ai": "cross-env VITE_APP=ai      vite build",
-        "build:default": "cross-env VITE_APP=default      vite build",
-        "build": "node scripts/build-all.mjs",
+        "build": "vite build && node scripts/gen-sitemap.mjs",
         "preview": "vite preview"
     },
     "dependencies": {

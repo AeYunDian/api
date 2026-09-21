@@ -22,8 +22,7 @@ namespace_id = "1001"
 [assets]
 binding = "assets"
 directory = "../api-assets"
-html_handling = "auto-trailing-slash"
-not_found_handling = "404-page"
+not_found_handling = "single-page-application"
 run_worker_first = true
 
 [[d1_databases]]
