@@ -1,0 +1,2 @@
+(function(){System.register([`./common-legacy-CzXSH5Tm.js`,`./chip-legacy-bqFTpLzk.js`,`./elevation-legacy-ysag0FOQ.js`,`./icon-legacy-BIXpwivE.js`],function(e,t){var n;return{setters:[function(e){},function(e){},function(e){},function(e){}],execute:function(){n=document.createElement(`style`),n.textContent=`
+/*$vite$:1*/`,document.head.appendChild(n)}}})})();

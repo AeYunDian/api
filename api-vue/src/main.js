@@ -298,4 +298,4 @@ async function loadApp() {
   }
 }
 
-await loadApp();
+loadApp();
