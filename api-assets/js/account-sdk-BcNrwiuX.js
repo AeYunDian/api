@@ -1,1 +1,0 @@
-var e=null;function t(t,n=`zh-cn`){if(typeof window>`u`||!window.AyAccount)throw Error(`[SDK] AyAccountSDK not loaded. Please include the script tag first.`);return e||(e=new window.AyAccount({appId:t,i18n:n})),e}function n(){if(!e)throw Error(`[SDK] SDK not initialized. Call initSdk() first.`);return e}export{t as n,n as t};

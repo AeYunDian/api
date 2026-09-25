@@ -3,7 +3,7 @@ title: 关于在 Markdown 中嵌入 Vue 组件的说明
 date: 2026-09-18
 time: 11:00
 category: 技术文档
-tags: [Vue, Markdown, 内容层]
+tags: [Vue, Markdown]
 summary: 本站 Markdown 文件经 unplugin-vue-markdown 编译为 Vue 单文件组件，正文可直接使用 Vue 组件与响应式逻辑。现将使用方法与注意事项说明如下。
 featured: true
 listed: true

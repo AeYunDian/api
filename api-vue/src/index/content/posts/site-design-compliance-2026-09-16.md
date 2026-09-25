@@ -4,7 +4,7 @@ summary: 依据《政府网站发展指引》（国办发〔2017〕47号）及�
 date: 2026-09-16
 time: 21:50
 category: 公告
-tags: [政务规范, 设计规范, 公告]
+tags: [公告]
 featured: true
 listed: true
 ---

@@ -1,25 +1,9 @@
 <script setup>
-import { onMounted, computed } from 'vue'
-import { StyleProvider, Themes } from '@varlet/ui'
+import { computed } from 'vue'
 import { Dialog } from '@varlet/ui'
 import '@varlet/ui/es/dialog/style';
 import { useWindowState } from '@/shared/composables/useWindowState';
 const { isMaximized } = useWindowState();
-onMounted(() => {
-    const media = window.matchMedia('(prefers-color-scheme:dark)')
-    if (media.matches) {
-        StyleProvider(Themes.md3Dark)
-    } else {
-        StyleProvider(Themes.md3Light)
-    }
-    media.addEventListener('change', (e) => {
-        if (e.matches) {
-            StyleProvider(Themes.md3Dark)
-        } else {
-            StyleProvider(Themes.md3Light)
-        }
-    })
-})
 const isHostShell = computed(() => {
     return typeof window.hostshell !== 'undefined' && typeof window.chrome !== 'undefined' && typeof window.chrome.webview !== 'undefined';
 });

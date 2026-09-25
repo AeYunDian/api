@@ -1,1 +1,0 @@
-(function(){System.register([`./common-legacy-CzXSH5Tm.js`,`./loading-legacy-D1C7FDiF.js`],function(e,t){return{setters:[function(e){},function(e){}],execute:function(){}}})})();

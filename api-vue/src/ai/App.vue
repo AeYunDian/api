@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onBeforeUnmount, onUnmounted, provide, ref, computed } from 'vue'
+import { onMounted, onUnmounted, provide, ref, computed } from 'vue'
 import { RouterView } from 'vue-router'
 import { initSdk, getSdk } from '@/shared/account-sdk'
 import { useRouter, useRoute } from 'vue-router'
@@ -33,7 +33,7 @@ provide('sdk', sdk);
 provide('leftPopup', leftPopup);
 provide('channel', channel);
 function toggleTheme() {
-    themeStore.setTheme(themeStore.currentTheme === 'light' ? 'dark' : 'light');
+    themeStore.setTheme(themeStore.isDark ? 'light' : 'dark');
 }
 async function handleBroadcast(event) {
     if (event.data === 'login') {
@@ -54,15 +54,9 @@ async function handleBroadcast(event) {
         router.push('/');
     }
 }
-function handleStorage(e) {
-    if (e.key === 'theme' && e.newValue) {
-        themeStore.setTheme(e.newValue);
-    }
-}
 onMounted(() => {
     channel.value = new BroadcastChannel('ayai_data');
     channel.value.addEventListener('message', handleBroadcast);
-    window.addEventListener('storage', handleStorage);
 
     if (import.meta.env.PROD) {
         setInterval(
@@ -71,9 +65,6 @@ onMounted(() => {
     }
 
 })
-onBeforeUnmount(() => {
-    window.removeEventListener('storage', handleStorage);
-});
 onUnmounted(() => {
     channel.value?.close();
 });

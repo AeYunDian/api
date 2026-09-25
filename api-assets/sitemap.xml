@@ -55,8 +55,26 @@
     <priority>0.3</priority>
   </url>
   <url>
+    <loc>https://undz.cn/articles/git-memo-2026-09-25</loc>
+    <lastmod>2026-09-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://undz.cn/articles/linux-memo-20269-09-25</loc>
+    <lastmod>2026-09-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://undz.cn/articles/markdown-vue-usage-2026-09-18</loc>
     <lastmod>2026-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://undz.cn/articles/node-package-managers-memo-2026-09-25</loc>
+    <lastmod>2026-09-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

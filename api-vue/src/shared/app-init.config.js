@@ -48,11 +48,19 @@ export const appInitConfig = [
     },
   },
   {
-    name: "theme",
-    apps: ["relay", "console", "account", "ai"],
+    name: "theme-md3",
+    apps: ["console", "account", "ai"],
     run: async ({ pinia }) => {
       const { useThemeStore } = await import("@/shared/stores/theme");
-      useThemeStore(pinia).initializeTheme();
+      useThemeStore(pinia).initializeTheme("md3");
+    },
+  },
+  {
+    name: "theme-md2",
+    apps: ["relay", "default"],
+    run: async ({ pinia }) => {
+      const { useThemeStore } = await import("@/shared/stores/theme");
+      useThemeStore(pinia).initializeTheme("md2");
     },
   },
   // 纯同步的也可以直接写
