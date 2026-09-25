@@ -1,0 +1,1 @@
+(function(){System.register([`./common-legacy-CzXSH5Tm.js`,`./loading-legacy-CYKIpjWs.js`],function(e,t){return{setters:[function(e){},function(e){}],execute:function(){}}})})();

@@ -10,6 +10,7 @@ import basicSsl from "@vitejs/plugin-basic-ssl";
 import { visualizer } from "rollup-plugin-visualizer";
 import hljs from "highlight.js";
 import Markdown from "unplugin-vue-markdown/vite";
+import legacy from "@vitejs/plugin-legacy";
 
 export default defineConfig({
   server: {
@@ -22,12 +23,18 @@ export default defineConfig({
       "console-dev.undz.cn",
       "relay-dev.undz.cn",
       "ai-dev.undz.cn",
+      "dev.undz.cn",
       "localhost",
       "0.0.0.0",
     ],
   },
   plugins: [
     vue({ include: [/\.vue$/, /\.md$/] }),
+    legacy({
+      targets: ["ie >= 11"], // 指定需要兼容的浏览器
+      additionalLegacyPolyfills: ["regenerator-runtime/runtime"], // 补充必要的 polyfill
+      renderLegacyChunks: true, // 确保生成传统 chunk
+    }),
     Markdown({
       markdownItSetup(md) {
         md.options.highlight = (str, lang) => {
@@ -78,6 +85,7 @@ export default defineConfig({
     }),
   ],
   build: {
+    target: ["es2015", "ie11"],
     outDir: "../api-assets",
     emptyOutDir: true,
     rollupOptions: {
@@ -126,6 +134,7 @@ export default defineConfig({
   minify: "terser",
   sourceMap: false,
   terserOptions: {
+    ecma: 5,
     compress: {
       dead_code: true,
       passes: 4,

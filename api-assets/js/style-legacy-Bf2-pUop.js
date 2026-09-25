@@ -1,0 +1,1 @@
+(function(){System.register([`./common-legacy-CzXSH5Tm.js`,`./popup-legacy-BS3yODyw.js`,`./elevation-legacy-C94Fc8lt.js`],function(e,t){return{setters:[function(e){},function(e){},function(e){}],execute:function(){}}})})();

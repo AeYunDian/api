@@ -1,0 +1,1 @@
+(function(){System.register([`./memorial-legacy-CxF4PGlD.js`],function(e,t){var n;return{setters:[function(e){n=e.a,e.i,e.n,e.o,e.r,e.s,e.t}],execute:function(){e(`startMemorialWatcher`,n)}}})})();
