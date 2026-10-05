@@ -1,12 +1,13 @@
 // views/UserPanel.vue
 <script setup>
-import { onMounted, onUnmounted, ref, provide, inject, computed } from 'vue';
+import { onMounted, onUnmounted, ref, provide, inject } from 'vue';
 import { isHostShell } from '@/shared/utils/device';
 import { useRouter, useRoute, RouterView } from 'vue-router';
-import { useDevice } from "@/shared/composables/useDevice";
+import { useDevice } from '@/shared/composables/useDevice';
+
 const { mobileByWidth } = useDevice();
 const router = useRouter();
-const route = useRoute()
+const route = useRoute();
 let intervalId = null;
 const user = ref(null);
 const leftPopup = inject('leftPopup');
@@ -14,6 +15,7 @@ const channel = inject('channel');
 const sdk = inject('sdk');
 
 provide('user', user);
+
 const refreshUser = async () => {
     const { valid, data } = await checkLogin();
     if (valid && data?.user) {
@@ -24,6 +26,7 @@ const refreshUser = async () => {
 };
 
 provide('refreshUser', refreshUser);
+
 async function checkLogin() {
     try {
         const res = await sdk.verify();
@@ -75,355 +78,215 @@ onMounted(async () => {
             goHome();
             return;
         }
-
         user.value = data.user;
     }, 10000);
-
-    if (import.meta.env.PROD) {
-        setInterval(
-            (0, eval)(`\u0028\u0066\u0075\u006e\u0063\u0074\u0069\u006f\u006e\u0020\u0061\u006e\u006f\u006e\u0079\u006d\u006f\u0075\u0073\u0028\u0029\u007b\u0064\u0065\u0062\u0075${'\u0072\u0065\u0067\u0067'.split("").reverse().join("")};\u007d\u0029`)
-            , 300);
-    }
 });
 
 onUnmounted(() => {
     if (intervalId) clearInterval(intervalId);
 });
 
-function switchScreens(path) {
-    if (path === route.path) return;
-    router.push(`/user-panel${path}`)
+/* ---------- 导航数据 ---------- */
+
+const navItems = [
+    { path: '/account-overview', title: '账号概览', icon: 'application' },
+    { path: '/user-info', title: '个人信息', icon: 'account-circle' },
+    { path: '/link-account', title: '第三方账号绑定', icon: 'apache-kafka' },
+    { path: '/oauth', title: '授权管理', icon: 'account-secure' },
+    { path: '/security', title: '安全中心', icon: 'secure' },
+];
+
+const footerItems = [
+    { path: '/console', title: 'AyConsole', icon: 'console-line', handler: openConsole },
+    { path: '/about', title: '关于', icon: 'information' },
+];
+
+/* ---------- 导航行为 ---------- */
+
+function isActive(item) {
+    return !item.handler && route.path === `/user-panel${item.path}`;
 }
+
+function handleNav(item) {
+    leftPopup.value = false;
+    if (item.handler) {
+        item.handler();
+        return;
+    }
+    if (isActive(item)) return;
+    router.push(`/user-panel${item.path}`);
+}
+
 function openConsole() {
-    const domain = import.meta.env.PROD ? (isHostShell() ? 'console.app.undz.cn' : 'console.undz.cn') : "console-dev.undz.cn";
+    const domain = import.meta.env.PROD
+        ? (isHostShell() ? 'console.app.undz.cn' : 'console.undz.cn')
+        : 'console-dev.undz.cn';
     window.location.href = `https://${domain}/console-panel/oauth-client${isHostShell() ? '?notinithostshell' : ''}`;
 }
 </script>
+
 <template>
-    <div class="bg-orbs" v-if="!mobileByWidth">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="orb orb-3"></div>
-        <div class="orb orb-4"></div>
+    <div class="user-layout" :class="{ 'is-mobile': mobileByWidth }">
+        <!-- 桌面端：常驻侧栏 -->
+        <aside v-if="!mobileByWidth" class="user-sidebar">
+            <nav class="user-nav">
+                <var-cell v-for="item in navItems" :key="item.path" :title="item.title" :border="true" v-ripple
+                    :class="{ active: isActive(item) }" @click="handleNav(item)">
+                    <template #icon>
+                        <div class="var-cell__icon">
+                            <div class="var-icon">
+                                <my-icon :icon="item.icon" />
+                            </div>
+                        </div>
+                    </template>
+                </var-cell>
+            </nav>
+            <nav class="user-nav-footer">
+                <var-cell v-for="item in footerItems" :key="item.path" :title="item.title" :border="true" v-ripple
+                    @click="handleNav(item)">
+                    <template #icon>
+                        <div class="var-cell__icon">
+                            <div class="var-icon">
+                                <my-icon :icon="item.icon" />
+                            </div>
+                        </div>
+                    </template>
+                </var-cell>
+            </nav>
+        </aside>
+
+        <!-- 主内容 -->
+        <div class="user-main">
+            <div class="user-content">
+                <router-view v-if="user" />
+                <div v-else class="loading-placeholder">加载中...</div>
+            </div>
+        </div>
     </div>
 
-    <var-popup v-if="mobileByWidth" position="left" v-model:show="leftPopup">
+    <!-- 移动端：左侧抽屉 -->
+    <var-popup v-if="mobileByWidth" position="left" v-model:show="leftPopup"
+        style="display: flex;flex-direction: column;flex-shrink: 0;height: 100%;">
         <div class="left-popup">
-            <var-cell title="账号概览" :border="true" @click="leftPopup = false; switchScreens('/account-overview')"
-                v-ripple :class="{ active: route.path === '/user-panel/account-overview' }">
-                <template #icon>
-                    <div class="var-cell__icon">
-                        <div class="var-icon">
-                            <my-icon icon="application" />
-                        </div>
-                    </div>
-                </template>
-            </var-cell>
-            <var-cell title="个人信息" :border="true" @click="leftPopup = false; switchScreens('/user-info')" v-ripple
-                :class="{ active: route.path === '/user-panel/user-info' }">
-                <template #icon>
-                    <div class="var-cell__icon">
-                        <div class="var-icon">
-                            <my-icon icon="account-circle" />
-                        </div>
-                    </div>
-                </template>
-            </var-cell>
-            <var-cell title="第三方账号绑定" :border="true" @click="leftPopup = false; switchScreens('/link-account');"
-                v-ripple :class="{ active: route.path === '/user-panel/link-account' }">
-                <template #icon>
-                    <div class="var-cell__icon">
-                        <div class="var-icon">
-                            <my-icon icon="apache-kafka" />
-                        </div>
-                    </div>
-                </template>
-            </var-cell>
-            <var-cell title="授权管理" :border="true" @click="leftPopup = false; switchScreens('/oauth')" v-ripple
-                :class="{ active: route.path === '/user-panel/oauth' }">
-                <template #icon>
-                    <div class="var-cell__icon">
-                        <div class="var-icon">
-                            <my-icon icon="account-secure" />
-                        </div>
-                    </div>
-                </template>
-            </var-cell>
-            <var-cell title="安全中心" :border="true" @click="leftPopup = false; switchScreens('/security')" v-ripple
-                :class="{ active: route.path === '/user-panel/security' }">
-                <template #icon>
-                    <div class="var-cell__icon">
-                        <div class="var-icon">
-                            <my-icon icon="secure" />
-                        </div>
-                    </div>
-                </template>
-            </var-cell>
-            <var-cell title="AyConsole" :border="true" @click="leftPopup = false; openConsole()" v-ripple>
-                <template #icon>
-                    <div class="var-cell__icon">
-                        <div class="var-icon">
-                            <my-icon icon="console-line" />
-                        </div>
-                    </div>
-                </template>
-            </var-cell>
+            <div class="user-sidebar">
+                <div class="user-nav">
+                    <var-cell v-for="item in navItems" :key="item.path" :title="item.title" :border="true" v-ripple
+                        :class="{ active: isActive(item) }" @click="handleNav(item)">
+                        <template #icon>
+                            <div class="var-cell__icon">
+                                <div class="var-icon">
+                                    <my-icon :icon="item.icon" />
+                                </div>
+                            </div>
+                        </template>
+                    </var-cell>
+                </div>
+                <nav class="user-nav-footer">
+                    <var-cell v-for="item in footerItems" :key="item.path" :title="item.title" :border="true" v-ripple
+                        @click="handleNav(item)">
+                        <template #icon>
+                            <div class="var-cell__icon">
+                                <div class="var-icon">
+                                    <my-icon :icon="item.icon" />
+                                </div>
+                            </div>
+                        </template>
+                    </var-cell>
+                </nav>
+            </div>
         </div>
     </var-popup>
-    <div v-if="mobileByWidth" style="height: 100%;">
-        <div class="main-content" style="height: 100%;">
-            <router-view v-if="user" />
-            <div v-else class="loading-placeholder">加载中...</div>
-        </div>
-    </div>
-    <div v-else class="panel-container">
-        <var-card class="card var-elevation--10">
-            <template #default>
-                <div class="panel-layout">
-                    <div class="sidebar">
-                        <var-cell title="账号概览" :border="true" @click="switchScreens('/account-overview')" v-ripple
-                            :class="{ active: route.path === '/user-panel/account-overview' }">
-                            <template #icon>
-                                <div class="var-cell__icon">
-                                    <div class="var-icon">
-                                        <my-icon icon="application" />
-                                    </div>
-                                </div>
-                            </template>
-                        </var-cell>
-                        <var-cell title="个人信息" :border="true" @click="switchScreens('/user-info')" v-ripple
-                            :class="{ active: route.path === '/user-panel/user-info' }">
-                            <template #icon>
-                                <div class="var-cell__icon">
-                                    <div class="var-icon">
-                                        <my-icon icon="account-circle" />
-                                    </div>
-                                </div>
-                            </template>
-                        </var-cell>
-                        <var-cell title="第三方账号绑定" :border="true" @click="switchScreens('/link-account')" v-ripple
-                            :class="{ active: route.path === '/user-panel/link-account' }">
-                            <template #icon>
-                                <div class="var-cell__icon">
-                                    <div class="var-icon">
-                                        <my-icon icon="apache-kafka" />
-                                    </div>
-                                </div>
-                            </template>
-                        </var-cell>
-                        <var-cell title="授权管理" :border="true" @click="switchScreens('/oauth')" v-ripple
-                            :class="{ active: route.path === '/user-panel/oauth' }">
-                            <template #icon>
-                                <div class="var-cell__icon">
-                                    <div class="var-icon">
-                                        <my-icon icon="account-secure" />
-                                    </div>
-                                </div>
-                            </template>
-                        </var-cell>
-                        <var-cell title="安全中心" :border="true" @click="switchScreens('/security')" v-ripple
-                            :class="{ active: route.path === '/user-panel/security' }">
-                            <template #icon>
-                                <div class="var-cell__icon">
-                                    <div class="var-icon">
-                                        <my-icon icon="secure" />
-                                    </div>
-                                </div>
-                            </template>
-                        </var-cell>
-                        <var-cell title="AyConsole" :border="true" @click="openConsole" v-ripple>
-                            <template #icon>
-                                <div class="var-cell__icon">
-                                    <div class="var-icon">
-                                        <my-icon icon="console-line" />
-                                    </div>
-                                </div>
-                            </template>
-                        </var-cell>
-                    </div>
-                    <div class="main-content">
-                        <router-view v-if="user" />
-                        <var-progress v-else indeterminate />
-                    </div>
-                </div>
-            </template>
-        </var-card>
-    </div>
 </template>
 
 <style scoped>
+.user-layout {
+    display: flex;
+    height: 100%;
+    width: 100%;
+}
+
+.user-layout.is-mobile {
+    display: block;
+}
+
+/* 桌面端侧栏：flex 纵向，footer 撑到底 */
+.user-sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 220px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--cell-border-color);
+    padding: 10px 5px;
+    overflow-y: auto;
+}
+
+/* 主导航占据剩余空间 */
+.user-nav {
+    flex: 1;
+}
+
+/* 底部固定区 */
+.user-nav-footer {
+    flex-shrink: 0;
+    margin-top: 8px;
+}
+
+/* 主内容区 */
+.user-main {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.user-content {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.25rem 32px;
+}
+
+/* 移动端内容更窄一点，符合阅读习惯 */
+.user-layout.is-mobile .user-content {
+    max-width: 800px;
+    padding: 1rem 16px;
+}
+
+/* 移动端抽屉 */
 .left-popup {
+    display: flex;
+    height: 100%;
     margin: 15px 15px 5px 15px;
+    min-width: 200px;
     width: 23vh;
 }
 
-.var-card:deep(.var-card__container>.var-card__content) {
-    height: 100%;
-}
-
-.var-cell {
+/* 只在侧栏内改 var-cell，避免污染其他组件 */
+.user-sidebar .var-cell {
     user-select: none;
     cursor: pointer;
-    transition: background .2s !important;
-    transition: color .2s !important;
+    transition: background .2s, color .2s;
 }
 
-.var-cell.active {
+.user-sidebar .var-cell.active {
     color: var(--site-config-color-side-bar) !important;
     background: var(--site-config-color-side-bar-active-background) !important;
 }
 
-.main-content {
-    flex: 1;
-    padding: 0 32px;
-    overflow-y: auto;
+/* 移动端抽屉 cell 复用同一套交互 */
+.left-popup .var-cell {
+    user-select: none;
+    cursor: pointer;
+    transition: background .2s, color .2s;
 }
 
-.panel-layout {
-    display: flex;
-    height: 100%;
-    min-height: 75vh;
+.left-popup .var-cell.active {
+    color: var(--site-config-color-side-bar) !important;
+    background: var(--site-config-color-side-bar-active-background) !important;
 }
 
-.sidebar {
-    width: 200px;
-    border-right: 1px solid var(--cell-border-color);
-    padding: 8px 0;
-    flex-shrink: 0;
-    overflow-y: auto;
-}
-
-.panel-container {
-    position: sticky;
-    z-index: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 20px;
-    overflow-y: auto;
-}
-
-.card {
-    transition: background-color 0.25s, color 0.25s;
-    transition-timing-function: cubic-bezier(0.45, 0.19, 0.06, 0.89);
-    width: 80%;
-    background: var(--card-background);
-    /* height: 80%; */
-    padding: 24px;
-    height: auto;
-    max-height: 85vh;
-    overflow: auto;
-}
-
-.bg-orbs {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 0;
-}
-
-.orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(90px);
-    will-change: transform, opacity, width, height, top, left;
-}
-
-.orb-1 {
-    width: 35vmax;
-    height: 35vmax;
-    background: radial-gradient(circle, #4a7cf7, #1a3a8a);
-    animation: orbFly1 16s ease-in-out infinite alternate;
-}
-
-.orb-2 {
-    width: 30vmax;
-    height: 30vmax;
-    background: radial-gradient(circle, #6a9cf7, #1a4a9a);
-    animation: orbFly2 18s ease-in-out infinite alternate-reverse;
-}
-
-.orb-3 {
-    width: 25vmax;
-    height: 25vmax;
-    background: radial-gradient(circle, #3a6cf7, #0a2a7a);
-    animation: orbPulse 12s ease-in-out infinite alternate;
-}
-
-.orb-4 {
-    width: 20vmax;
-    height: 20vmax;
-    background: radial-gradient(circle, #5a8cf7, #2a4a9a);
-    animation: orbFly3 20s ease-in-out infinite alternate;
-}
-
-@keyframes orbFly1 {
-    0% {
-        top: -15%;
-        left: -15%;
-        transform: rotate(0deg) scale(1);
-        opacity: 0.3;
-    }
-
-    100% {
-        top: 55%;
-        left: 55%;
-        transform: rotate(180deg) scale(1.6);
-        opacity: 0.8;
-    }
-}
-
-@keyframes orbFly2 {
-    0% {
-        bottom: -10%;
-        right: -10%;
-        transform: rotate(0deg) scale(1);
-        opacity: 0.25;
-    }
-
-    100% {
-        bottom: 50%;
-        right: 50%;
-        transform: rotate(-200deg) scale(1.8);
-        opacity: 0.7;
-    }
-}
-
-@keyframes orbPulse {
-    0% {
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
-        opacity: 0.2;
-    }
-
-    100% {
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(2.0) rotate(120deg);
-        opacity: 0.7;
-    }
-}
-
-@keyframes orbFly3 {
-    0% {
-        top: -5%;
-        right: -10%;
-        transform: rotate(0deg) scale(0.9);
-        opacity: 0.2;
-    }
-
-    100% {
-        top: 60%;
-        right: 50%;
-        transform: rotate(-150deg) scale(1.7);
-        opacity: 0.75;
-    }
+.loading-placeholder {
+    text-align: center;
+    padding: 40px;
+    color: var(--color-text-secondary);
 }
 </style>

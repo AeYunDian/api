@@ -1,17 +1,17 @@
 /**
  * @file AyAccountSDK - 用户认证管理库
  * @author AeYunDian
- * @version 2.0.7
+ * @version 2.0.8
  * @copyright 2026 AeYunDian. All rights reserved.
  * @license MIT
  */
-'v2.0.7 AyAccountSDK';
-'use strict';
-if (typeof window === 'undefined') {
-  throw new Error('AyAccountSDK requires browser environment');
+"v2.0.8 AyAccountSDK";
+"use strict";
+if (typeof window === "undefined") {
+  throw new Error("AyAccountSDK requires browser environment");
 }
 
-const VERSION = '2.0.7';
+const VERSION = "2.0.8";
 const PRODUCE = false;
 
 // ---------- 本地南瓜种植基地 ----------//
@@ -26,383 +26,386 @@ const PRODUCE = false;
 
 const DEFAULT_WINDOW_CONFIG = { hideOauthClient: false, hideClose: false };
 
-
 const privateData = new WeakMap();
 const URLPATH = {
-  'BASE': 'https://online.undz.cn',
-  'API': {
-    'REGISTER': '/api/ayonline/register',
-    'REGISTER_WITH_OAUTH': '/api/ayonline/register-oauth',
-    'LOGIN': '/api/ayonline/login',
-    'LOGOUT': '/api/ayonline/logout',
-    'TEST': '/api/ayonline/test',
-    'VERIFY': '/api/ayonline/verify',
-    'REFRESH': '/api/ayonline/refresh',
-    'CHANGEPASSWORD': '/api/ayonline/change-password',
-    'SENDMAILCODE': '/api/ayonline/send-verification'
+  BASE: "https://online.undz.cn",
+  API: {
+    REGISTER: "/api/ayonline/register",
+    REGISTER_WITH_OAUTH: "/api/ayonline/register-oauth",
+    LOGIN: "/api/ayonline/login",
+    LOGOUT: "/api/ayonline/logout",
+    TEST: "/api/ayonline/test",
+    VERIFY: "/api/ayonline/verify",
+    REFRESH: "/api/ayonline/refresh",
+    CHANGEPASSWORD: "/api/ayonline/change-password",
+    SENDMAILCODE: "/api/ayonline/send-verification",
   },
-  'MODALPAGE': {
-    'LOGIN_YZH_OAUTH': '/api/auth/yzhyzxy/start?mode=login',
-    'MOBILE': '/login/mobile',
-    'DESKTOP': '/login/',
-    'REGISTER': '?tab=register',
-    'LOGIN': '?tab=login'
+  MODALPAGE: {
+    LOGIN_YZH_OAUTH: "/api/auth/yzhyzxy/start?mode=login",
+    MOBILE: "/login/mobile",
+    DESKTOP: "/login/",
+    REGISTER: "?tab=register",
+    LOGIN: "?tab=login",
   },
-  'LIBRARY': {
-    'GT4': '/lib/gt4.js',
-    'AYTOAST': {
-      'SCRIPT': '/login/toast.js',
-      'CSS': '/login/toast.css'
-    }
-  }
-}
+  LIBRARY: {
+    GT4: "/lib/gt4.js",
+    AYTOAST: {
+      SCRIPT: "/login/toast.js",
+      CSS: "/login/toast.css",
+    },
+  },
+};
 const allowedEmailDomains = [
-  'aliyun.com', // 虽然国内已不开放个人注册业务，但还是支持
-  'qq.com',
-  '163.com',
-  '126.com',
-  'foxmail.com',
-  'sina.com',
-  'sina.cn',
-  'sohu.com',
-  '139.com',
-  '189.cn',
-  '21cn.com',
-  'tom.com',
-  'yeah.net',
-  '263.net',
-  'vip.qq.com',
-  'vip.163.com',
-  'vip.sina.com',
-  'vip.sina.cn',
-  'gmail.com',
-  'outlook.com',
-  'hotmail.com',
-  'live.com',
-  'msn.com',
-  'yahoo.com',
-  'yahoo.co.jp',
-  'yahoo.com.hk',
-  'yahoo.com.tw',
-  'icloud.com',
-  'me.com',
-  'mac.com',
-  'aol.com',
-  'protonmail.com',
-  'mail.com',
-  'gmx.com',
-  'zoho.com',
-  'yandex.com',
-  'rambler.ru',
-  'undz.cn',
-  'io.hb.cn',
-  '2x.nz',
-  'edu.cn',
-  'gov.cn',
-  'yzhyzxy.cn',
+  "aliyun.com", // 虽然国内已不开放个人注册业务，但还是支持
+  "qq.com",
+  "163.com",
+  "126.com",
+  "foxmail.com",
+  "sina.com",
+  "sina.cn",
+  "sohu.com",
+  "139.com",
+  "189.cn",
+  "21cn.com",
+  "tom.com",
+  "yeah.net",
+  "263.net",
+  "vip.qq.com",
+  "vip.163.com",
+  "vip.sina.com",
+  "vip.sina.cn",
+  "gmail.com",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "msn.com",
+  "yahoo.com",
+  "yahoo.co.jp",
+  "yahoo.com.hk",
+  "yahoo.com.tw",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+  "aol.com",
+  "protonmail.com",
+  "mail.com",
+  "gmx.com",
+  "zoho.com",
+  "yandex.com",
+  "rambler.ru",
+  "undz.cn",
+  "io.hb.cn",
+  "2x.nz",
+  "edu.cn",
+  "gov.cn",
+  "yzhyzxy.cn",
 ];
 const BUILTIN_TRANSLATIONS = {
-  'zh-cn': {
-    'title.login': '登录',
-    'nav.login': '&nbsp;登录&nbsp;',
-    'nav.reg': '&nbsp;注册&nbsp;',
-    'nav.login.bartf': '94.6px',
-    'nav.reg.bartf': '213.5px',
-    'link.faq': 'https://online.undz.cn/login/faq/zh-cn',
-    'reg.username': '用户名',
-    'reg.email': '邮箱',
-    'reg.emailCode': '验证码',
-    'reg.password': '密码',
-    'reg.passwordConfirm': '请再次输入密码',
-    'agreement.prefix': '我已阅读并同意',
-    'privacy_policy': '《隐私政策》',
-    'cookie_policy': '《Cookie 政策》',
-    'terms': '《服务条款》',
-    'btn.login.oauth.yzhyzxy': '使用 Yzhyzxy 账号登入',
-    'privacy_policy.link': 'https://undz.cn/privacy_policy/zh-cn',
-    'cookie_policy.link': 'https://undz.cn/cookie_policy/zh-cn',
-    'terms.link': 'https://undz.cn/terms/zh-cn',
-    'btn.reg': '注册',
-    'login.usernameoremail': '用户名/邮箱',
-    'login.password': '密码',
-    'btn.login': '登录',
-    'btn.haveQuestion': '常见问题',
-    'loading': '加载中...',
-    'agreement.and1': '、',
-    'agreement.and2': '和',
-    'error.1000': '邮箱格式无效',
-    'error.1001': '密码长度须在6~32之间，仅允许 a-z A-Z 0-9 -_=+@#$%',
-    'error.1002': '用户名或邮箱已存在',
-    'error.1003': '用户名/邮箱或密码错误',
-    'error.1005': '新密码格式不合法（长度须在6~32之间，仅允许 a-z A-Z 0-9 -_=+@#$%）',
-    'error.1006': '旧密码错误',
-    'error.1007': '缺少必填字段',
-    'error.1008': '用户名必须在4~20之间',
-    'error.1009': '请提供用户名/邮箱和密码',
-    'error.1010': '未授权，请先登录',
-    'error.1011': '令牌无效或已过期',
-    'error.1012': '缺少旧密码或新密码',
-    'error.1013': '未提供令牌',
-    'error.1014': '刷新令牌缺失',
-    'error.1015': '刷新令牌无效或已过期',
-    'error.1016': '用户不存在',
-    'error.1017': '账号已被封禁',
-    'error.1018': '服务器错误',
-    'error.1019': 'appId 无效',
-    'error.1020': '验证码校验失败',
-    'error.1021': '验证ID无效',
-    'error.1022': '验证码二次校验失败',
-    'error.1023': '需要通过人机验证',
-    'error.1024': '您已取消验证',
-    'error.1025': '验证码错误',
-    'error.1026': '不支持的邮箱域名',
-    'error.1027': '发送验证码过于频繁',
-    'error.1028': '请求发送时失败',
-    'error.1029': '请填写邮箱',
-    'error.1030': '服务器错误：无可用发送途径',
-    'error.1031': '邮件服务器不可用',
-    'error.1032': '发送邮件失败',
-    'error.1033': '发件服务器出现内部错误',
-    'error.1034': '获取授权链接失败',
-    'error.1035': '弹窗被拦截，请允许弹窗跳转',
-    'error.1036': '登入失败',
-    'error.1037': '未知错误',
-    'error.1038': '登陆视窗已关闭',
-    'error.1039': '登录超时，请重试',
-    'common.send_email_code_success': '发送验证码成功',
-    'common.send_email_code_failure': '发送验证码失败',
-    'error.modal_already_open': '登录窗口已打开，请勿重复操作',
-    'error.aytoast_not_found': 'AyToast 组件未成功加载，请您重载',
-    'common.register_success': '注册成功',
-    'common.login_success': '登录成功',
-    'common.login_failure': '登录失败',
-    'common.register_failure': '注册失败',
-    'common.network_error': '网络请求失败，请检查网络',
-    'common.unknown_error': '未知错误，请稍后重试',
-    'common.reg_email_code_length': '邮箱验证码长度错误',
-    'common.enter_username_or_email': '请输入用户名/邮箱',
-    'common.please_read_and_agree': '请您阅读并同意协议',
-    'common.password_min_length': '密码至少6位',
-    'common.password_max_length': '密码最多32位',
-    'common.username_min_length': '用户名至少4位',
-    'common.username_max_length': '用户名最多20位',
-    'common.enter_password': '请输入密码',
-    'common.invalid_email_format': '邮箱格式不正确',
-    'common.enter_username': '请输入用户名',
-    'common.enter_email': '请输入邮箱',
-    'common.password_mismatch': '密码输入不一致',
-    'common.no_account_register': '没有账号？去注册',
-    'common.have_account_login': '已有账号？去登录',
-    'common.success': '操作成功',
-    'common.complete_verification': '请完成验证',
-    'common.please_wait': '请稍后...',
-    'login.success': '登录成功',
-    'logout.success': '已登出',
-    'register.success': '注册成功',
-    'refresh.success': '令牌已刷新',
-    'password.change.success': '密码已修改，请重新登录',
+  "zh-cn": {
+    "title.login": "登录",
+    "nav.login": "&nbsp;登录&nbsp;",
+    "nav.reg": "&nbsp;注册&nbsp;",
+    "nav.login.bartf": "94.6px",
+    "nav.reg.bartf": "213.5px",
+    "link.faq": "https://online.undz.cn/login/faq/zh-cn",
+    "reg.username": "用户名",
+    "reg.email": "邮箱",
+    "reg.emailCode": "验证码",
+    "reg.password": "密码",
+    "reg.passwordConfirm": "请再次输入密码",
+    "agreement.prefix": "我已阅读并同意",
+    privacy_policy: "《隐私政策》",
+    cookie_policy: "《Cookie 政策》",
+    terms: "《服务条款》",
+    "btn.login.oauth.yzhyzxy": "使用 Yzhyzxy 账号登入",
+    "privacy_policy.link": "https://undz.cn/privacy/",
+    "cookie_policy.link": "https://undz.cn/cookies/",
+    "terms.link": "https://undz.cn/terms/",
+    "btn.reg": "注册",
+    "login.usernameoremail": "用户名/邮箱",
+    "login.password": "密码",
+    "btn.login": "登录",
+    "btn.haveQuestion": "常见问题",
+    loading: "加载中...",
+    "agreement.and1": "、",
+    "agreement.and2": "和",
+    "error.1000": "邮箱格式无效",
+    "error.1001": "密码长度须在6~32之间，仅允许 a-z A-Z 0-9 -_=+@#$%",
+    "error.1002": "用户名或邮箱已存在",
+    "error.1003": "用户名/邮箱或密码错误",
+    "error.1005":
+      "新密码格式不合法（长度须在6~32之间，仅允许 a-z A-Z 0-9 -_=+@#$%）",
+    "error.1006": "旧密码错误",
+    "error.1007": "缺少必填字段",
+    "error.1008": "用户名必须在4~20之间",
+    "error.1009": "请提供用户名/邮箱和密码",
+    "error.1010": "未授权，请先登录",
+    "error.1011": "令牌无效或已过期",
+    "error.1012": "缺少旧密码或新密码",
+    "error.1013": "未提供令牌",
+    "error.1014": "刷新令牌缺失",
+    "error.1015": "刷新令牌无效或已过期",
+    "error.1016": "用户不存在",
+    "error.1017": "账号已被封禁",
+    "error.1018": "服务器错误",
+    "error.1019": "appId 无效",
+    "error.1020": "验证码校验失败",
+    "error.1021": "验证ID无效",
+    "error.1022": "验证码二次校验失败",
+    "error.1023": "需要通过人机验证",
+    "error.1024": "您已取消验证",
+    "error.1025": "验证码错误",
+    "error.1026": "不支持的邮箱域名",
+    "error.1027": "发送验证码过于频繁",
+    "error.1028": "请求发送时失败",
+    "error.1029": "请填写邮箱",
+    "error.1030": "服务器错误：无可用发送途径",
+    "error.1031": "邮件服务器不可用",
+    "error.1032": "发送邮件失败",
+    "error.1033": "发件服务器出现内部错误",
+    "error.1034": "获取授权链接失败",
+    "error.1035": "弹窗被拦截，请允许弹窗跳转",
+    "error.1036": "登入失败",
+    "error.1037": "未知错误",
+    "error.1038": "登陆视窗已关闭",
+    "error.1039": "登录超时，请重试",
+    "common.send_email_code_success": "发送验证码成功",
+    "common.send_email_code_failure": "发送验证码失败",
+    "error.modal_already_open": "登录窗口已打开，请勿重复操作",
+    "error.aytoast_not_found": "AyToast 组件未成功加载，请您重载",
+    "common.register_success": "注册成功",
+    "common.login_success": "登录成功",
+    "common.login_failure": "登录失败",
+    "common.register_failure": "注册失败",
+    "common.network_error": "网络请求失败，请检查网络",
+    "common.unknown_error": "未知错误，请稍后重试",
+    "common.reg_email_code_length": "邮箱验证码长度错误",
+    "common.enter_username_or_email": "请输入用户名/邮箱",
+    "common.please_read_and_agree": "请您阅读并同意协议",
+    "common.password_min_length": "密码至少6位",
+    "common.password_max_length": "密码最多32位",
+    "common.username_min_length": "用户名至少4位",
+    "common.username_max_length": "用户名最多20位",
+    "common.enter_password": "请输入密码",
+    "common.invalid_email_format": "邮箱格式不正确",
+    "common.enter_username": "请输入用户名",
+    "common.enter_email": "请输入邮箱",
+    "common.password_mismatch": "密码输入不一致",
+    "common.no_account_register": "没有账号？去注册",
+    "common.have_account_login": "已有账号？去登录",
+    "common.success": "操作成功",
+    "common.complete_verification": "请完成验证",
+    "common.please_wait": "请稍后...",
+    "login.success": "登录成功",
+    "logout.success": "已登出",
+    "register.success": "注册成功",
+    "refresh.success": "令牌已刷新",
+    "password.change.success": "密码已修改，请重新登录",
   },
-  'en-us': {
-    'title.login': 'Login',
-    'nav.login': 'Login',
-    'nav.reg': 'Register',
-    'nav.login.bartf': '85px',
-    'nav.reg.bartf': '215px',
-    'reg.username': 'Username',
-    'reg.email': 'Email',
-    'reg.password': 'Password',
-    'reg.passwordConfirm': 'Re-enter password',
-    'agreement.prefix': 'I have read and agree to the',
-    'privacy_policy': '“Privacy Policy”',
-    'cookie_policy': '“Cookie Policy”',
-    'terms': '“Terms of Service”',
-    'btn.reg': 'Register',
-    'login.usernameoremail': 'Username/Email',
-    'login.password': 'Password',
-    'btn.login': 'Login',
-    'btn.haveQuestion': 'FAQ',
-    'loading': 'Loading...',
-    'btn.login.oauth.yzhyzxy': 'Login with Yzhyzxy account',
-    'agreement.and1': ', ',
-    'agreement.and2': 'and',
-    'link.faq': 'https://online.undz.cn/login/faq/en-us',
-    'privacy_policy.link': 'https://undz.cn/privacy_policy/en-us',
-    'cookie_policy.link': 'https://undz.cn/cookie_policy/en-us',
-    'terms.link': 'https://undz.cn/terms/en-us',
-    'error.1000': 'Invalid email format',
-    'error.1001': 'Password must be between 4 and 20 characters and contain only a-z A-Z 0-9 -_=+@#$%',
-    'error.1002': 'Username or email already exists',
-    'error.1003': 'Invalid credentials',
-    'error.1005': 'New password must be between 4 and 20 characters and contain only a-z A-Z 0-9 -_=+@#$%',
-    'error.1006': 'Old password is incorrect',
-    'error.1007': 'Missing required fields',
-    'error.1008': 'Username must be between 4 and 20 characters',
-    'error.1009': 'Username/email and password are required',
-    'error.1010': 'Unauthorized, please login',
-    'error.1011': 'Invalid or expired token',
-    'error.1012': 'Missing oldPassword or newPassword',
-    'error.1013': 'No token provided',
-    'error.1014': 'Refresh token missing',
-    'error.1015': 'Invalid or expired refresh token',
-    'error.1016': 'User not found',
-    'error.1017': 'Account banned',
-    'error.1018': 'Server Error',
-    'error.1019': 'appId is invalid',
-    'error.1020': 'Verification code check failed',
-    'error.1021': 'Invalid verification ID',
-    'error.1022': 'Verification code check failed again',
-    'error.1023': 'You need to pass a human verification',
-    'error.1024': 'Verification cancelled, please retry',
-    'error.1025': 'Invalid verification code',
-    'error.1026': 'Email domain not supported',
-    'error.1027': 'Verification code sent too frequently',
-    'error.1028': 'Failed to send request',
-    'error.1029': 'Please enter your email',
-    'error.1030': 'Server error: no available sending method',
-    'error.1031': 'Email server unavailable',
-    'error.1032': 'Failed to send email',
-    'error.1033': 'Internal error in the sending server',
+  "en-us": {
+    "title.login": "Login",
+    "nav.login": "Login",
+    "nav.reg": "Register",
+    "nav.login.bartf": "85px",
+    "nav.reg.bartf": "215px",
+    "reg.username": "Username",
+    "reg.email": "Email",
+    "reg.password": "Password",
+    "reg.passwordConfirm": "Re-enter password",
+    "agreement.prefix": "I have read and agree to the",
+    privacy_policy: "“Privacy Policy”",
+    cookie_policy: "“Cookie Policy”",
+    terms: "“Terms of Service”",
+    "btn.reg": "Register",
+    "login.usernameoremail": "Username/Email",
+    "login.password": "Password",
+    "btn.login": "Login",
+    "btn.haveQuestion": "FAQ",
+    loading: "Loading...",
+    "btn.login.oauth.yzhyzxy": "Login with Yzhyzxy account",
+    "agreement.and1": ", ",
+    "agreement.and2": "and",
+    "link.faq": "https://online.undz.cn/login/faq/en-us",
+    "privacy_policy.link": "https://undz.cn/privacy/",
+    "cookie_policy.link": "https://undz.cn/cookies/",
+    "terms.link": "https://undz.cn/terms/",
+    "error.1000": "Invalid email format",
+    "error.1001":
+      "Password must be between 4 and 20 characters and contain only a-z A-Z 0-9 -_=+@#$%",
+    "error.1002": "Username or email already exists",
+    "error.1003": "Invalid credentials",
+    "error.1005":
+      "New password must be between 4 and 20 characters and contain only a-z A-Z 0-9 -_=+@#$%",
+    "error.1006": "Old password is incorrect",
+    "error.1007": "Missing required fields",
+    "error.1008": "Username must be between 4 and 20 characters",
+    "error.1009": "Username/email and password are required",
+    "error.1010": "Unauthorized, please login",
+    "error.1011": "Invalid or expired token",
+    "error.1012": "Missing oldPassword or newPassword",
+    "error.1013": "No token provided",
+    "error.1014": "Refresh token missing",
+    "error.1015": "Invalid or expired refresh token",
+    "error.1016": "User not found",
+    "error.1017": "Account banned",
+    "error.1018": "Server Error",
+    "error.1019": "appId is invalid",
+    "error.1020": "Verification code check failed",
+    "error.1021": "Invalid verification ID",
+    "error.1022": "Verification code check failed again",
+    "error.1023": "You need to pass a human verification",
+    "error.1024": "Verification cancelled, please retry",
+    "error.1025": "Invalid verification code",
+    "error.1026": "Email domain not supported",
+    "error.1027": "Verification code sent too frequently",
+    "error.1028": "Failed to send request",
+    "error.1029": "Please enter your email",
+    "error.1030": "Server error: no available sending method",
+    "error.1031": "Email server unavailable",
+    "error.1032": "Failed to send email",
+    "error.1033": "Internal error in the sending server",
     "error.1034": "Failed to obtain authorization link.",
     "error.1035": "Popup blocked. Please allow popups.",
     "error.1036": "Login failed.",
     "error.1037": "Unknown error.",
     "error.1038": "Login window has been closed.",
     "error.1039": "Login timed out. Please try again.",
-    'error.modal_already_open': 'Login modal is already open, please do not repeat',
-    'error.aytoast_not_found': 'The AyToast component failed to load, please reload.',
-    'common.network_error': 'Network request failed, please check your connection',
-    'common.unknown_error': 'Unknown error, please try again later',
-    'common.success': 'Operation successful',
-    'common.complete_verification': 'Please complete the verification',
-    'common.register_success': 'Registration successful',
-    'common.login_success': 'Login successful',
-    'common.login_failure': 'Login failed',
-    'common.register_failure': 'Registration failed',
-    'common.enter_username_or_email': 'Please enter username/email',
-    'common.please_read_and_agree': 'Please read and agree to the terms',
-    'common.password_min_length': 'Password must be at least 6 characters',
-    'common.password_max_length': 'Password must be at most 32 characters',
-    'common.username_min_length': 'Username must be at least 4 characters',
-    'common.username_max_length': 'Username must be at most 20 characters',
-    'common.enter_password': 'Please enter your password',
-    'common.no_account_register': 'No account? Sign up',
-    'common.have_account_login': 'Already have an account? Log in',
-    'common.invalid_email_format': 'Invalid email format',
-    'common.enter_username': 'Please enter username',
-    'common.enter_email': 'Please enter email',
-    'common.password_mismatch': 'Passwords do not match',
-    'common.please_wait': 'Please wait...',
-    'login.success': 'Login successful',
-    'logout.success': 'Logged out',
-    'register.success': 'Registration successful',
-    'refresh.success': 'Token refreshed',
-    'password.change.success': 'Password changed, please login again',
-    'reg.emailCode': 'Verification Code',
-    'common.send_email_code_success': 'Verification code sent successfully',
-    'common.send_email_code_failure': 'Failed to send verification code',
-    'common.reg_email_code_length': 'Verification code length is invalid',
-
+    "error.modal_already_open":
+      "Login modal is already open, please do not repeat",
+    "error.aytoast_not_found":
+      "The AyToast component failed to load, please reload.",
+    "common.network_error":
+      "Network request failed, please check your connection",
+    "common.unknown_error": "Unknown error, please try again later",
+    "common.success": "Operation successful",
+    "common.complete_verification": "Please complete the verification",
+    "common.register_success": "Registration successful",
+    "common.login_success": "Login successful",
+    "common.login_failure": "Login failed",
+    "common.register_failure": "Registration failed",
+    "common.enter_username_or_email": "Please enter username/email",
+    "common.please_read_and_agree": "Please read and agree to the terms",
+    "common.password_min_length": "Password must be at least 6 characters",
+    "common.password_max_length": "Password must be at most 32 characters",
+    "common.username_min_length": "Username must be at least 4 characters",
+    "common.username_max_length": "Username must be at most 20 characters",
+    "common.enter_password": "Please enter your password",
+    "common.no_account_register": "No account? Sign up",
+    "common.have_account_login": "Already have an account? Log in",
+    "common.invalid_email_format": "Invalid email format",
+    "common.enter_username": "Please enter username",
+    "common.enter_email": "Please enter email",
+    "common.password_mismatch": "Passwords do not match",
+    "common.please_wait": "Please wait...",
+    "login.success": "Login successful",
+    "logout.success": "Logged out",
+    "register.success": "Registration successful",
+    "refresh.success": "Token refreshed",
+    "password.change.success": "Password changed, please login again",
+    "reg.emailCode": "Verification Code",
+    "common.send_email_code_success": "Verification code sent successfully",
+    "common.send_email_code_failure": "Failed to send verification code",
+    "common.reg_email_code_length": "Verification code length is invalid",
   },
-  'zh-hk': {
-    'title.login': '登錄',
-    'nav.login': '&nbsp;登錄&nbsp;',
-    'nav.reg': '&nbsp;註冊&nbsp;',
-    'nav.login.bartf': '94.6px',
-    'nav.reg.bartf': '213.5px',
-    'reg.username': '用戶名',
-    'reg.email': '電郵',
-    'reg.password': '密碼',
-    'reg.passwordConfirm': '請再次輸入密碼',
-    'agreement.prefix': '我已閱讀並同意',
-    'privacy_policy': '《隱私政策》',
-    'cookie_policy': '《Cookie 政策》',
-    'terms': '《服務條款》',
-    'link.faq': 'https://online.undz.cn/login/faq/zh-hk',
-    'privacy_policy.link': 'https://undz.cn/privacy_policy/zh-hk',
-    'cookie_policy.link': 'https://undz.cn/cookie_policy/zh-hk',
-    'terms.link': 'https://undz.cn/terms/zh-hk',
-    'btn.reg': '註冊',
-    'login.usernameoremail': '用戶名/電郵',
-    'login.password': '密碼',
-    'btn.login': '登錄',
-    'btn.login.oauth.yzhyzxy': '使用 Yzhyzxy 賬號登錄',
-    'btn.haveQuestion': '常見問題',
-    'loading': '載入中...',
-    'agreement.and1': '、',
-    'agreement.and2': '和',
-    'error.1000': '電郵格式無效',
-    'error.1001': '密碼長度在6~32之间，僅允許 a-z A-Z 0-9 -_=+@#$%',
-    'error.1002': '用戶名或電郵已存在',
-    'error.1003': '用戶名/電郵或密碼錯誤',
-    'error.1005': '新密碼格式不合法（在6~32之间，僅允許 a-z A-Z 0-9 -_=+@#$%）',
-    'error.1006': '舊密碼錯誤',
-    'error.1007': '缺少必填欄位',
-    'error.1008': '用戶名长度需要在4~20之间',
-    'error.1009': '請提供用戶名/電郵和密碼',
-    'error.1010': '未授權，請先登錄',
-    'error.1011': '令牌無效或已過期',
-    'error.1012': '缺少舊密碼或新密碼',
-    'error.1013': '未提供令牌',
-    'error.1014': '刷新令牌缺失',
-    'error.1015': '刷新令牌無效或已過期',
-    'error.1016': '用戶不存在',
-    'error.1017': '賬號已被封禁',
-    'error.1018': '伺服器錯誤',
-    'error.1019': 'appId 無效',
-    'error.1020': '驗證碼驗證失敗',
-    'error.1021': '驗證ID無效',
-    'error.1022': '驗證碼第二次驗證失敗',
-    'error.1023': '需要通過人機驗證',
-    'error.1024': '驗證已取消，請重試',
-    'error.1025': '驗證碼錯誤',
-    'error.1026': '不支援的電郵域名',
-    'error.1027': '發送驗證碼過頻繁',
-    'error.1028': '發送時請求失敗',
-    'error.1029': '請輸入您的電子郵件地址',
-    'error.1030': '伺服器錯誤:無可用傳送路徑',
-    'error.1031': '郵件伺服器無法使用',
-    'error.1032': 'Failed to send email',
-    'error.1033': '發送伺服器內部錯誤',
+  "zh-hk": {
+    "title.login": "登錄",
+    "nav.login": "&nbsp;登錄&nbsp;",
+    "nav.reg": "&nbsp;註冊&nbsp;",
+    "nav.login.bartf": "94.6px",
+    "nav.reg.bartf": "213.5px",
+    "reg.username": "用戶名",
+    "reg.email": "電郵",
+    "reg.password": "密碼",
+    "reg.passwordConfirm": "請再次輸入密碼",
+    "agreement.prefix": "我已閱讀並同意",
+    privacy_policy: "《隱私政策》",
+    cookie_policy: "《Cookie 政策》",
+    terms: "《服務條款》",
+    "link.faq": "https://online.undz.cn/login/faq/zh-hk",
+    "privacy_policy.link": "https://undz.cn/privacy/",
+    "cookie_policy.link": "https://undz.cn/cookies/",
+    "terms.link": "https://undz.cn/terms/",
+    "btn.reg": "註冊",
+    "login.usernameoremail": "用戶名/電郵",
+    "login.password": "密碼",
+    "btn.login": "登錄",
+    "btn.login.oauth.yzhyzxy": "使用 Yzhyzxy 賬號登錄",
+    "btn.haveQuestion": "常見問題",
+    loading: "載入中...",
+    "agreement.and1": "、",
+    "agreement.and2": "和",
+    "error.1000": "電郵格式無效",
+    "error.1001": "密碼長度在6~32之间，僅允許 a-z A-Z 0-9 -_=+@#$%",
+    "error.1002": "用戶名或電郵已存在",
+    "error.1003": "用戶名/電郵或密碼錯誤",
+    "error.1005": "新密碼格式不合法（在6~32之间，僅允許 a-z A-Z 0-9 -_=+@#$%）",
+    "error.1006": "舊密碼錯誤",
+    "error.1007": "缺少必填欄位",
+    "error.1008": "用戶名长度需要在4~20之间",
+    "error.1009": "請提供用戶名/電郵和密碼",
+    "error.1010": "未授權，請先登錄",
+    "error.1011": "令牌無效或已過期",
+    "error.1012": "缺少舊密碼或新密碼",
+    "error.1013": "未提供令牌",
+    "error.1014": "刷新令牌缺失",
+    "error.1015": "刷新令牌無效或已過期",
+    "error.1016": "用戶不存在",
+    "error.1017": "賬號已被封禁",
+    "error.1018": "伺服器錯誤",
+    "error.1019": "appId 無效",
+    "error.1020": "驗證碼驗證失敗",
+    "error.1021": "驗證ID無效",
+    "error.1022": "驗證碼第二次驗證失敗",
+    "error.1023": "需要通過人機驗證",
+    "error.1024": "驗證已取消，請重試",
+    "error.1025": "驗證碼錯誤",
+    "error.1026": "不支援的電郵域名",
+    "error.1027": "發送驗證碼過頻繁",
+    "error.1028": "發送時請求失敗",
+    "error.1029": "請輸入您的電子郵件地址",
+    "error.1030": "伺服器錯誤:無可用傳送路徑",
+    "error.1031": "郵件伺服器無法使用",
+    "error.1032": "Failed to send email",
+    "error.1033": "發送伺服器內部錯誤",
     "error.1034": "獲取授權連結失敗",
     "error.1035": "彈窗被攔截，請允許彈窗跳轉",
     "error.1036": "登入失敗",
     "error.1037": "未知錯誤",
     "error.1038": "登入視窗已關閉",
     "error.1039": "登入超時，請重試",
-    'error.modal_already_open': '登錄視窗已打開，請勿重複操作',
-    'error.aytoast_not_found': 'AyToast 組件未成功加載，請你重載',
-    'common.network_error': '網絡請求失敗，請檢查網絡',
-    'common.unknown_error': '未知錯誤，請稍後重試',
-    'common.complete_verification': '麻煩完成驗證',
-    'common.please_wait': '請稍後...',
-    'common.success': '操作成功',
-    'common.register_success': '註冊成功',
-    'common.login_success': '登錄成功',
-    'common.enter_username_or_email': '請輸入用戶名/電郵',
-    'common.please_read_and_agree': '請您閱讀並同意協議',
-    'common.password_min_length': '密碼至少6位',
-    'common.password_max_length': '密碼最多6位',
-    'common.username_min_length': '用戶名至少4位',
-    'common.username_max_length': '用戶名最多20位',
-    'common.enter_password': '請輸入密碼',
-    'common.invalid_email_format': '電郵格式不正確',
-    'common.enter_username': '請輸入用戶名',
-    'common.enter_email': '請輸入電郵',
-    'common.password_mismatch': '密碼輸入不一致',
-    'common.no_account_register': '沒有賬號？去註冊',
-    'common.have_account_login': '已有賬號？去登錄',
-    'common.login_failure': '登錄失敗',
-    'common.register_failure': '註冊失敗',
-    'login.success': '登錄成功',
-    'logout.success': '已登出',
-    'register.success': '註冊成功',
-    'refresh.success': '令牌已刷新',
-    'password.change.success': '密碼已修改，請重新登錄',
-    'reg.emailCode': '驗證碼',
-    'common.send_email_code_success': '發送驗證碼成功',
-    'common.send_email_code_failure': '發送驗證碼失敗',
-    'common.reg_email_code_length': '郵箱驗證碼長度錯誤',
-
+    "error.modal_already_open": "登錄視窗已打開，請勿重複操作",
+    "error.aytoast_not_found": "AyToast 組件未成功加載，請你重載",
+    "common.network_error": "網絡請求失敗，請檢查網絡",
+    "common.unknown_error": "未知錯誤，請稍後重試",
+    "common.complete_verification": "麻煩完成驗證",
+    "common.please_wait": "請稍後...",
+    "common.success": "操作成功",
+    "common.register_success": "註冊成功",
+    "common.login_success": "登錄成功",
+    "common.enter_username_or_email": "請輸入用戶名/電郵",
+    "common.please_read_and_agree": "請您閱讀並同意協議",
+    "common.password_min_length": "密碼至少6位",
+    "common.password_max_length": "密碼最多6位",
+    "common.username_min_length": "用戶名至少4位",
+    "common.username_max_length": "用戶名最多20位",
+    "common.enter_password": "請輸入密碼",
+    "common.invalid_email_format": "電郵格式不正確",
+    "common.enter_username": "請輸入用戶名",
+    "common.enter_email": "請輸入電郵",
+    "common.password_mismatch": "密碼輸入不一致",
+    "common.no_account_register": "沒有賬號？去註冊",
+    "common.have_account_login": "已有賬號？去登錄",
+    "common.login_failure": "登錄失敗",
+    "common.register_failure": "註冊失敗",
+    "login.success": "登錄成功",
+    "logout.success": "已登出",
+    "register.success": "註冊成功",
+    "refresh.success": "令牌已刷新",
+    "password.change.success": "密碼已修改，請重新登錄",
+    "reg.emailCode": "驗證碼",
+    "common.send_email_code_success": "發送驗證碼成功",
+    "common.send_email_code_failure": "發送驗證碼失敗",
+    "common.reg_email_code_length": "郵箱驗證碼長度錯誤",
   },
 };
 function isMobile() {
@@ -412,9 +415,9 @@ function isMobile() {
 function utf8ToBase64(str) {
   // 将字符串编码为 UTF-8 字节数组
   const encoder = new TextEncoder();
-  const bytes = encoder.encode(str);  // Uint8Array
+  const bytes = encoder.encode(str); // Uint8Array
   // 将字节数组转换为二进制字符串（每个字节转成对应字符）
-  let binary = '';
+  let binary = "";
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
@@ -423,44 +426,57 @@ function utf8ToBase64(str) {
 }
 function removeUselessTestLogo() {
   const observer = new MutationObserver(() => {
-    const els = document.querySelectorAll('.geetest_box_logo, .geetest_feedback');
+    const els = document.querySelectorAll(
+      ".geetest_box_logo, .geetest_feedback",
+    );
     if (els.length) {
-      els.forEach(el => el.style.display = 'none');
+      els.forEach((el) => (el.style.display = "none"));
       observer.disconnect(); // 隐藏后停止观察，避免重复执行
     }
   });
   observer.observe(document.body, { childList: true, subtree: true });
 }
 function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 function isPlainObject(obj) {
-  return Object.prototype.toString.call(obj) === '[object Object]';
+  return Object.prototype.toString.call(obj) === "[object Object]";
 }
 (() => {
   // 动态加载 Geetest SDK（仅在浏览器环境中）
-  if (typeof window !== 'undefined' && typeof window.initGeetest4 === 'undefined') {
+  if (
+    typeof window !== "undefined" &&
+    typeof window.initGeetest4 === "undefined"
+  ) {
     window.addEventListener("load", function () {
-      const script = document.createElement('script');
-      script.src = PRODUCE ? `${URLPATH.BASE}${URLPATH.LIBRARY.GT4}` : URLPATH.LIBRARY.GT4;
-      script.async = true;        // 异步加载，不阻塞页面
-      script.onerror = () => console.warn('[AyAccountSDK] Failed to load Geetest');
+      const script = document.createElement("script");
+      script.src = PRODUCE
+        ? `${URLPATH.BASE}${URLPATH.LIBRARY.GT4}`
+        : URLPATH.LIBRARY.GT4;
+      script.async = true; // 异步加载，不阻塞页面
+      script.onerror = () =>
+        console.warn("[AyAccountSDK] Failed to load Geetest");
       document.head.appendChild(script);
     });
   }
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     window.addEventListener("load", function () {
-      const toastscript = document.createElement('script');
-      toastscript.src = PRODUCE ? `${URLPATH.BASE}${URLPATH.LIBRARY.AYTOAST.SCRIPT}` : URLPATH.LIBRARY.AYTOAST.SCRIPT;
-      toastscript.async = true;        // 异步加载，不阻塞页面
-      toastscript.onerror = () => console.warn('[AyAccountSDK] Failed to load AyWebToast');
+      const toastscript = document.createElement("script");
+      toastscript.src = PRODUCE
+        ? `${URLPATH.BASE}${URLPATH.LIBRARY.AYTOAST.SCRIPT}`
+        : URLPATH.LIBRARY.AYTOAST.SCRIPT;
+      toastscript.async = true; // 异步加载，不阻塞页面
+      toastscript.onerror = () =>
+        console.warn("[AyAccountSDK] Failed to load AyWebToast");
       document.head.appendChild(toastscript);
-      const toastcss = document.createElement('link');
-      toastcss.rel = 'stylesheet';
-      toastcss.href = PRODUCE ? `${URLPATH.BASE}${URLPATH.LIBRARY.AYTOAST.CSS}` : URLPATH.LIBRARY.AYTOAST.CSS;
+      const toastcss = document.createElement("link");
+      toastcss.rel = "stylesheet";
+      toastcss.href = PRODUCE
+        ? `${URLPATH.BASE}${URLPATH.LIBRARY.AYTOAST.CSS}`
+        : URLPATH.LIBRARY.AYTOAST.CSS;
       document.head.appendChild(toastcss);
       const toastDiv = document.createElement("div");
-      toastDiv.className = 'ay-popup ay-toast service-loading';
+      toastDiv.className = "ay-popup ay-toast service-loading";
       toastDiv.innerHTML = `
       <i class="ay-icon">
         <img
@@ -477,17 +493,19 @@ function isPlainObject(obj) {
       </i>
       <div class="ay-toast__text">加载中...</div>
       `;
-      toastDiv.style.display = 'none';
-      toastDiv.role = 'dialog';
+      toastDiv.style.display = "none";
+      toastDiv.role = "dialog";
       toastDiv.tabIndex = 0;
       toastDiv.style.zIndex = 20000010;
       document.body.appendChild(toastDiv);
     });
   }
 
-  console.info(`%c AyAccountSDK %c v${VERSION} `,
+  console.info(
+    `%c AyAccountSDK %c v${VERSION} `,
     "padding: 2px 6px; border-radius: 3px 0 0 3px; color: #fff; background: #00aaff; font-weight: bold;",
-    "padding: 2px 6px; border-radius: 0 3px 3px 0; color: #fff; background: #00ccff; font-weight: bold;");
+    "padding: 2px 6px; border-radius: 0 3px 3px 0; color: #fff; background: #00ccff; font-weight: bold;",
+  );
 })();
 // ---------- AyAccount 类 ----------
 class AyAccount {
@@ -507,11 +525,11 @@ class AyAccount {
    *     }
    *     - 翻译查找优先级：custom(lang) → builtin(lang) → custom(fallback) → builtin(fallback) → key 本身
    *     - fallbackLang 必须为内置支持的语言，否则会警告并回退到 'zh-cn'
-   * 
+   *
    * @example
    * // 使用内置语言
    * new AyAccount({ appId: 'xxx', i18n: 'zh-cn' });
-   * 
+   *
    * // 使用自定义日语，回退到简体中文
    * new AyAccount({
    *   appId: 'xxx',
@@ -523,7 +541,7 @@ class AyAccount {
    *     }
    *   }
    * });
-   * 
+   *
    * // 支持繁体中文，回退英文
    * new AyAccount({
    *   appId: 'xxx',
@@ -535,7 +553,7 @@ class AyAccount {
    *     }
    *   }
    * });
-   * 
+   *
    * // 初始化后动态更新语言（使用 changeLanguage 或 updateI18n）
    * const account = new AyAccount({ appId: 'xxx', i18n: 'zh-cn' });
    * account.changeLanguage('ja'); // 需事先在 translations 中提供日语翻译
@@ -543,9 +561,9 @@ class AyAccount {
    * account.updateI18n({ lang: 'ja', translations: { ja: { ... } } });
    */
   constructor(config) {
-    if (!config) throw new Error('[AyAccountSDK] config is required');
+    if (!config) throw new Error("[AyAccountSDK] config is required");
 
-    const priv = { appId: config.appId || 'default' };
+    const priv = { appId: config.appId || "default" };
     privateData.set(this, priv);
 
     this._iframe = null;
@@ -554,28 +572,30 @@ class AyAccount {
     this._modalPromise = null;
 
     // 默认值
-    let lang = 'zh-cn';
-    let fallbackLang = 'zh-cn';
+    let lang = "zh-cn";
+    let fallbackLang = "zh-cn";
     let translations = {};
 
     const i18n = config.i18n;
-    if (typeof i18n === 'string') {
+    if (typeof i18n === "string") {
       lang = i18n;
     } else if (isPlainObject(i18n)) {
-      lang = i18n.lang || 'zh-cn';
-      fallbackLang = i18n.fallbackLang || 'zh-cn';
+      lang = i18n.lang || "zh-cn";
+      fallbackLang = i18n.fallbackLang || "zh-cn";
       translations = i18n.translations || {};
     }
 
     // 确保 fallbackLang 是内置支持的语言（否则警告并修正）
     if (!BUILTIN_TRANSLATIONS[fallbackLang]) {
-      console.warn(`[AyAccountSDK] Unsupported fallback language "${fallbackLang}", fallback to "zh-cn"`);
-      fallbackLang = 'zh-cn';
+      console.warn(
+        `[AyAccountSDK] Unsupported fallback language "${fallbackLang}", fallback to "zh-cn"`,
+      );
+      fallbackLang = "zh-cn";
     }
 
     this.lang = lang;
     this.fallbackLang = fallbackLang;
-    this.translations = translations;     // 多语言翻译包
+    this.translations = translations; // 多语言翻译包
 
     window.__ayt = this._t.bind(this);
   }
@@ -607,51 +627,75 @@ class AyAccount {
     if (this._iframe) {
       return this._iframe;
     }
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.top = '0';
-    iframe.style.left = '0';
-    iframe.style.width = '100%';
-    iframe.style.colorScheme = 'light';
-    iframe.style.height = '100%';
-    iframe.style.border = 'none';
-    iframe.style.zIndex = '20000000';
-    iframe.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
-    iframe.style.display = 'none';
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.top = "0";
+    iframe.style.left = "0";
+    iframe.style.width = "100%";
+    iframe.style.colorScheme = "light";
+    iframe.style.height = "100%";
+    iframe.style.border = "none";
+    iframe.style.zIndex = "20000000";
+    iframe.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
+    iframe.style.display = "none";
     document.body.appendChild(iframe);
     this._iframe = iframe;
     return iframe;
   }
   #getGeeTestLang() {
-    const normalized = this.lang.trim().toLowerCase().replace(/_/g, '-');
+    const normalized = this.lang.trim().toLowerCase().replace(/_/g, "-");
     // 精确映射表（键为小写标签，值为 GeeTest 代码）
     const map = {
-      'zh-cn': 'zho', 'zh-hans': 'zho', 'zh-sg': 'zho', 'zh': 'zho',
-      'zh-tw': 'zho-tw', 'zh-hant': 'zho-tw', 'zh-hant-tw': 'zho-tw',
-      'zh-hk': 'zho-hk', 'zh-mo': 'zho-hk', 'zh-hant-hk': 'zho-hk',
-      'en': 'eng', 'en-us': 'eng', 'en-gb': 'eng', 'en-au': 'eng', 'en-ca': 'eng',
-      'ja': 'jpn', 'ja-jp': 'jpn',
-      'id': 'ind', 'id-id': 'ind',
-      'ko': 'kor', 'ko-kr': 'kor',
-      'ru': 'rus', 'ru-ru': 'rus',
-      'ar': 'ara', 'ar-sa': 'ara', 'ar-eg': 'ara',
-      'es': 'spa', 'es-es': 'spa', 'es-mx': 'spa',
-      'pt-br': 'pon',
-      'pt': 'por', 'pt-pt': 'por',
-      'fr': 'fra', 'fr-fr': 'fra', 'fr-ca': 'fra',
-      'de': 'deu', 'de-de': 'deu',
-      'ug': 'udm', 'ug-cn': 'udm',
+      "zh-cn": "zho",
+      "zh-hans": "zho",
+      "zh-sg": "zho",
+      zh: "zho",
+      "zh-tw": "zho-tw",
+      "zh-hant": "zho-tw",
+      "zh-hant-tw": "zho-tw",
+      "zh-hk": "zho-hk",
+      "zh-mo": "zho-hk",
+      "zh-hant-hk": "zho-hk",
+      en: "eng",
+      "en-us": "eng",
+      "en-gb": "eng",
+      "en-au": "eng",
+      "en-ca": "eng",
+      ja: "jpn",
+      "ja-jp": "jpn",
+      id: "ind",
+      "id-id": "ind",
+      ko: "kor",
+      "ko-kr": "kor",
+      ru: "rus",
+      "ru-ru": "rus",
+      ar: "ara",
+      "ar-sa": "ara",
+      "ar-eg": "ara",
+      es: "spa",
+      "es-es": "spa",
+      "es-mx": "spa",
+      "pt-br": "pon",
+      pt: "por",
+      "pt-pt": "por",
+      fr: "fra",
+      "fr-fr": "fra",
+      "fr-ca": "fra",
+      de: "deu",
+      "de-de": "deu",
+      ug: "udm",
+      "ug-cn": "udm",
     };
     if (map[normalized]) {
       return map[normalized];
     }
 
-    const mainLang = normalized.split('-')[0];
+    const mainLang = normalized.split("-")[0];
     if (map[mainLang]) {
       return map[mainLang];
     }
 
-    return 'eng';
+    return "eng";
   }
   /**
    * 批量更新国际化配置
@@ -670,7 +714,9 @@ class AyAccount {
 
     if (options.fallbackLang !== undefined) {
       if (!BUILTIN_TRANSLATIONS[options.fallbackLang]) {
-        console.warn(`[AyAccountSDK] Unsupported fallback language "${options.fallbackLang}", ignoring.`);
+        console.warn(
+          `[AyAccountSDK] Unsupported fallback language "${options.fallbackLang}", ignoring.`,
+        );
       } else {
         this.fallbackLang = options.fallbackLang;
       }
@@ -682,19 +728,22 @@ class AyAccount {
     }
     if (this._iframe) {
       const translationMap = this._getFullTranslationMap();
-      this._iframe.contentWindow.postMessage(JSON.stringify({
-        action: 'updateTranslations',
-        payload: translationMap
-      }), '*');
+      this._iframe.contentWindow.postMessage(
+        JSON.stringify({
+          action: "updateTranslations",
+          payload: translationMap,
+        }),
+        "*",
+      );
     }
     // 如果 iframe 已打开，通知 iframe 刷新翻译
     if (this._iframe) {
       try {
         this._iframe.contentWindow.postMessage(
-          JSON.stringify({ action: 'changeLanguage' }),
-          '*'
+          JSON.stringify({ action: "changeLanguage" }),
+          "*",
         );
-      } catch { }
+      } catch {}
     }
   }
   // 在 AyAccount 类中添加
@@ -705,18 +754,18 @@ class AyAccount {
     // 内置翻译的键（从当前语言和 fallback 语言中收集）
     const builtinLang = BUILTIN_TRANSLATIONS[this.lang] || {};
     const builtinFallback = BUILTIN_TRANSLATIONS[this.fallbackLang] || {};
-    Object.keys(builtinLang).forEach(k => allKeys.add(k));
-    Object.keys(builtinFallback).forEach(k => allKeys.add(k));
+    Object.keys(builtinLang).forEach((k) => allKeys.add(k));
+    Object.keys(builtinFallback).forEach((k) => allKeys.add(k));
 
     // 自定义翻译的键
     const customLang = this.translations[this.lang] || {};
     const customFallback = this.translations[this.fallbackLang] || {};
-    Object.keys(customLang).forEach(k => allKeys.add(k));
-    Object.keys(customFallback).forEach(k => allKeys.add(k));
+    Object.keys(customLang).forEach((k) => allKeys.add(k));
+    Object.keys(customFallback).forEach((k) => allKeys.add(k));
 
     // 构建最终映射表
     const map = {};
-    allKeys.forEach(key => {
+    allKeys.forEach((key) => {
       map[key] = this._t(key); // 利用现有 _t 方法获取最终值
     });
     return map;
@@ -733,11 +782,11 @@ class AyAccount {
   async _request(path, options = {}) {
     const url = `${URLPATH.BASE}${path}`;
     const fetchOptions = {
-      credentials: 'include', // 自动携带 Cookie
+      credentials: "include", // 自动携带 Cookie
       headers: {
-        'Content-Type': 'application/json',
-        'X-App-Id': privateData.get(this).appId,
-        'X-SDK-VER': VERSION,
+        "Content-Type": "application/json",
+        "X-App-Id": privateData.get(this).appId,
+        "X-SDK-VER": VERSION,
         ...options.headers,
       },
       ...options,
@@ -752,18 +801,18 @@ class AyAccount {
 
       if (!response.ok) {
         // 尝试从响应中提取错误码和消息
-        const errorCode = data.error_code || data.code || 'unknown';
-        const rawMessage = data.error || data.message || '';
-        const banReason = data.ban_reason || '';
+        const errorCode = data.error_code || data.code || "unknown";
+        const rawMessage = data.error || data.message || "";
+        const banReason = data.ban_reason || "";
 
         // 优先使用服务端返回的消息，否则翻译
         let message = rawMessage;
         // 如果服务端返回了 error_code，用翻译替换
         if (errorCode !== undefined) {
           if (errorCode === 1017) {
-            const baseMsg = this._t('error.1017');
+            const baseMsg = this._t("error.1017");
             if (banReason) {
-              message = baseMsg + ': ' + banReason;
+              message = baseMsg + ": " + banReason;
             } else {
               message = baseMsg;
             }
@@ -776,11 +825,11 @@ class AyAccount {
           }
         } else {
           // 没有错误码，尝试用通用翻译
-          const fallbackKey = 'common.unknown_error';
+          const fallbackKey = "common.unknown_error";
           message = this._t(fallbackKey);
         }
         const err = new Error(message);
-        err.error_code = errorCode || 'unknown';
+        err.error_code = errorCode || "unknown";
         err.response = response;
         err.data = data;
         throw err;
@@ -794,8 +843,8 @@ class AyAccount {
     } catch (error) {
       // 网络异常等
       if (error instanceof Error && !error.error_code) {
-        const err = new Error(this._t('common.network_error'));
-        err.error_code = 'network_error';
+        const err = new Error(this._t("common.network_error"));
+        err.error_code = "network_error";
         err.originalError = error;
         throw err;
       }
@@ -805,29 +854,43 @@ class AyAccount {
 
   // ---------- API 方法 ----------
   /**
-     * 打开模态框，等待用户操作直至关闭
-     * @param {string} mode 仅用于日志或后续扩展，实际业务由 iframe 内消息决定
-     * @returns {Promise<Object|null>} 返回用户信息或 null
-     */
+   * 打开模态框，等待用户操作直至关闭
+   * @param {string} mode 仅用于日志或后续扩展，实际业务由 iframe 内消息决定
+   * @returns {Promise<Object|null>} 返回用户信息或 null
+   */
   #_openModal(mode, config = DEFAULT_WINDOW_CONFIG) {
     if (this._iframe) {
-      throw new Error(this._t('error.modal_already_open') || 'Modal already open');
+      throw new Error(
+        this._t("error.modal_already_open") || "Modal already open",
+      );
     }
     if (!AyShowResult || !AyCloseToast) {
-      throw new Error(this._t('error.aytoast_not_found') || '找不到AyWebToast组件，请重新加载');
+      throw new Error(
+        this._t("error.aytoast_not_found") ||
+          "找不到AyWebToast组件，请重新加载",
+      );
     }
 
     return new Promise((resolve, reject) => {
-      if (document.body) document.body.style.overflow = 'hidden';
-      AyShowResult(this._t('loading'), 'loading', 0)
-      const iframediv = document.createElement('div');
-      iframediv.className = 'iframe-level-1';
-      const iframe = document.createElement('iframe');
-      iframe.textContent = '';
+      if (document.body) document.body.style.overflow = "hidden";
+      AyShowResult(this._t("loading"), "loading", 0);
+      const iframediv = document.createElement("div");
+      iframediv.className = "iframe-level-1";
+      const iframe = document.createElement("iframe");
+      iframe.textContent = "";
 
       // 根据模式设置不同的 URL 参数
-      const baseUrl = isMobile() ? (PRODUCE ? `${URLPATH.BASE}${URLPATH.MODALPAGE.MOBILE}` : URLPATH.MODALPAGE.MOBILE) : (PRODUCE ? `${URLPATH.BASE}${URLPATH.MODALPAGE.DESKTOP}` : URLPATH.MODALPAGE.DESKTOP);
-      iframe.src = mode === 'register' ? `${baseUrl}${URLPATH.MODALPAGE.REGISTER}` : `${baseUrl}${URLPATH.MODALPAGE.LOGIN}`;
+      const baseUrl = isMobile()
+        ? PRODUCE
+          ? `${URLPATH.BASE}${URLPATH.MODALPAGE.MOBILE}`
+          : URLPATH.MODALPAGE.MOBILE
+        : PRODUCE
+          ? `${URLPATH.BASE}${URLPATH.MODALPAGE.DESKTOP}`
+          : URLPATH.MODALPAGE.DESKTOP;
+      iframe.src =
+        mode === "register"
+          ? `${baseUrl}${URLPATH.MODALPAGE.REGISTER}`
+          : `${baseUrl}${URLPATH.MODALPAGE.LOGIN}`;
 
       iframe.style.position = "fixed";
       iframe.style.top = "0";
@@ -835,13 +898,12 @@ class AyAccount {
       iframe.style.width = "100%";
       iframe.style.height = "100%";
       iframe.style.border = "none";
-      iframe.style.colorScheme = 'light';
+      iframe.style.colorScheme = "light";
       iframe.style.zIndex = "20000000";
       iframe.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
       iframe.style.opacity = "1";
       iframe.style.pointerEvents = "auto";
       iframe.style.display = "block";
-
 
       this._iframe = iframe;
       this._iframeContainer = iframediv;
@@ -850,128 +912,165 @@ class AyAccount {
 
       const handler = async (event) => {
         if (event.source !== iframe.contentWindow) return;
-        if (event.origin !== 'https://online.undz.cn') return;
+        if (event.origin !== "https://online.undz.cn") return;
         try {
           let data = event.data;
-          if (typeof data === 'string' && data.startsWith('{')) {
-            try { data = JSON.parse(data); } catch (e) { return; }
+          if (typeof data === "string" && data.startsWith("{")) {
+            try {
+              data = JSON.parse(data);
+            } catch (e) {
+              return;
+            }
           }
-          if (typeof data !== 'object' || !data.action) return;
+          if (typeof data !== "object" || !data.action) return;
           switch (data.action) {
-            case 'isReady':
+            case "isReady":
               AyCloseToast();
               const translationMap = this._getFullTranslationMap();
-              iframe.contentWindow.postMessage(JSON.stringify({
-                action: 'updateTranslations',
-                payload: translationMap
-              }), '*');
-              iframe.contentWindow.postMessage(JSON.stringify({
-                action: 'configWindow',
-                config: config
-              }), '*');
+              iframe.contentWindow.postMessage(
+                JSON.stringify({
+                  action: "updateTranslations",
+                  payload: translationMap,
+                }),
+                "*",
+              );
+              iframe.contentWindow.postMessage(
+                JSON.stringify({
+                  action: "configWindow",
+                  config: config,
+                }),
+                "*",
+              );
               break;
-            case 'closeWindow':
-              iframe.contentWindow.postMessage(JSON.stringify({
-                action: 'beforeClose'
-              }), '*');
+            case "closeWindow":
+              iframe.contentWindow.postMessage(
+                JSON.stringify({
+                  action: "beforeClose",
+                }),
+                "*",
+              );
               await delay(150);
               this.#_closeModal();
               resolve(userInfo);
               break;
-            case 'oauth_login':
-              if (data.provider === 'yzhyzxy') {
+            case "oauth_login":
+              if (data.provider === "yzhyzxy") {
                 // 调用弹窗登录方法
-                this.#_loginWithOAuthPopup('yzhyzxy')
+                this.#_loginWithOAuthPopup("yzhyzxy")
                   .then((result) => {
                     userInfo = result;
-                    iframe.contentWindow.postMessage(JSON.stringify({
-                      action: 'loginSuccess'
-                    }), '*');
+                    iframe.contentWindow.postMessage(
+                      JSON.stringify({
+                        action: "loginSuccess",
+                      }),
+                      "*",
+                    );
                   })
                   .catch((err) => {
-                    if (!PRODUCE) console.error('OAuth 登录失败:', err);
-                    iframe.contentWindow.postMessage(JSON.stringify({
-                      action: 'loginFailure',
-                      message: err.message || '登录失败',
-                      code: err.error_code || 'unknown'
-                    }), '*');
+                    if (!PRODUCE) console.error("OAuth 登录失败:", err);
+                    iframe.contentWindow.postMessage(
+                      JSON.stringify({
+                        action: "loginFailure",
+                        message: err.message || "登录失败",
+                        code: err.error_code || "unknown",
+                      }),
+                      "*",
+                    );
                   });
               }
               break;
-            case 'sendEmailCode':
+            case "sendEmailCode":
               this.#_sendEmailCode(data.email)
                 .then((result) => {
-                  iframe.contentWindow.postMessage(JSON.stringify({
-                    action: 'sendEmailCodeSuccess',
-                    token: result.token
-                  }), '*');
-                })
-                .catch((err) => {
-                  if (!PRODUCE) console.error('发送验证码失败:', err);
-                  const errorMsg = err.message || '发送验证码失败';
-                  const errorCode = err.error_code || 'unknown';
                   iframe.contentWindow.postMessage(
                     JSON.stringify({
-                      action: 'sendEmailCodeFailure',
-                      message: errorMsg,
-                      code: errorCode
+                      action: "sendEmailCodeSuccess",
+                      token: result.token,
                     }),
-                    '*'
+                    "*",
+                  );
+                })
+                .catch((err) => {
+                  if (!PRODUCE) console.error("发送验证码失败:", err);
+                  const errorMsg = err.message || "发送验证码失败";
+                  const errorCode = err.error_code || "unknown";
+                  iframe.contentWindow.postMessage(
+                    JSON.stringify({
+                      action: "sendEmailCodeFailure",
+                      message: errorMsg,
+                      code: errorCode,
+                    }),
+                    "*",
                   );
                 });
               break;
-            case 'register':
-              this.#_register(data.username, data.email, data.password, data.code, data.token)
+            case "register":
+              this.#_register(
+                data.username,
+                data.email,
+                data.password,
+                data.code,
+                data.token,
+              )
                 .then((result) => {
                   userInfo = result;
-                  iframe.contentWindow.postMessage(JSON.stringify({
-                    action: 'registerSuccess'
-                  }), '*');
-                })
-                .catch((err) => {
-                  if (!PRODUCE) console.error('注册失败:', err);
-                  const errorMsg = err.message || '注册失败';
-                  const errorCode = err.error_code || 'unknown';
                   iframe.contentWindow.postMessage(
                     JSON.stringify({
-                      action: 'registerFailure',
-                      message: errorMsg,
-                      code: errorCode
+                      action: "registerSuccess",
                     }),
-                    '*'
+                    "*",
+                  );
+                })
+                .catch((err) => {
+                  if (!PRODUCE) console.error("注册失败:", err);
+                  const errorMsg = err.message || "注册失败";
+                  const errorCode = err.error_code || "unknown";
+                  iframe.contentWindow.postMessage(
+                    JSON.stringify({
+                      action: "registerFailure",
+                      message: errorMsg,
+                      code: errorCode,
+                    }),
+                    "*",
                   );
                 });
               break;
-            case 'login':
+            case "login":
               this.#_login(data.username, data.password)
                 .then((result) => {
                   userInfo = result;
-                  iframe.contentWindow.postMessage(JSON.stringify({
-                    action: 'loginSuccess'
-                  }), '*');
-                })
-                .catch((err) => {
-                  if (!PRODUCE) console.error('登录失败:', err);
-                  const errorMsg = err.message || '登录失败';
-                  const errorCode = err.error_code || 'unknown';
                   iframe.contentWindow.postMessage(
                     JSON.stringify({
-                      action: 'loginFailure',
-                      message: errorMsg,
-                      code: errorCode
+                      action: "loginSuccess",
                     }),
-                    '*'
+                    "*",
+                  );
+                })
+                .catch((err) => {
+                  if (!PRODUCE) console.error("登录失败:", err);
+                  const errorMsg = err.message || "登录失败";
+                  const errorCode = err.error_code || "unknown";
+                  iframe.contentWindow.postMessage(
+                    JSON.stringify({
+                      action: "loginFailure",
+                      message: errorMsg,
+                      code: errorCode,
+                    }),
+                    "*",
                   );
                 });
               break;
-            case 'getTranslation':
+            case "getTranslation":
               const key = data.key;
-              const translation = this._t(key);   // 使用实例的翻译方法
-              iframe.contentWindow.postMessage(JSON.stringify({
-                action: 'translationResponse',
-                key: key,
-                value: translation
-              }), '*');
+              const translation = this._t(key); // 使用实例的翻译方法
+              iframe.contentWindow.postMessage(
+                JSON.stringify({
+                  action: "translationResponse",
+                  key: key,
+                  value: translation,
+                }),
+                "*",
+              );
               break;
             default:
               break;
@@ -982,7 +1081,7 @@ class AyAccount {
       };
 
       this._messageHandler = handler;
-      window.addEventListener('message', handler);
+      window.addEventListener("message", handler);
       document.body.appendChild(iframediv);
       iframediv.appendChild(iframe);
     });
@@ -990,95 +1089,101 @@ class AyAccount {
   _sendTranslationsToIframe() {
     if (!this._iframe) return;
     const allTranslations = {
-      ...BUILTIN_TRANSLATIONS[this.lang] || {},
-      ...BUILTIN_TRANSLATIONS[this.fallbackLang] || {},
-      ...this.translations[this.lang] || {},
-      ...this.translations[this.fallbackLang] || {}
+      ...(BUILTIN_TRANSLATIONS[this.lang] || {}),
+      ...(BUILTIN_TRANSLATIONS[this.fallbackLang] || {}),
+      ...(this.translations[this.lang] || {}),
+      ...(this.translations[this.fallbackLang] || {}),
     };
     const fullTranslation = {
-      ...BUILTIN_TRANSLATIONS[this.fallbackLang] || {},
-      ...this.translations[this.fallbackLang] || {},
-      ...BUILTIN_TRANSLATIONS[this.lang] || {},
-      ...this.translations[this.lang] || {}
+      ...(BUILTIN_TRANSLATIONS[this.fallbackLang] || {}),
+      ...(this.translations[this.fallbackLang] || {}),
+      ...(BUILTIN_TRANSLATIONS[this.lang] || {}),
+      ...(this.translations[this.lang] || {}),
     };
-    this._iframe.contentWindow.postMessage(JSON.stringify({
-      action: 'updateTranslations',
-      payload: fullTranslation
-    }), '*');
+    this._iframe.contentWindow.postMessage(
+      JSON.stringify({
+        action: "updateTranslations",
+        payload: fullTranslation,
+      }),
+      "*",
+    );
   }
   async #_loginWithOAuthPopup(provider) {
     const self = this;
 
-    if (provider !== 'yzhyzxy') {
-      throw new Error('Unsupported provider');
+    if (provider !== "yzhyzxy") {
+      throw new Error("Unsupported provider");
     }
 
     return new Promise((resolve, reject) => {
       fetch(`${URLPATH.BASE}${URLPATH.MODALPAGE.LOGIN_YZH_OAUTH}`, {
-        credentials: 'include'
+        credentials: "include",
       })
-        .then(res => {
-          if (!res.ok) throw new Error(self._t('error.1034'));
+        .then((res) => {
+          if (!res.ok) throw new Error(self._t("error.1034"));
           return res.json();
         })
-        .then(data => {
+        .then((data) => {
           if (!data.url) {
-            throw new Error(self._t('error.1034'));
+            throw new Error(self._t("error.1034"));
           }
-          const width = screen.availWidth / 4 * 3;
-          const height = screen.availHeight / 4 * 3;
+          const width = (screen.availWidth / 4) * 3;
+          const height = (screen.availHeight / 4) * 3;
           const left = (screen.availWidth - width) / 2;
           const top = (screen.availHeight - height) / 2;
           const popup = window.open(
             data.url,
-            'yzhyzxy_login',
-            `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+            "yzhyzxy_login",
+            `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`,
           );
 
           if (!popup) {
-            throw new Error(self._t('error.1035'));
+            throw new Error(self._t("error.1035"));
           }
           const handler = (event) => {
             // 安全校验：只接受来自 online.undz.cn 的消息
-            if (event.origin !== 'https://online.undz.cn') return;
+            if (event.origin !== "https://online.undz.cn") return;
             if (event.data) {
-              window.removeEventListener('message', handler);
+              window.removeEventListener("message", handler);
               if (popup && !popup.closed) {
                 popup.close();
               }
-              if (event.data.action === 'login_success' && event.data.provider === 'yzhyzxy') {
+              if (
+                event.data.action === "login_success" &&
+                event.data.provider === "yzhyzxy"
+              ) {
                 resolve({
-                  action: 'login',
+                  action: "login",
                   success: true,
                   code: 200,
-                  user: event.data.user
+                  user: event.data.user,
                 });
-              } else if (event.data.action === 'login_fail') {
-                reject(new Error(self._t('error.1036')));
+              } else if (event.data.action === "login_fail") {
+                reject(new Error(self._t("error.1036")));
                 // oauth 页面会显示错误信息，不用管
               } else {
-                reject(new Error(self._t('error.1037')));
+                reject(new Error(self._t("error.1037")));
               }
             }
           };
-          window.addEventListener('message', handler);
+          window.addEventListener("message", handler);
           const checkClosed = setInterval(() => {
             if (popup.closed) {
               clearInterval(checkClosed);
-              window.removeEventListener('message', handler);
-              reject(new Error(self._t('error.1038')));
+              window.removeEventListener("message", handler);
+              reject(new Error(self._t("error.1038")));
             }
           }, 500);
           setTimeout(() => {
             clearInterval(checkClosed);
-            window.removeEventListener('message', handler);
+            window.removeEventListener("message", handler);
             if (popup && !popup.closed) {
               popup.close();
             }
-            reject(new Error(self._t('error.1039')));
+            reject(new Error(self._t("error.1039")));
           }, 600000);
         })
-        .catch(err => {
+        .catch((err) => {
           reject(err);
         });
     });
@@ -1087,14 +1192,14 @@ class AyAccount {
    * 关闭模态框，清理资源
    */
   #_closeModal() {
-    if (document.body) document.body.style.overflow = '';
+    if (document.body) document.body.style.overflow = "";
     // 移除 DOM
     if (this._iframeContainer && this._iframeContainer.parentNode) {
       this._iframeContainer.parentNode.removeChild(this._iframeContainer);
     }
     // 移除事件监听
     if (this._messageHandler) {
-      window.removeEventListener('message', this._messageHandler);
+      window.removeEventListener("message", this._messageHandler);
       this._messageHandler = null;
     }
     // 清空引用
@@ -1103,9 +1208,12 @@ class AyAccount {
   }
   async close() {
     if (!this._iframe) return;
-    this._iframe.contentWindow.postMessage(JSON.stringify({
-      action: 'beforeClose'
-    }), '*');
+    this._iframe.contentWindow.postMessage(
+      JSON.stringify({
+        action: "beforeClose",
+      }),
+      "*",
+    );
     await delay(150);
     this.#_closeModal();
   }
@@ -1115,7 +1223,7 @@ class AyAccount {
    * @returns {Promise<Object|null>} 成功返回用户信息，关闭返回 null
    */
   register(config = DEFAULT_WINDOW_CONFIG) {
-    return this.#_openModal('register', config);
+    return this.#_openModal("register", config);
   }
   /**
    * 发送邮箱验证码
@@ -1124,12 +1232,14 @@ class AyAccount {
    */
   async #_sendEmailCode(email) {
     // 校验邮箱域名
-    const allowed = allowedEmailDomains.some(domain => email.endsWith(domain)); // 考虑什么 *.163.com 等情况
+    const allowed = allowedEmailDomains.some((domain) =>
+      email.endsWith(domain),
+    ); // 考虑什么 *.163.com 等情况
     if (!allowed) {
-      throw new Error(this._t('error.1026'));
+      throw new Error(this._t("error.1026"));
     }
     const res = await this._request(URLPATH.API.SENDMAILCODE, {
-      method: 'POST',
+      method: "POST",
       body: { email },
     });
     return res; // 返回 { token }
@@ -1143,13 +1253,16 @@ class AyAccount {
    * @returns {Promise}
    */
   async #_register(username, email, password, code, token) {
-    const self = this;                     // 缓存 this 实例
+    const self = this; // 缓存 this 实例
 
     try {
       const res = await this._request(URLPATH.API.REGISTER, {
-        method: 'POST',
+        method: "POST",
         body: {
-          username, email, password, emailToken: token,
+          username,
+          email,
+          password,
+          emailToken: token,
           emailCode: code,
         },
       });
@@ -1157,57 +1270,65 @@ class AyAccount {
     } catch (err) {
       if (err.error_code === 1023 && err.data?.gt_code) {
         const gt_code = err.data.gt_code;
-        if (typeof initGeetest4 === 'undefined') {
-          throw new Error(this._t('common.unknown_error') + ': Geetest4 not loaded');
+        if (typeof initGeetest4 === "undefined") {
+          throw new Error(
+            this._t("common.unknown_error") + ": Geetest4 not loaded",
+          );
         }
         return new Promise((resolve, reject) => {
+          initGeetest4(
+            {
+              captchaId: gt_code,
+              product: "bind",
+              language: this.#getGeeTestLang(),
+            },
+            function (captcha) {
+              captcha
+                .onReady(function () {
+                  removeUselessTestLogo();
+                  captcha.showBox();
+                })
+                .onSuccess(async function () {
+                  const result = captcha.getValidate();
+                  if (!result) {
+                    alert(self._t("common.complete_verification"));
+                    reject(new Error(self._t("common.complete_verification")));
+                    return;
+                  }
+                  result.captcha_id = gt_code;
 
-          initGeetest4({
-            captchaId: gt_code,
-            product: 'bind',
-            language: this.#getGeeTestLang()
-          }, function (captcha) {
-            captcha.onReady(function () {
-              removeUselessTestLogo();
-              captcha.showBox();
-            }).onSuccess(async function () {
-              const result = captcha.getValidate();
-              if (!result) {
-                alert(self._t('common.complete_verification'));
-                reject(new Error(self._t('common.complete_verification')));
-                return;
-              }
-              result.captcha_id = gt_code;
-
-              try {
-                const retryRes = await self._request(URLPATH.API.REGISTER, {
-                  method: 'POST',
-                  body: {
-                    username,
-                    email,
-                    password,
-                    emailToken: token,
-                    emailCode: code,
-                    gt: utf8ToBase64(JSON.stringify(result))
-                  },
+                  try {
+                    const retryRes = await self._request(URLPATH.API.REGISTER, {
+                      method: "POST",
+                      body: {
+                        username,
+                        email,
+                        password,
+                        emailToken: token,
+                        emailCode: code,
+                        gt: utf8ToBase64(JSON.stringify(result)),
+                      },
+                    });
+                    resolve(retryRes); // 成功返回
+                  } catch (retryErr) {
+                    reject(retryErr); // 失败抛出
+                  } finally {
+                    if (captcha && typeof captcha.destroy === "function") {
+                      captcha.destroy();
+                      captcha = null;
+                    }
+                  }
+                })
+                .onError(function (error) {
+                  reject(new Error("Geetest Error: " + JSON.stringify(error)));
+                })
+                .onClose(function () {
+                  const cancelErr = new Error(self._t("error.1024"));
+                  cancelErr.error_code = 1024;
+                  reject(cancelErr);
                 });
-                resolve(retryRes); // 成功返回
-              } catch (retryErr) {
-                reject(retryErr);  // 失败抛出
-              } finally {
-                if (captcha && typeof captcha.destroy === 'function') {
-                  captcha.destroy();
-                  captcha = null;
-                }
-              }
-            }).onError(function (error) {
-              reject(new Error('Geetest Error: ' + JSON.stringify(error)));
-            }).onClose(function () {
-              const cancelErr = new Error(self._t('error.1024'));
-              cancelErr.error_code = 1024;
-              reject(cancelErr);
-            });
-          });
+            },
+          );
         });
       }
       // 其他错误直接抛出
@@ -1215,12 +1336,12 @@ class AyAccount {
     }
   }
   /**
-  * 用户登录（弹出模态框）
-  * @param {Object} 默认窗口配置 - hideOauthClient hideClose
-  * @returns {Promise<Object|null>} 成功返回用户信息，关闭返回 null
-  */
+   * 用户登录（弹出模态框）
+   * @param {Object} 默认窗口配置 - hideOauthClient hideClose
+   * @returns {Promise<Object|null>} 成功返回用户信息，关闭返回 null
+   */
   login(config = DEFAULT_WINDOW_CONFIG) {
-    return this.#_openModal('login', config);
+    return this.#_openModal("login", config);
   }
   /**
    * 用户登录
@@ -1229,11 +1350,11 @@ class AyAccount {
    * @returns {Promise<{ user: {id, username, email}, code: number }>}
    */
   async #_login(usernameOrEmail, password) {
-    const self = this;                     // 缓存 this 实例
+    const self = this; // 缓存 this 实例
 
     try {
       const res = await this._request(URLPATH.API.LOGIN, {
-        method: 'POST',
+        method: "POST",
         body: { username: usernameOrEmail, email: usernameOrEmail, password },
       });
       return res;
@@ -1242,55 +1363,67 @@ class AyAccount {
       if (err.error_code === 1023 && err.data?.gt_code) {
         const gt_code = err.data.gt_code;
         // 检查极验脚本是否加载
-        if (typeof initGeetest4 === 'undefined') {
-          throw new Error(this._t('common.unknown_error') + ': Geetest4 not loaded');
+        if (typeof initGeetest4 === "undefined") {
+          throw new Error(
+            this._t("common.unknown_error") + ": Geetest4 not loaded",
+          );
         }
         // 返回一个新的 Promise，让外部可以 await 等待验证结果
         return new Promise((resolve, reject) => {
-          initGeetest4({
-            captchaId: gt_code,
-            product: 'bind',
-            language: this.#getGeeTestLang()
-          }, function (captcha) {
-            // 绑定事件
-            captcha.onReady(function () {
-              removeUselessTestLogo();
-              captcha.showBox(); // 显示验证码
-            }).onSuccess(async function () {
-              const result = captcha.getValidate();
-              if (!result) {
-                alert(self._t('common.complete_verification'));
-                reject(new Error(self._t('common.complete_verification')));
-                return;
-              }
-              result.captcha_id = gt_code;
+          initGeetest4(
+            {
+              captchaId: gt_code,
+              product: "bind",
+              language: this.#getGeeTestLang(),
+            },
+            function (captcha) {
+              // 绑定事件
+              captcha
+                .onReady(function () {
+                  removeUselessTestLogo();
+                  captcha.showBox(); // 显示验证码
+                })
+                .onSuccess(async function () {
+                  const result = captcha.getValidate();
+                  if (!result) {
+                    alert(self._t("common.complete_verification"));
+                    reject(new Error(self._t("common.complete_verification")));
+                    return;
+                  }
+                  result.captcha_id = gt_code;
 
-              // 带上验证结果重新请求登录（这里使用 self 和 endpoint）
-              try {
-                const retryRes = await self._request(URLPATH.API.LOGIN, {
-                  method: 'POST',
-                  body: { username: usernameOrEmail, email: usernameOrEmail, password, gt: utf8ToBase64(JSON.stringify(result)) },
+                  // 带上验证结果重新请求登录（这里使用 self 和 endpoint）
+                  try {
+                    const retryRes = await self._request(URLPATH.API.LOGIN, {
+                      method: "POST",
+                      body: {
+                        username: usernameOrEmail,
+                        email: usernameOrEmail,
+                        password,
+                        gt: utf8ToBase64(JSON.stringify(result)),
+                      },
+                    });
+                    resolve(retryRes); // 成功返回
+                  } catch (retryErr) {
+                    reject(retryErr); // 失败抛出
+                  } finally {
+                    if (captcha && typeof captcha.destroy === "function") {
+                      captcha.destroy();
+                      captcha = null;
+                    }
+                  }
+                })
+                .onError(function (error) {
+                  reject(new Error("Geetest Error: " + JSON.stringify(error)));
+                })
+                .onClose(function () {
+                  // 用户主动关闭验证码 → 视为取消
+                  const cancelErr = new Error(self._t("error.1024"));
+                  cancelErr.error_code = 1024;
+                  reject(cancelErr);
                 });
-                resolve(retryRes); // 成功返回
-
-              } catch (retryErr) {
-                reject(retryErr);  // 失败抛出
-
-              } finally {
-                if (captcha && typeof captcha.destroy === 'function') {
-                  captcha.destroy();
-                  captcha = null;
-                }
-              }
-            }).onError(function (error) {
-              reject(new Error('Geetest Error: ' + JSON.stringify(error)));
-            }).onClose(function () {
-              // 用户主动关闭验证码 → 视为取消
-              const cancelErr = new Error(self._t('error.1024'));
-              cancelErr.error_code = 1024;
-              reject(cancelErr);
-            });
-          });
+            },
+          );
         });
       }
       // 其他错误直接抛出
@@ -1298,15 +1431,13 @@ class AyAccount {
     }
   }
 
-
-
   /**
    * 用户登出
    * @returns {Promise<Object>}
    */
   logout() {
     return this._request(URLPATH.API.LOGOUT, {
-      method: 'POST',
+      method: "POST",
     });
   }
 
@@ -1317,7 +1448,7 @@ class AyAccount {
   async testServer() {
     try {
       await this._request(URLPATH.API.TEST, {
-        method: 'POST',
+        method: "POST",
       });
       return { success: true };
     } catch (err) {
@@ -1331,7 +1462,7 @@ class AyAccount {
    */
   verify() {
     return this._request(URLPATH.API.VERIFY, {
-      method: 'GET',
+      method: "GET",
     });
   }
 
@@ -1341,7 +1472,7 @@ class AyAccount {
    */
   refresh() {
     return this._request(URLPATH.API.REFRESH, {
-      method: 'POST',
+      method: "POST",
     });
   }
 
@@ -1352,11 +1483,11 @@ class AyAccount {
    * @returns {Promise<Object>}
    */
   async changePassword(oldPassword, newPassword) {
-    const self = this;                     // 缓存 this 实例
+    const self = this; // 缓存 this 实例
 
     try {
       const res = await this._request(URLPATH.API.CHANGEPASSWORD, {
-        method: 'POST',
+        method: "POST",
         body: { oldPassword, newPassword },
       });
       return res;
@@ -1365,54 +1496,68 @@ class AyAccount {
       if (err.error_code === 1023 && err.data?.gt_code) {
         const gt_code = err.data.gt_code;
         // 检查极验脚本是否加载
-        if (typeof initGeetest4 === 'undefined') {
-          throw new Error(this._t('common.unknown_error') + ': Geetest4 not loaded');
+        if (typeof initGeetest4 === "undefined") {
+          throw new Error(
+            this._t("common.unknown_error") + ": Geetest4 not loaded",
+          );
         }
         // 返回一个新的 Promise，让外部可以 await 等待验证结果
         return new Promise((resolve, reject) => {
-          initGeetest4({
-            captchaId: gt_code,
-            product: 'bind',
-            language: this.#getGeeTestLang()
-          }, function (captcha) {
-            // 绑定事件
-            captcha.onReady(function () {
-              removeUselessTestLogo();
-              captcha.showBox(); // 显示验证码
-            }).onSuccess(async function () {
-              const result = captcha.getValidate();
-              if (!result) {
-                alert(self._t('common.complete_verification'));
-                reject(new Error(self._t('common.complete_verification')));
-                return;
-              }
-              result.captcha_id = gt_code;
+          initGeetest4(
+            {
+              captchaId: gt_code,
+              product: "bind",
+              language: this.#getGeeTestLang(),
+            },
+            function (captcha) {
+              // 绑定事件
+              captcha
+                .onReady(function () {
+                  removeUselessTestLogo();
+                  captcha.showBox(); // 显示验证码
+                })
+                .onSuccess(async function () {
+                  const result = captcha.getValidate();
+                  if (!result) {
+                    alert(self._t("common.complete_verification"));
+                    reject(new Error(self._t("common.complete_verification")));
+                    return;
+                  }
+                  result.captcha_id = gt_code;
 
-              // 带上验证结果重新请求注册（这里使用 self 和 endpoint）
-              try {
-                const retryRes = await self._request(URLPATH.API.CHANGEPASSWORD, {
-                  method: 'POST',
-                  body: { oldPassword, newPassword, gt: utf8ToBase64(JSON.stringify(result)) },
+                  // 带上验证结果重新请求注册（这里使用 self 和 endpoint）
+                  try {
+                    const retryRes = await self._request(
+                      URLPATH.API.CHANGEPASSWORD,
+                      {
+                        method: "POST",
+                        body: {
+                          oldPassword,
+                          newPassword,
+                          gt: utf8ToBase64(JSON.stringify(result)),
+                        },
+                      },
+                    );
+                    resolve(retryRes); // 成功返回
+                  } catch (retryErr) {
+                    reject(retryErr); // 失败抛出
+                  } finally {
+                    if (captcha && typeof captcha.destroy === "function") {
+                      captcha.destroy();
+                      captcha = null;
+                    }
+                  }
+                })
+                .onError(function (error) {
+                  reject(new Error("Geetest Error: " + JSON.stringify(error)));
+                })
+                .onClose(function () {
+                  const cancelErr = new Error(self._t("error.1024"));
+                  cancelErr.error_code = 1024;
+                  reject(cancelErr);
                 });
-                resolve(retryRes); // 成功返回
-
-              } catch (retryErr) {
-                reject(retryErr);  // 失败抛出
-
-              } finally {
-                if (captcha && typeof captcha.destroy === 'function') {
-                  captcha.destroy();
-                  captcha = null;
-                }
-              }
-            }).onError(function (error) {
-              reject(new Error('Geetest Error: ' + JSON.stringify(error)));
-            }).onClose(function () {
-              const cancelErr = new Error(self._t('error.1024'));
-              cancelErr.error_code = 1024;
-              reject(cancelErr);
-            });
-          });
+            },
+          );
         });
       }
       // 其他错误直接抛出
@@ -1426,7 +1571,7 @@ function createAyAccount(config) {
 }
 
 // 暴露全局变量
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   window.AyAccount = AyAccount;
   window.createAyAccount = createAyAccount;
 }

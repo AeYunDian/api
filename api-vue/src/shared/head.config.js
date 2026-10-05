@@ -48,20 +48,4 @@ export const head = [
         },
       ]
     : []),
-
-  // ============ 挂载后 ============
-  // wza.min.js 需要 #wzayd 已存在于 DOM，必须在 mount 之后加载
-  ...(!isMobileByUA()
-    ? [
-        {
-          apps: ["index"],
-          phase: "afterMount",
-          tag: "script",
-          attrs: {
-            src: "/canyou/js/wzatool-pc.js",
-            id: "rrbayJs",
-          },
-        },
-      ]
-    : []),
 ];

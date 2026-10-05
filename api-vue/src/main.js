@@ -13,7 +13,6 @@ import "@/shared/style/base.css";
 const DEFAULT_APP = "default";
 
 const APP_MODULES = {
-  index: () => import("./index/App.vue"),
   account: () => import("./account/App.vue"),
   console: () => import("./console/App.vue"),
   relay: () => import("./relay/App.vue"),
@@ -22,7 +21,6 @@ const APP_MODULES = {
 };
 
 const ROUTER_MODULES = {
-  index: () => import("./index/router/index.js"),
   account: () => import("./account/router/index.js"),
   ai: () => import("./ai/router/index.js"),
   console: () => import("./console/router/index.js"),
@@ -35,10 +33,6 @@ const TITLES = {
 };
 
 const HOST_APP_RULES = [
-  {
-    match: (hostname) => hostname === "undz.cn" || hostname === "dev.undz.cn",
-    app: "index",
-  },
   { match: (hostname) => hostname.includes("relay"), app: "relay" },
   { match: (hostname) => hostname.includes("console"), app: "console" },
   { match: (hostname) => hostname.includes("online"), app: "account" },
