@@ -1,5 +1,6 @@
 // src/console/utils/api.js
-const BASE_URL = import.meta.env.VITE_CONSOLE_API_BASE_URL || 'https://console.undz.cn';
+const BASE_URL =
+  import.meta.env.VITE_CONSOLE_API_BASE_URL || "https://console.undz.cn";
 // const SDK_VERSION = import.meta.env.VITE_CONSOLE_APP_SDK_VER || '0';
 // const APP_ID = import.meta.env.VITE_CONSOLE_APP_ID;
 
@@ -10,25 +11,29 @@ const BASE_URL = import.meta.env.VITE_CONSOLE_API_BASE_URL || 'https://console.u
  * @returns {Promise<any>}
  */
 export async function request(endpoint, options = {}) {
-    const url = `${BASE_URL}/api/${endpoint}`;
+  const url = `${BASE_URL}/api/${endpoint}`;
 
-    const headers = {
-        'Content-Type': 'application/json',
-        ...options.headers,
-    };
+  const headers = {
+    "Content-Type": "application/json",
+    ...options.headers,
+  };
 
-    const response = await fetch(url, {
-        method: options.method || 'GET',
-        credentials: 'include', // 携带 Cookie（同域或跨子域自动带上）
-        headers,
-        body: options.body ? JSON.stringify(options.body) : undefined,
-    });
+  const response = await fetch(url, {
+    method: options.method || "GET",
+    credentials: "include", // 携带 Cookie（同域或跨子域自动带上）
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
 
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
-    }
-    return data;
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      data.error ||
+        data.message ||
+        `Request failed with status ${response.status}`,
+    );
+  }
+  return data;
 }
 
 // ========== OAuth 客户端管理 ==========
@@ -43,10 +48,10 @@ export async function request(endpoint, options = {}) {
  * @returns {Promise<{ success: boolean, client_id: string, client_secret: string }>}
  */
 export function registerClient({ name, redirect_uris, scope, trusted }) {
-    return request('console/oauth/client/register', {
-        method: 'POST',
-        body: { name, redirect_uris, scope, trusted },
-    });
+  return request("console/oauth/client/register", {
+    method: "POST",
+    body: { name, redirect_uris, scope, trusted },
+  });
 }
 
 /**
@@ -54,7 +59,7 @@ export function registerClient({ name, redirect_uris, scope, trusted }) {
  * @returns {Promise<{ clients: Array }>}
  */
 export function getClients() {
-    return request('console/oauth/clients');
+  return request("console/oauth/clients");
 }
 
 /**
@@ -63,9 +68,9 @@ export function getClients() {
  * @returns {Promise<{ success: boolean }>}
  */
 export function deleteClient(clientId) {
-    return request(`console/oauth/client/${clientId}`, {
-        method: 'DELETE',
-    });
+  return request(`console/oauth/client/${clientId}`, {
+    method: "DELETE",
+  });
 }
 
 // ========== 用户管理（仅管理员） ==========
@@ -77,11 +82,11 @@ export function deleteClient(clientId) {
  * @param {string} [ban_reason] - 封禁原因
  * @returns {Promise<{ success: boolean }>}
  */
-export function banUser(userId, banned = true, ban_reason = '') {
-    return request('console/user/ban', {
-        method: 'POST',
-        body: { user_id: userId, banned, ban_reason },
-    });
+export function banUser(userId, banned = true, ban_reason = "") {
+  return request("console/user/ban", {
+    method: "POST",
+    body: { user_id: userId, banned, ban_reason },
+  });
 }
 
 /**
@@ -89,7 +94,7 @@ export function banUser(userId, banned = true, ban_reason = '') {
  * @returns {Promise<{ users: Array }>}
  */
 export function getUsers() {
-    return request('console/users');
+  return request("console/users");
 }
 
 /**
@@ -98,10 +103,10 @@ export function getUsers() {
  * @returns {Promise<{ success: boolean, id: number }>}
  */
 export function submitFeedback(content) {
-    return request('console/feedback/submit', {
-        method: 'POST',
-        body: { content },
-    });
+  return request("console/feedback/submit", {
+    method: "POST",
+    body: { content },
+  });
 }
 
 /**
@@ -110,8 +115,8 @@ export function submitFeedback(content) {
  * @returns {Promise<{ feedbacks: Array }>}
  */
 export function getFeedbackList(status = null) {
-    const query = status ? `?status=${encodeURIComponent(status)}` : '';
-    return request(`console/feedback/list${query}`);
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return request(`console/feedback/list${query}`);
 }
 
 /**
@@ -120,7 +125,7 @@ export function getFeedbackList(status = null) {
  * @returns {Promise<{ feedback: Object }>}
  */
 export function getFeedbackDetail(id) {
-    return request(`console/feedback/detail/${id}`);
+  return request(`console/feedback/detail/${id}`);
 }
 
 /**
@@ -130,10 +135,10 @@ export function getFeedbackDetail(id) {
  * @returns {Promise<{ success: boolean }>}
  */
 export function updateFeedbackStatus(id, status) {
-    return request('console/feedback/update-status', {
-        method: 'PUT',
-        body: { id, status },
-    });
+  return request("console/feedback/update-status", {
+    method: "PUT",
+    body: { id, status },
+  });
 }
 
 /**
@@ -143,10 +148,10 @@ export function updateFeedbackStatus(id, status) {
  * @returns {Promise<{ success: boolean }>}
  */
 export function replyFeedback(id, reply) {
-    return request('console/feedback/reply', {
-        method: 'PUT',
-        body: { id, reply },
-    });
+  return request("console/feedback/reply", {
+    method: "PUT",
+    body: { id, reply },
+  });
 }
 
 /**
@@ -155,9 +160,9 @@ export function replyFeedback(id, reply) {
  * @returns {Promise<{ success: boolean }>}
  */
 export function deleteFeedback(id) {
-    return request(`console/feedback/delete/${id}`, {
-        method: 'DELETE',
-    });
+  return request(`console/feedback/delete/${id}`, {
+    method: "DELETE",
+  });
 }
 
 /**
@@ -167,10 +172,10 @@ export function deleteFeedback(id) {
  * @returns {Promise<{ success: boolean }>}
  */
 export function transferFeedbackOwner(feedbackId, targetUserId) {
-    return request('console/feedback/transfer', {
-        method: 'PUT',
-        body: { feedback_id: feedbackId, target_user_id: targetUserId },
-    });
+  return request("console/feedback/transfer", {
+    method: "PUT",
+    body: { feedback_id: feedbackId, target_user_id: targetUserId },
+  });
 }
 
 /**
@@ -180,8 +185,57 @@ export function transferFeedbackOwner(feedbackId, targetUserId) {
  * @returns {Promise<{ success: boolean }>}
  */
 export function transferOAuthClientOwner(clientId, targetUserId) {
-    return request('console/oauth/client/transfer', {
-        method: 'PUT',
-        body: { client_id: clientId, target_user_id: targetUserId },
-    });
+  return request("console/oauth/client/transfer", {
+    method: "PUT",
+    body: { client_id: clientId, target_user_id: targetUserId },
+  });
+}
+
+// ========== 网站分析 - 站点管理 ==========
+
+/**
+ * 获取站点列表（管理员获取全部，普通用户仅自己的）
+ * @returns {Promise<{ sites: Array }>}
+ */
+export function getSites() {
+  return request("console/sites");
+}
+
+/**
+ * 注册新站点
+ * 普通用户最多 5 个，user.sub === 1 不限（后端已校验）
+ * @param {object} params
+ * @param {string} params.domain - 裸域名，如 example.com
+ * @param {string} [params.name] - 站点名称，默认使用域名
+ * @returns {Promise<{ success: boolean, site: object }>}
+ */
+export function registerSite({ domain, name }) {
+  return request("console/sites", {
+    method: "POST",
+    body: { domain, name },
+  });
+}
+
+/**
+ * 删除站点（级联清除该站点所有事件）
+ * @param {number} id - 站点 ID
+ * @returns {Promise<{ success: boolean }>}
+ */
+export function deleteSite(id) {
+  return request(`console/sites/${id}`, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * 转移站点所有者（仅管理员）
+ * @param {number} siteId - 站点 ID
+ * @param {number} targetUserId - 目标用户 sub
+ * @returns {Promise<{ success: boolean }>}
+ */
+export function transferSiteOwner(siteId, targetUserId) {
+  return request("console/sites/transfer", {
+    method: "PUT",
+    body: { site_id: siteId, target_user_id: targetUserId },
+  });
 }

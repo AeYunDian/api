@@ -18,6 +18,7 @@ export default defineConfig({
     strictPort: true,
     https: true,
     allowedHosts: [
+      "mysites-dev.undz.cn",
       "online-dev.undz.cn",
       "console-dev.undz.cn",
       "relay-dev.undz.cn",

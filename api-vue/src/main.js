@@ -14,6 +14,7 @@ const DEFAULT_APP = "default";
 
 const APP_MODULES = {
   account: () => import("./account/App.vue"),
+  analytics: () => import("./mysites/App.vue"),
   console: () => import("./console/App.vue"),
   relay: () => import("./relay/App.vue"),
   ai: () => import("./ai/App.vue"),
@@ -22,6 +23,7 @@ const APP_MODULES = {
 
 const ROUTER_MODULES = {
   account: () => import("./account/router/index.js"),
+  analytics: () => import("./mysites/router/index.js"),
   ai: () => import("./ai/router/index.js"),
   console: () => import("./console/router/index.js"),
 };
@@ -35,6 +37,7 @@ const TITLES = {
 const HOST_APP_RULES = [
   { match: (hostname) => hostname.includes("relay"), app: "relay" },
   { match: (hostname) => hostname.includes("console"), app: "console" },
+  { match: (hostname) => hostname.includes("mysites"), app: "analytics" },
   { match: (hostname) => hostname.includes("online"), app: "account" },
   { match: (hostname) => hostname.includes("ai"), app: "ai" },
 ];

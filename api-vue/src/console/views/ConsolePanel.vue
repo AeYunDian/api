@@ -91,6 +91,7 @@ onUnmounted(() => {
 const navItems = computed(() => {
     const items = [
         { path: '/oauth-client', title: 'OAuth应用管理', icon: 'openid' },
+        { path: '/analytics', title: '网站分析', icon: 'chart-line' },
         { path: '/feedback-center', title: '反馈中心', icon: 'feedback' },
     ];
     if (user.value?.sub === 1) {

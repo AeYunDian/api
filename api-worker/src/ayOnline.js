@@ -221,6 +221,8 @@ const ALLOWED_ORIGINS = [
   "https://console-dev.undz.cn",
   "https://c.undz.cn",
   "https://console.undz.cn",
+  "https://mysites.undz.cn",
+  "https://mysites-dev.undz.cn",
   "https://undz.cn",
   "https://io.hb.cn",
   "https://www.undz.cn",
