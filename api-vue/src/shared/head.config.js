@@ -11,6 +11,16 @@ export const head = [
     tag: "script",
     attrs: { src: "/lib/account-sdk.min.js", id: "account-sdk", async: true },
   },
+  {
+    apps: ["analytics"],
+    phase: "beforeLoadModule",
+    tag: "script",
+    attrs: {
+      src: "https://mysites.undz.cn/analytics.js?token=33c4316fe7f09cf653e3f9f7e1f09325c4b3f62a2488426412f47d5f0b06e62a",
+      id: "ayanalytics",
+      defer: true,
+    },
+  },
 
   // 字体样式，越早加载越好（避免 FOUT）
   {
