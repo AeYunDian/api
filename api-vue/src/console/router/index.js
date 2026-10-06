@@ -64,7 +64,7 @@ router.beforeEach((to, from, next) => {
   const appName = "AyConsole";
   const pageTitle = to.meta?.title || "";
   document.title = pageTitle ? `${pageTitle} - ${appName}` : appName;
-  next();
+  return true;
 });
 
 export default router;

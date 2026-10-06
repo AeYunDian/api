@@ -574,67 +574,83 @@ export default {
       }
     }
 
-    // 认证接口
-    const cors = corsHeaders(request);
     if (method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: cors });
+      const origin = request.headers.get("Origin");
+      const corsHeaders = {
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, x-app-id, x-sdk-ver",
+        "Access-Control-Max-Age": "86400",
+      };
+      // 回显合法的 Origin
+      if (origin && ALLOWED_ORIGINS.includes(origin)) {
+        corsHeaders["Access-Control-Allow-Origin"] = origin;
+      }
+      // 注意：对于预检请求，返回 204 且带 CORS 头即可，无需进入业务逻辑
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
 
     try {
-      const [authStatus, user] = await checkAuth(request, env);
-      if (authStatus === TAG_NOT_LOGGEDIN) {
-        return jsonResponse({ error: "Unauthorized" }, 401, cors);
-      }
-      if (authStatus === TAG_BANNED) {
-        return jsonResponse(
-          { error: "Account banned", ban_reason: user.ban_reason },
-          403,
-          cors,
-        );
-      }
-
-      const statsMatch = path.match(/^\/api\/sites\/(\d+)\/stats$/);
-      if (statsMatch && method === "GET") {
-        if (env.limiter) {
-          const { success } = await env.limiter.limit({
-            key: `stats:${user.sub}`,
-          });
-          if (!success)
-            return jsonResponse({ error: "rate_limited" }, 429, cors);
+      if (path.startsWith("/api/")) {
+        const [authStatus, user] = await checkAuth(request, env);
+        if (authStatus === TAG_NOT_LOGGEDIN) {
+          return jsonResponse({ error: "Unauthorized" }, 401, cors);
         }
-        return await handleStats(
-          request,
-          env,
-          user,
-          parseInt(statsMatch[1], 10),
-        );
-      }
-
-      const rtMatch = path.match(/^\/api\/sites\/(\d+)\/realtime$/);
-      if (rtMatch && method === "GET") {
-        if (env.limiter) {
-          const { success } = await env.limiter.limit({
-            key: `rt:${user.sub}`,
-          });
-          if (!success)
-            return jsonResponse({ error: "rate_limited" }, 429, cors);
+        if (authStatus === TAG_BANNED) {
+          return jsonResponse(
+            { error: "Account banned", ban_reason: user.ban_reason },
+            403,
+            cors,
+          );
         }
-        return await handleRealtime(
-          request,
-          env,
-          user,
-          parseInt(rtMatch[1], 10),
-        );
-      }
 
-      if (path === "/api/me" && method === "GET") {
-        return jsonResponse(
-          {
-            user: { sub: user.sub, username: user.username, email: user.email },
-          },
-          200,
-          cors,
-        );
+        const statsMatch = path.match(/^\/api\/sites\/(\d+)\/stats$/);
+        if (statsMatch && method === "GET") {
+          if (env.limiter) {
+            const { success } = await env.limiter.limit({
+              key: `stats:${user.sub}`,
+            });
+            if (!success)
+              return jsonResponse({ error: "rate_limited" }, 429, cors);
+          }
+          return await handleStats(
+            request,
+            env,
+            user,
+            parseInt(statsMatch[1], 10),
+          );
+        }
+
+        const rtMatch = path.match(/^\/api\/sites\/(\d+)\/realtime$/);
+        if (rtMatch && method === "GET") {
+          if (env.limiter) {
+            const { success } = await env.limiter.limit({
+              key: `rt:${user.sub}`,
+            });
+            if (!success)
+              return jsonResponse({ error: "rate_limited" }, 429, cors);
+          }
+          return await handleRealtime(
+            request,
+            env,
+            user,
+            parseInt(rtMatch[1], 10),
+          );
+        }
+
+        if (path === "/api/me" && method === "GET") {
+          return jsonResponse(
+            {
+              user: {
+                sub: user.sub,
+                username: user.username,
+                email: user.email,
+              },
+            },
+            200,
+            cors,
+          );
+        }
       }
 
       return env.assets.fetch(request);

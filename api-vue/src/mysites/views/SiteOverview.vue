@@ -43,7 +43,8 @@ const loading = ref(false)
 const range = ref('7d')
 const stats = ref(null)
 const realtime = ref(null)
-const errorMsg = ref('')
+const notFound = ref(false)      // 404：站点不存在 / 无权访问
+const errorMsg = ref('')         // 其它错误
 
 let realtimeTimer = null
 
@@ -51,34 +52,51 @@ let realtimeTimer = null
 
 async function loadStats() {
     if (!user.value || !siteId.value) return
+
     loading.value = true
     errorMsg.value = ''
+    notFound.value = false
+
     try {
         stats.value = await getSiteStats(siteId.value, range.value)
     } catch (e) {
+        // 后端统一返回 404 表示“不存在或无权访问”
+        if (e.status === 404 || e.status === 403) {
+            stats.value = null
+            notFound.value = true
+            stopRealtime()
+            return
+        }
         errorMsg.value = e.message || '加载失败'
         Snackbar.error(errorMsg.value)
-        // 站点不存在 / 无权限 → 回到列表
-        if (e.status === 403 || e.status === 404) {
-            router.replace('/')
-        }
     } finally {
         loading.value = false
     }
 }
 
 async function loadRealtime() {
-    if (!user.value || !siteId.value) return
+    if (!user.value || !siteId.value || notFound.value) return
     try {
         realtime.value = await getSiteRealtime(siteId.value)
-    } catch {
-        // 静默失败，不打扰用户；保留上一次的结果
+    } catch (e) {
+        // 404 时静默停掉定时器
+        if (e.status === 404 || e.status === 403) {
+            stopRealtime()
+        }
+        // 其它错误静默，保留上次数据
+    }
+}
+
+function stopRealtime() {
+    if (realtimeTimer) {
+        clearInterval(realtimeTimer)
+        realtimeTimer = null
     }
 }
 
 async function reloadAll() {
     await loadStats()
-    await loadRealtime()
+    if (!notFound.value) await loadRealtime()
 }
 
 /* ───────────── 监听 ───────────── */
@@ -86,7 +104,10 @@ async function reloadAll() {
 watch(range, loadStats)
 
 watch(siteId, (v) => {
-    if (v) reloadAll()
+    if (v) {
+        realtime.value = null
+        reloadAll()
+    }
 })
 
 watch(
@@ -95,30 +116,36 @@ watch(
         if (v) {
             reloadAll()
         } else {
-            // 登出：清空数据，回到访客态
-            stats.value = null
-            realtime.value = null
-            if (realtimeTimer) {
-                clearInterval(realtimeTimer)
-                realtimeTimer = null
-            }
+            // 登出：直接回首页
+            stopRealtime()
+            router.replace('/')
         }
     }
 )
 
-onMounted(async () => {
-    await reloadAll()
-    realtimeTimer = setInterval(loadRealtime, REALTIME_INTERVAL)
-})
+/* ───────────── 生命周期 ───────────── */
 
-onUnmounted(() => {
-    if (realtimeTimer) {
-        clearInterval(realtimeTimer)
-        realtimeTimer = null
+onMounted(() => {
+    // 未登录直接回首页，不渲染内容
+    if (!user.value) {
+        router.replace('/')
+        return
     }
+    if (!siteId.value) {
+        // id 非法，视同 404
+        notFound.value = true
+        return
+    }
+    reloadAll().then(() => {
+        if (!notFound.value) {
+            realtimeTimer = setInterval(loadRealtime, REALTIME_INTERVAL)
+        }
+    })
 })
 
-/* ───────────── 折线图计算 ───────────── */
+onUnmounted(stopRealtime)
+
+/* ───────────── 折线图 ───────────── */
 
 const chart = computed(() => {
     const s = stats.value?.series
@@ -143,7 +170,6 @@ const chart = computed(() => {
         .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
         .join(' ')
 
-    // 面积用于渲染填充
     const area =
         `M${points[0].x.toFixed(1)},${(H - PAD).toFixed(1)} ` +
         points.map((p) => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') +
@@ -165,7 +191,7 @@ const breakdownGroups = computed(() => {
         .filter((g) => g.rows.length > 0)
 })
 
-/* ───────────── 工具函数 ───────────── */
+/* ───────────── 工具 ───────────── */
 
 function fmt(n) {
     return Number(n ?? 0).toLocaleString()
@@ -205,9 +231,7 @@ function onChartMove(e) {
     const step = chart.value.points.length > 1
         ? innerW / (chart.value.points.length - 1)
         : 0
-    const idx = step > 0
-        ? Math.round((x - PAD) / step)
-        : 0
+    const idx = step > 0 ? Math.round((x - PAD) / step) : 0
     hoverIndex.value = Math.max(0, Math.min(chart.value.points.length - 1, idx))
 }
 
@@ -223,10 +247,11 @@ const hoverPoint = computed(() => {
 
 <template>
     <div class="wrap">
-        <!-- 未登录 -->
-        <div v-if="!user" class="guest">
-            <h1>需要登录</h1>
-            <p>请先登录后再查看站点数据</p>
+        <!-- 404：站点不存在 / 无权访问 -->
+        <div v-if="notFound" class="not-found">
+            <h2>站点不存在</h2>
+            <p>该站点可能已被删除，或你无权访问它。</p>
+            <var-button type="primary" @click="goBack">返回站点列表</var-button>
         </div>
 
         <template v-else>
@@ -254,7 +279,7 @@ const hoverPoint = computed(() => {
             <!-- 加载中 -->
             <var-progress v-if="loading && !stats" indeterminate />
 
-            <!-- 错误 -->
+            <!-- 其它错误 -->
             <div v-else-if="errorMsg && !stats" class="error-block">
                 <p>{{ errorMsg }}</p>
                 <var-button type="primary" @click="reloadAll">重试</var-button>
@@ -288,21 +313,15 @@ const hoverPoint = computed(() => {
                     <div v-if="chart" class="chart-wrap">
                         <svg :viewBox="`0 0 ${chart.W} ${chart.H}`" class="chart" preserveAspectRatio="none"
                             @mousemove="onChartMove" @mouseleave="onChartLeave">
-                            <!-- 面积填充 -->
                             <path :d="chart.area" class="area" />
-                            <!-- 折线 -->
                             <path :d="chart.line" class="line" />
-                            <!-- 基准线 -->
                             <line :x1="chart.PAD" :y1="chart.H - chart.PAD" :x2="chart.W - chart.PAD"
                                 :y2="chart.H - chart.PAD" class="axis" />
-                            <!-- hover 竖线 -->
                             <line v-if="hoverPoint" :x1="hoverPoint.x" y1="24" :x2="hoverPoint.x" :y2="chart.H - 24"
                                 class="cursor" />
-                            <!-- hover 点 -->
                             <circle v-if="hoverPoint" :cx="hoverPoint.x" :cy="hoverPoint.y" r="4" class="dot" />
                         </svg>
 
-                        <!-- hover tooltip -->
                         <div v-if="hoverPoint" class="chart-tip"
                             :style="{ left: (hoverPoint.x / chart.W * 100) + '%' }">
                             <div class="tip-label">{{ hoverPoint.label }}</div>
@@ -328,14 +347,12 @@ const hoverPoint = computed(() => {
                         </span>
                     </div>
 
-                    <!-- 每分钟柱 -->
                     <div class="bars">
                         <div v-for="(m, i) in realtime.minutes" :key="i" class="bar"
                             :style="{ height: (Math.min(m.cur, 20) / 20 * 100) + '%' }"
                             :title="m.label + ' · ' + m.cur"></div>
                     </div>
 
-                    <!-- 最近访问 -->
                     <div class="recent-list">
                         <div v-for="(r, i) in realtime.recent" :key="i" class="recent-row">
                             <span class="recent-path" :title="r.path">{{ r.path }}</span>
@@ -346,7 +363,7 @@ const hoverPoint = computed(() => {
                     </div>
                 </section>
 
-                <!-- Breakdown 面板 -->
+                <!-- Breakdown -->
                 <section v-for="group in breakdownGroups" :key="group.key" class="card">
                     <h3>{{ group.title }}</h3>
                     <div class="bd-list">
@@ -364,7 +381,6 @@ const hoverPoint = computed(() => {
                     </div>
                 </section>
 
-                <!-- 无任何数据 -->
                 <div v-if="!breakdownGroups.length && stats.totals.pageviews === 0" class="no-data">
                     <p>该时间范围内暂无数据</p>
                     <p class="hint">请确认嵌入脚本已正确安装</p>
@@ -381,20 +397,21 @@ const hoverPoint = computed(() => {
     padding: 20px;
 }
 
-/* ── 未登录 ── */
-.guest {
+/* ── 404 ── */
+.not-found {
     text-align: center;
     padding: 100px 20px;
 }
 
-.guest h1 {
+.not-found h2 {
     margin: 0 0 8px;
-    font-size: 26px;
+    font-size: 22px;
 }
 
-.guest p {
-    margin: 0;
+.not-found p {
+    margin: 0 0 24px;
     color: var(--color-text-secondary, #888);
+    font-size: 14px;
 }
 
 /* ── 头部 ── */

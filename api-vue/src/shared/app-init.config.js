@@ -39,7 +39,7 @@
 export const appInitConfig = [
   {
     name: "memorial-style",
-    apps: ["index"],
+    apps: [],
     phase: "beforeLoadModule",
     run: async () => {
       const { startMemorialWatcher } =
@@ -49,7 +49,7 @@ export const appInitConfig = [
   },
   {
     name: "theme-md3",
-    apps: ["console", "account", "ai"],
+    apps: ["console", "account", "ai", "analytics"],
     run: async ({ pinia }) => {
       const { useThemeStore } = await import("@/shared/stores/theme");
       useThemeStore(pinia).initializeTheme("md3");

@@ -22,14 +22,6 @@ export const head = [
     },
   },
   {
-    apps: ["index"],
-    tag: "link",
-    attrs: {
-      rel: "stylesheet",
-      href: "/font/govwf_fz_7081407_361750289.css",
-    },
-  },
-  {
     apps: ["*"],
     tag: "link",
     attrs: {
@@ -37,15 +29,4 @@ export const head = [
       href: "https://cdn.undz.cn/css2?family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap",
     },
   },
-  // jQuery 不依赖 DOM，挂载前加载
-  ...(!isMobileByUA()
-    ? [
-        {
-          apps: ["index"],
-          phase: "beforeMount",
-          tag: "script",
-          attrs: { src: "/canyou/js/jquery.min.js", id: "canyou-jquery" },
-        },
-      ]
-    : []),
 ];
