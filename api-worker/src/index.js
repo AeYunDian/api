@@ -12,6 +12,7 @@ import ayConsole from "./ayConsole.js";
 import ayRelay from "./wsRelay.js";
 import ayAnalytics from "./ayAnalytics.js";
 import ai from "./ai.js";
+import ayFiles from "./ayFiles.js";
 
 // import shundzcn from './sh.undz.cn.js'
 
@@ -69,6 +70,9 @@ export default {
       if (hostname === "cdn.undz.cn") return await uniCDN.fetch(request, env);
 
       if (hostname === "ai.undz.cn") return await ai.fetch(request, env);
+
+      if (hostname === "files.undz.cn")
+        return await ayFiles.fetch(request, env);
 
       // 直接走前端404
       if (hostname === "mail.undz.cn" || hostname === "mail.io.hb.cn")

@@ -98,6 +98,7 @@ const navItems = computed(() => {
         items.push(
             { path: '/feedback-manager', title: '反馈管理', icon: 'breast-feed' },
             { path: '/users-manager', title: '用户管理', icon: 'account-circle' },
+            { path: '/file-manager', title: '文件管理', icon: 'folder' }
         );
     }
     return items;
@@ -110,7 +111,9 @@ const footerItems = [
 
 
 function isActive(item) {
-    return !item.handler && route.path === `/console-panel${item.path}`;
+    if (item.handler) return false
+    const target = `/console-panel${item.path}`
+    return route.path === target || route.path.startsWith(target + '/')
 }
 
 function handleNav(item) {

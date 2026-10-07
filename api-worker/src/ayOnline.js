@@ -530,7 +530,33 @@ async function initDatabase(db) {
         `CREATE INDEX IF NOT EXISTS idx_analytics_sites_user ON analytics_sites(user_sub)`,
       )
       .run();
-
+    await env.db
+      .prepare(
+        `CREATE TABLE IF NOT EXISTS file_manager (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          path TEXT NOT NULL UNIQUE,
+          code TEXT NOT NULL UNIQUE,
+          need_password INTEGER NOT NULL DEFAULT 0,
+          password TEXT,
+          expiration_at INTEGER,
+          r2_key TEXT NOT NULL,
+          size INTEGER,
+          mime_type TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        )`,
+      )
+      .run();
+    await env.db
+      .prepare(
+        `CREATE INDEX IF NOT EXISTS idx_file_manager_code ON file_manager (code)`,
+      )
+      .run();
+    await env.db
+      .prepare(
+        `CREATE INDEX IF NOT EXISTS idx_file_manager_path ON file_manager (path)`,
+      )
+      .run();
     await db
       .prepare(
         `CREATE TABLE IF NOT EXISTS analytics_events (

@@ -41,6 +41,11 @@ const router = createRouter({
           meta: { title: "网站分析" },
         },
         {
+          path: "file-manager/:pathMatch(.*)*",
+          component: () => import("@/console/views/console/FileManager.vue"),
+          meta: { title: "文件管理" },
+        },
+        {
           path: "about",
           component: () => import("@/console/views/console/About.vue"),
           meta: { title: "关于" },
