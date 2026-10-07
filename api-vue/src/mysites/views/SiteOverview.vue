@@ -510,7 +510,7 @@ function tipStyle() {
                             <g class="grid">
                                 <g v-for="(t, i) in chart.xTicks" :key="'x' + i">
                                     <text :x="t.x" :y="chart.H - 10" text-anchor="middle" class="tick-label">{{ t.label
-                                    }}</text>
+                                        }}</text>
                                 </g>
                             </g>
 
@@ -621,6 +621,7 @@ function tipStyle() {
     /* 屏幕上的 UI 全部藏掉 */
     .top-progress,
     .header-right,
+    .title-block,
     .back-btn,
     .live-indicator,
     .bars,
