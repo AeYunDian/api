@@ -155,7 +155,7 @@ onUnmounted(() => {
                 </var-button>
             </div>
             <div style="margin-left: 15px; user-select: none;" @click="goHome" @mousedown.stop>
-                <span class="app-bar-title" @mousedown.stop>AySites</span>
+                <span class="app-bar-title" @mousedown.stop>AyAnalytics</span>
             </div>
         </template>
 
@@ -164,20 +164,12 @@ onUnmounted(() => {
                 <var-icon :name="themeStore.currentTheme === 'light' ? 'weather-night' : 'white-balance-sunny'"
                     :size="24" />
             </var-button>
-
-            <var-button v-if="user" color="transparent" text-color="#fff" round text @mousedown.stop>
-                {{ user.username }}
-            </var-button>
-            <var-button v-else color="transparent" text-color="#fff" round text @mousedown.stop @click="goLogin">
-                登录
-            </var-button>
-
             <WindowControls />
         </template>
     </var-app-bar>
     <div class="header">
         <div class="header-start">
-            <div class="header-title">AySites</div>
+            <div class="header-title">AyAnalytics</div>
         </div>
         <div class="header-end">
             <p v-if="user">
