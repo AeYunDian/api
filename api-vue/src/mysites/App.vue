@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
+import { onMounted, onUnmounted, provide, ref } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { initSdk, getSdk } from '@/shared/account-sdk'
 import { useThemeStore } from '@/shared/stores/theme'
@@ -9,6 +9,7 @@ import { Snackbar } from '@varlet/ui'
 import WindowControls from '@/shared/components/WindowControls.vue'
 import '@varlet/ui/es/snackbar/style'
 import '@/shared/assets/base.css'
+
 /* ───────────── SDK ───────────── */
 
 let sdk = null
@@ -37,30 +38,45 @@ provide('user', user)
 
 /* ───────────── 登录态 ───────────── */
 
-async function refreshUser() {
+/**
+ * 三步验证链：
+ *   1. verify 成功 → 更新 user
+ *   2. verify 失败 → refresh → 再 verify
+ *   3. 仍然失败 → user = null
+ * 不主动弹登录，由 Home 页处理
+ */
+async function ensureLoggedIn() {
     if (!sdk) {
         user.value = null
         return null
     }
+
     try {
-        let res = await sdk.verify()
-        if (!res || !res.valid) {
-            try {
-                await sdk.refresh()
-                res = await sdk.verify()
-            } catch {
-                /* refresh 失败就当未登录 */
-            }
+        const res = await sdk.verify()
+        if (res && res.valid && res.user) {
+            user.value = res.user
+            return user.value
         }
-        user.value = res && res.valid ? res.user : null
-        return user.value
     } catch (error) {
-        user.value = null
-        return null
+        console.warn('[AySites] verify 失败，尝试 refresh', error)
     }
+
+    try {
+        await sdk.refresh()
+        const res = await sdk.verify()
+        if (res && res.valid && res.user) {
+            user.value = res.user
+            return user.value
+        }
+    } catch (error) {
+        console.warn('[AySites] refresh 失败', error)
+    }
+
+    user.value = null
+    return null
 }
 
-provide('refreshUser', refreshUser)
+provide('refreshUser', ensureLoggedIn)
 
 function goLogin() {
     if (!sdk) {
@@ -72,8 +88,6 @@ function goLogin() {
             sdk.login()
         } else if (typeof sdk.openLogin === 'function') {
             sdk.openLogin()
-        } else if (typeof sdk.showLogin === 'function') {
-            sdk.showLogin()
         } else {
             console.error('[AySites] account-sdk 未暴露登录方法')
             Snackbar.error('登录服务暂时不可用')
@@ -103,9 +117,9 @@ function goHome() {
 /* ───────────── 生命周期 ───────────── */
 
 onMounted(async () => {
-    await refreshUser()
+    await ensureLoggedIn()
     checking.value = false
-    pollTimer = setInterval(refreshUser, POLL_INTERVAL)
+    pollTimer = setInterval(ensureLoggedIn, POLL_INTERVAL)
 })
 
 onUnmounted(() => {
@@ -114,16 +128,6 @@ onUnmounted(() => {
         pollTimer = null
     }
 })
-
-/* 登录态变为未登录时，若停在需要登录的页面，回首页 */
-watch(
-    () => user.value?.sub,
-    (now, before) => {
-        if (before && !now && route.path !== '/') {
-            router.replace('/')
-        }
-    }
-)
 </script>
 
 <template>
@@ -170,15 +174,6 @@ main {
     height: calc(100% - 54px);
     overflow-y: auto;
     position: relative;
-}
-
-.var-app-bar {
-    position: relative;
-    width: 100%;
-    font-size: var(--app-bar-font-size);
-    background: var(--app-bar-color);
-    color: var(--app-bar-text-color);
-    transition: background-color 0.25s;
 }
 
 .boot-loading {

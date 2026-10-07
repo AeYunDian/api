@@ -1,6 +1,6 @@
 // mysites.undz.cn — 网站分析
 // ─────────────────────────────────────────────────────────
-// 跟踪器脚本（ES5 + XHR）+ 事件接收 + 认证统计查询
+// 跟踪器脚本（ES5 / IE7 兼容 + XHR/Image 双通道）+ 事件接收 + 认证统计查询
 // 复用 online.undz.cn 的统一账号体系（checkAuth + .undz.cn Cookie）
 // ─────────────────────────────────────────────────────────
 
@@ -25,6 +25,8 @@ const DOMAIN_PATTERN =
   /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 const MAX_BODY_BYTES = 4096;
 
+const DEFAULT_TRACKER_DOMAIN = "mysites.undz.cn";
+
 /* ───────────────────────── helpers ───────────────────────── */
 
 function jsonResponse(data, status = 200, extraHeaders = {}) {
@@ -38,8 +40,8 @@ function corsHeaders(request) {
   const origin = request.headers.get("Origin");
   const headers = {
     "Access-Control-Allow-Credentials": "true",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, x-app-id, x-sdk-ver",
     "Access-Control-Max-Age": "86400",
   };
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
@@ -53,7 +55,7 @@ function corsHeaders(request) {
 /** 事件接收是公开的（来自任意第三方站点），CORS 放开 */
 const CORS_OPEN = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Max-Age": "86400",
 };
@@ -130,91 +132,238 @@ async function visitorHash(day, siteToken, ip, ua) {
 }
 
 /* ─────────────────────── 跟踪器脚本 ─────────────────────── */
-// ES5 语法 + XMLHttpRequest。
-// token 来源：src 的 ?token= 或 data-token，两者若同时出现必须一致，否则拒绝上报。
-const TRACKER_JS =
-  "(function(){\n" +
-  "  var script = document.currentScript;\n" +
-  "  if (!script) return;\n" +
-  "  var src = script.src || '';\n" +
-  "  var dataToken = script.getAttribute('data-token');\n" +
-  "  var queryToken = null;\n" +
-  "  var m = src.match(/[?&]token=([^&]+)/);\n" +
-  "  if (m) queryToken = decodeURIComponent(m[1]);\n" +
-  "  if (dataToken && queryToken && dataToken !== queryToken) return;\n" +
-  "  var token = dataToken || queryToken;\n" +
-  "  if (!token) return;\n" +
-  "  var endpoint;\n" +
-  "  try {\n" +
-  "    var u = new URL(src, location.href);\n" +
-  "    endpoint = u.origin + '/api/event';\n" +
-  "  } catch (e) { return; }\n" +
-  "  var domain = script.getAttribute('data-domain') || location.hostname;\n" +
-  "  var lastPath = null;\n" +
-  "  function send(name) {\n" +
-  "    var body = JSON.stringify({\n" +
-  "      n: String(name || 'event'),\n" +
-  "      t: token,\n" +
-  "      d: domain,\n" +
-  "      u: location.href,\n" +
-  "      r: document.referrer || '',\n" +
-  "      w: window.innerWidth || 0\n" +
-  "    });\n" +
-  "    try {\n" +
-  "      var xhr = new XMLHttpRequest();\n" +
-  "      xhr.open('POST', endpoint, true);\n" +
-  "      xhr.setRequestHeader('Content-Type', 'application/json');\n" +
-  "      xhr.send(body);\n" +
-  "    } catch (e) {}\n" +
-  "  }\n" +
-  "  function pageview() {\n" +
-  "    if (location.pathname === lastPath) return;\n" +
-  "    lastPath = location.pathname;\n" +
-  "    send('pageview');\n" +
-  "  }\n" +
-  "  window.ayAnalytics = function(name) { send(String(name || 'event')); };\n" +
-  "  var hist = window.history;\n" +
-  "  if (hist && hist.pushState) {\n" +
-  "    var push = hist.pushState;\n" +
-  "    hist.pushState = function() {\n" +
-  "      push.apply(this, arguments);\n" +
-  "      pageview();\n" +
-  "    };\n" +
-  "    window.addEventListener('popstate', pageview);\n" +
-  "  }\n" +
-  "  if (document.visibilityState === 'prerender') {\n" +
-  "    document.addEventListener('visibilitychange', function() {\n" +
-  "      if (document.visibilityState === 'visible') pageview();\n" +
-  "    });\n" +
-  "  } else {\n" +
-  "    pageview();\n" +
-  "  }\n" +
-  "})();";
+// 生产环境：所有变量名在每次请求时随机生成 hex 标识符
+// 开发环境（env.DEBUG 真值）：保留原名，方便调试
+//
+// 兼容 IE7+：
+//   - 用 <a> 元素解析 URL（不用 new URL）
+//   - 用 Image beacon 发 GET（IE7/8/9 不支持跨域 XHR）
+//   - 手写 JSON 转义（IE7 无 JSON.stringify）
+//   - script 自身查找用倒序遍历（无 currentScript）
+//
+// 域名：优先 script 上的 data-domain 属性，缺省回落到服务端配置的默认域名
+
+const TRACKER_NAMES = [
+  "script",
+  "scripts",
+  "i",
+  "s",
+  "src",
+  "dataToken",
+  "queryToken",
+  "m",
+  "token",
+  "a",
+  "origin",
+  "endpoint",
+  "domain",
+  "winW",
+  "useXhr",
+  "lastPath",
+  "send",
+  "jsonEsc",
+  "pageview",
+  "hist",
+  "push",
+  "body",
+  "xhr",
+  "img",
+  "href",
+  "name",
+];
+const TRACKER_TEMPLATE = `(function(){"use strict";
+  var @@script@@ = document.currentScript;
+  if (!@@script@@) {
+    var @@scripts@@ = document.getElementsByTagName('script');
+    for (var @@i@@ = @@scripts@@.length - 1; @@i@@ >= 0; @@i@@--) {
+      var @@s@@ = @@scripts@@[@@i@@];
+      if (@@s@@.src && @@s@@.src.indexOf('analytics.js') !== -1) {
+        @@script@@ = @@s@@;
+        break;
+      }
+    }
+  }
+  if (!@@script@@) return;
+  var @@src@@ = @@script@@.src || '';
+  var @@dataToken@@ = @@script@@.getAttribute('data-token');
+  var @@queryToken@@ = null;
+  var @@m@@ = @@src@@.match(/[?&]token=([^&]+)/);
+  if (@@m@@) {
+    try { @@queryToken@@ = decodeURIComponent(@@m@@[1]); }
+    catch (e) { @@queryToken@@ = @@m@@[1]; }
+  }
+  if (@@dataToken@@ && @@queryToken@@ && @@dataToken@@ !== @@queryToken@@) return;
+  var @@token@@ = @@dataToken@@ || @@queryToken@@;
+  if (!@@token@@) return;
+  var @@a@@ = document.createElement('a');
+  @@a@@.href = @@src@@;
+  var @@origin@@ = (@@a@@.protocol || 'https:') + '//' + (@@a@@.host || location.host);
+  var @@endpoint@@ = @@origin@@ + '/api/event';
+  var @@domain@@ = @@script@@.getAttribute('data-domain') || '@@DEFAULT_DOMAIN@@';
+  var @@winW@@ = window.innerWidth
+    || (document.documentElement && document.documentElement.clientWidth)
+    || (document.body && document.body.clientWidth)
+    || 0;
+  var @@useXhr@@ = false;
+  if (typeof window.XDomainRequest === 'undefined'
+      && typeof window.XMLHttpRequest !== 'undefined') {
+    try {
+      @@useXhr@@ = 'withCredentials' in new XMLHttpRequest();
+    } catch (e) { @@useXhr@@ = false; }
+  }
+  var @@lastPath@@ = null;
+  function @@jsonEsc@@(@@s@@) {
+    @@s@@ = String(@@s@@);
+    var out = '';
+    for (var i = 0; i < @@s@@.length; i++) {
+      var c = @@s@@.charAt(i);
+      var code = @@s@@.charCodeAt(i);
+      if (c === '"') out += '\\\\"';
+      else if (c === '\\\\') out += '\\\\\\\\';
+      else if (c === '\\n') out += '\\\\n';
+      else if (c === '\\r') out += '\\\\r';
+      else if (c === '\\t') out += '\\\\t';
+      else if (code < 32 || code === 0x2028 || code === 0x2029) {
+        var hex = code.toString(16);
+        while (hex.length < 4) hex = '0' + hex;
+        out += '\\\\u' + hex;
+      } else out += c;
+    }
+    return out;
+  }
+  function @@send@@(@@name@@) {
+    var @@href@@ = location.href;
+    if (@@href@@.length > 500) @@href@@ = @@href@@.slice(0, 500);
+    if (@@useXhr@@) {
+      var @@body@@ = '{"n":"' + @@jsonEsc@@(@@name@@)
+        + '","t":"' + @@jsonEsc@@(@@token@@)
+        + '","d":"' + @@jsonEsc@@(@@domain@@)
+        + '","u":"' + @@jsonEsc@@(@@href@@)
+        + '","r":"' + @@jsonEsc@@(document.referrer || '')
+        + '","w":"' + @@jsonEsc@@(String(@@winW@@)) + '"}';
+      try {
+        var @@xhr@@ = new XMLHttpRequest();
+        @@xhr@@.open('POST', @@endpoint@@, true);
+        @@xhr@@.setRequestHeader('Content-Type', 'application/json');
+        @@xhr@@.send(@@body@@);
+      } catch (e) {}
+      return;
+    }
+    try {
+      var @@img@@ = new Image();
+      @@img@@.src = @@endpoint@@
+        + '?n=' + encodeURIComponent(@@name@@)
+        + '&t=' + encodeURIComponent(@@token@@)
+        + '&d=' + encodeURIComponent(@@domain@@)
+        + '&u=' + encodeURIComponent(@@href@@)
+        + '&r=' + encodeURIComponent(document.referrer || '')
+        + '&w=' + encodeURIComponent(String(@@winW@@));
+    } catch (e) {}
+  }
+  function @@pageview@@() {
+    if (location.pathname === @@lastPath@@) return;
+    @@lastPath@@ = location.pathname;
+    @@send@@('pageview');
+  }
+  window.ayAnalytics = function(n) { @@send@@(String(n || 'event')); };
+  var @@hist@@ = window.history;
+  if (@@hist@@ && @@hist@@.pushState) {
+    var @@push@@ = @@hist@@.pushState;
+    @@hist@@.pushState = function() {
+      @@push@@.apply(this, arguments);
+      @@pageview@@();
+    };
+    if (window.addEventListener) {
+      window.addEventListener('popstate', @@pageview@@);
+    } else if (window.attachEvent) {
+      window.attachEvent('onpopstate', @@pageview@@);
+    }
+  }
+  if (document.visibilityState === 'prerender') {
+    if (window.addEventListener) {
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') @@pageview@@();
+      });
+    }
+  } else {
+    @@pageview@@();
+  }
+})();`;
+
+/** 生成 3 字节随机 hex（形如 _a3f9c1），用于变量名 */
+function randomId() {
+  return "_" + Math.random().toString(16).substring(2, 8).padEnd(6, "f");
+}
+
+/**
+ * 生成要下发给浏览器的跟踪器脚本。
+ *
+ * - 生产环境：每次请求独立随机，无缓存
+ * - 开发环境（env.DEBUG 真值）：变量名回填为原始可读名字，方便断点调试
+ */
+function buildTrackerScript(env) {
+  const domain = DEFAULT_TRACKER_DOMAIN;
+
+  let js = TRACKER_TEMPLATE.split("@@DEFAULT_DOMAIN@@").join(domain);
+
+  if (env.DEBUG) {
+    for (const name of TRACKER_NAMES) {
+      js = js.split("@@" + name + "@@").join(name);
+    }
+    return js;
+  }
+
+  const used = new Set();
+  for (const name of TRACKER_NAMES) {
+    let id;
+    do {
+      id = randomId();
+    } while (used.has(id));
+    used.add(id);
+    js = js.split("@@" + name + "@@").join(id);
+  }
+  return js.replace(/\n\s*/g, "");
+}
 
 /* ─────────────────────── 事件接收 ─────────────────────── */
 
 async function handleIngest(request, env) {
-  // 限流
+  const url = new URL(request.url);
+  const isGet = request.method === "GET";
+
+  // 限流（POST 与 GET 共用一条通道，都按来源 IP）
   const ip = request.headers.get("cf-connecting-ip") || "0.0.0.0";
   if (env.limiter) {
     const { success } = await env.limiter.limit({ key: `evt:${ip}` });
-    if (!success)
+    if (!success) {
       return new Response(null, { status: 429, headers: CORS_OPEN });
-  }
-
-  const lenHeader = Number(request.headers.get("content-length") || "0");
-  if (lenHeader > MAX_BODY_BYTES) {
-    return new Response(null, { status: 413, headers: CORS_OPEN });
+    }
   }
 
   let body;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(null, { status: 400, headers: CORS_OPEN });
-  }
-  if (!body || typeof body !== "object") {
-    return new Response(null, { status: 400, headers: CORS_OPEN });
+  if (isGet) {
+    // IE7 Image beacon：所有字段从 query 里取
+    body = {
+      n: url.searchParams.get("n") || "pageview",
+      t: url.searchParams.get("t") || "",
+      d: url.searchParams.get("d") || "",
+      u: url.searchParams.get("u") || "",
+      r: url.searchParams.get("r") || "",
+      w: url.searchParams.get("w") || "",
+    };
+  } else {
+    const lenHeader = Number(request.headers.get("content-length") || "0");
+    if (lenHeader > MAX_BODY_BYTES) {
+      return new Response(null, { status: 413, headers: CORS_OPEN });
+    }
+    try {
+      body = await request.json();
+    } catch {
+      return new Response(null, { status: 400, headers: CORS_OPEN });
+    }
+    if (!body || typeof body !== "object") {
+      return new Response(null, { status: 400, headers: CORS_OPEN });
+    }
   }
 
   const token = typeof body.t === "string" ? body.t : "";
@@ -354,9 +503,10 @@ async function handleStats(request, env, user, siteId) {
     )
     .bind(siteId)
     .first();
+  // 站点不存在 / 无权访问：统一返回 404，避免泄露 id 是否存在
   if (!site) return jsonResponse({ error: "not_found" }, 404);
   if (user.sub !== 1 && site.user_sub !== user.sub) {
-    return jsonResponse({ error: "forbidden" }, 403);
+    return jsonResponse({ error: "not_found" }, 404);
   }
 
   const fromTs = Math.floor(Date.parse(range.from + "T00:00:00Z") / 1000);
@@ -502,9 +652,10 @@ async function handleRealtime(request, env, user, siteId) {
     .prepare("SELECT id, token, user_sub FROM analytics_sites WHERE id = ?")
     .bind(siteId)
     .first();
+  // 不存在 / 无权限都是 404
   if (!site) return jsonResponse({ error: "not_found" }, 404);
   if (user.sub !== 1 && site.user_sub !== user.sub) {
-    return jsonResponse({ error: "forbidden" }, 403);
+    return jsonResponse({ error: "not_found" }, 404);
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -548,9 +699,9 @@ export default {
     const path = url.pathname;
     const method = request.method;
 
-    // 跟踪器脚本
+    // 跟踪器脚本（每次请求重新生成，dev 环境返回原始可读版本）
     if (path === "/analytics.js" && method === "GET") {
-      return new Response(TRACKER_JS, {
+      return new Response(buildTrackerScript(env), {
         status: 200,
         headers: {
           "Content-Type": "text/javascript; charset=utf-8",
@@ -565,7 +716,9 @@ export default {
     if (path === "/api/event" && method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_OPEN });
     }
-    if (path === "/api/event" && method === "POST") {
+
+    // 事件接收：POST（现代浏览器 XHR）+ GET（IE Image beacon）
+    if (path === "/api/event" && (method === "POST" || method === "GET")) {
       try {
         return await handleIngest(request, env);
       } catch (err) {
@@ -574,6 +727,7 @@ export default {
       }
     }
 
+    // 其余接口的 OPTIONS 预检
     if (method === "OPTIONS") {
       const origin = request.headers.get("Origin");
       const corsHeaders = {
@@ -582,13 +736,13 @@ export default {
         "Access-Control-Allow-Headers": "Content-Type, x-app-id, x-sdk-ver",
         "Access-Control-Max-Age": "86400",
       };
-      // 回显合法的 Origin
       if (origin && ALLOWED_ORIGINS.includes(origin)) {
         corsHeaders["Access-Control-Allow-Origin"] = origin;
       }
-      // 注意：对于预检请求，返回 204 且带 CORS 头即可，无需进入业务逻辑
       return new Response(null, { status: 204, headers: corsHeaders });
     }
+
+    const cors = corsHeaders(request);
 
     try {
       if (path.startsWith("/api/")) {

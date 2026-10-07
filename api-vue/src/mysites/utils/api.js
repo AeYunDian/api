@@ -1,14 +1,9 @@
 // src/mysites/utils/api.js
 
 // 站点管理接口在 console worker 上
-const CONSOLE_BASE = import.meta.env.PROD
-  ? "https://console.undz.cn"
-  : "https://console-dev.undz.cn";
+const CONSOLE_BASE = "https://console.undz.cn";
 
-// 统计数据接口在 mysites worker 上（与本页同源）
-const ANALYTICS_BASE = import.meta.env.PROD
-  ? "https://mysites.undz.cn"
-  : "https://mysites-dev.undz.cn";
+const ANALYTICS_BASE = "https://mysites.undz.cn";
 
 async function request(base, endpoint, options = {}) {
   const response = await fetch(`${base}/api/${endpoint}`, {

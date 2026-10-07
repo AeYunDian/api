@@ -11,10 +11,12 @@ const route = useRoute()
 const router = useRouter()
 const user = inject('user')
 
+const rawId = computed(() => route.params.id)
 const siteId = computed(() => {
-    const n = Number(route.params.id)
+    const n = Number(rawId.value)
     return Number.isInteger(n) && n > 0 ? n : null
 })
+const invalidId = computed(() => rawId.value !== undefined && siteId.value === null)
 
 /* ───────────── 常量 ───────────── */
 
@@ -37,30 +39,50 @@ const BREAKDOWN_TITLES = {
 
 const REALTIME_INTERVAL = 30000
 
-/* ───────────── 响应式状态 ───────────── */
+/* ───────────── 状态 ───────────── */
 
 const loading = ref(false)
 const range = ref('7d')
 const stats = ref(null)
 const realtime = ref(null)
-const notFound = ref(false)      // 404：站点不存在 / 无权访问
-const errorMsg = ref('')         // 其它错误
+const notFound = ref(false)
+const errorMsg = ref('')
+const lastUpdated = ref(0)
 
 let realtimeTimer = null
+let statsAbort = null
+let realtimeAbort = null
+let statsSeq = 0
 
-/* ───────────── 数据加载 ───────────── */
+/* ───────────── 未登录跳首页 ───────────── */
+
+function redirectToLogin() {
+    const target = encodeURIComponent(route.fullPath)
+    router.replace(`/?redirect=${target}`)
+}
+
+/* ───────────── 数据加载（带竞态保护） ───────────── */
 
 async function loadStats() {
     if (!user.value || !siteId.value) return
 
+    if (statsAbort) statsAbort.abort()
+    statsAbort = new AbortController()
+    const seq = ++statsSeq
+    const signal = statsAbort.signal
+
     loading.value = true
     errorMsg.value = ''
-    notFound.value = false
 
     try {
-        stats.value = await getSiteStats(siteId.value, range.value)
+        const data = await getSiteStats(siteId.value, range.value, { signal })
+        if (seq !== statsSeq) return
+        stats.value = data
+        notFound.value = false
+        lastUpdated.value = Date.now()
     } catch (e) {
-        // 后端统一返回 404 表示“不存在或无权访问”
+        if (e.name === 'AbortError') return
+        if (seq !== statsSeq) return
         if (e.status === 404 || e.status === 403) {
             stats.value = null
             notFound.value = true
@@ -70,21 +92,38 @@ async function loadStats() {
         errorMsg.value = e.message || '加载失败'
         Snackbar.error(errorMsg.value)
     } finally {
-        loading.value = false
+        if (seq === statsSeq) loading.value = false
     }
 }
 
 async function loadRealtime() {
     if (!user.value || !siteId.value || notFound.value) return
+    if (realtimeAbort) realtimeAbort.abort()
+    realtimeAbort = new AbortController()
+
     try {
-        realtime.value = await getSiteRealtime(siteId.value)
+        const data = await getSiteRealtime(siteId.value, { signal: realtimeAbort.signal })
+        realtime.value = data
     } catch (e) {
-        // 404 时静默停掉定时器
+        if (e.name === 'AbortError') return
         if (e.status === 404 || e.status === 403) {
             stopRealtime()
         }
-        // 其它错误静默，保留上次数据
     }
+}
+
+async function reloadAll() {
+    await loadStats()
+    if (!notFound.value) await loadRealtime()
+}
+
+/* ───────────── 实时定时器 ───────────── */
+
+function startRealtime() {
+    stopRealtime()
+    realtimeTimer = setInterval(() => {
+        if (document.visibilityState === 'visible') loadRealtime()
+    }, REALTIME_INTERVAL)
 }
 
 function stopRealtime() {
@@ -94,9 +133,10 @@ function stopRealtime() {
     }
 }
 
-async function reloadAll() {
-    await loadStats()
-    if (!notFound.value) await loadRealtime()
+function onVisibilityChange() {
+    if (document.visibilityState === 'visible' && !notFound.value && user.value) {
+        loadRealtime()
+    }
 }
 
 /* ───────────── 监听 ───────────── */
@@ -105,8 +145,14 @@ watch(range, loadStats)
 
 watch(siteId, (v) => {
     if (v) {
+        stopRealtime()
         realtime.value = null
-        reloadAll()
+        stats.value = null
+        notFound.value = false
+        errorMsg.value = ''
+        reloadAll().then(() => {
+            if (!notFound.value) startRealtime()
+        })
     }
 })
 
@@ -114,36 +160,45 @@ watch(
     () => user.value?.sub,
     (v) => {
         if (v) {
-            reloadAll()
+            reloadAll().then(() => {
+                if (!notFound.value) startRealtime()
+            })
         } else {
-            // 登出：直接回首页
+            // 登出 → 带上回跳目标回首页
             stopRealtime()
-            router.replace('/')
+            stats.value = null
+            realtime.value = null
+            redirectToLogin()
         }
     }
 )
 
 /* ───────────── 生命周期 ───────────── */
 
-onMounted(() => {
-    // 未登录直接回首页，不渲染内容
+onMounted(async () => {
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    // 未登录：直接跳回首页，由 Home 处理登录
     if (!user.value) {
-        router.replace('/')
+        redirectToLogin()
         return
     }
-    if (!siteId.value) {
-        // id 非法，视同 404
+
+    if (invalidId.value) {
         notFound.value = true
         return
     }
-    reloadAll().then(() => {
-        if (!notFound.value) {
-            realtimeTimer = setInterval(loadRealtime, REALTIME_INTERVAL)
-        }
-    })
+
+    await reloadAll()
+    if (!notFound.value) startRealtime()
 })
 
-onUnmounted(stopRealtime)
+onUnmounted(() => {
+    document.removeEventListener('visibilitychange', onVisibilityChange)
+    stopRealtime()
+    if (statsAbort) statsAbort.abort()
+    if (realtimeAbort) realtimeAbort.abort()
+})
 
 /* ───────────── 折线图 ───────────── */
 
@@ -152,17 +207,22 @@ const chart = computed(() => {
     if (!s || s.length === 0) return null
 
     const W = 800
-    const H = 200
-    const PAD = 24
-    const innerW = W - PAD * 2
-    const innerH = H - PAD * 2
+    const H = 220
+    const PAD_L = 40
+    const PAD_R = 20
+    const PAD_T = 16
+    const PAD_B = 32
+    const innerW = W - PAD_L - PAD_R
+    const innerH = H - PAD_T - PAD_B
 
     const max = Math.max(1, ...s.map((p) => p.pageviews))
+    const yMax = niceCeil(max)
+
     const step = s.length > 1 ? innerW / (s.length - 1) : 0
 
     const points = s.map((p, i) => {
-        const x = PAD + i * step
-        const y = H - PAD - (p.pageviews / max) * innerH
+        const x = PAD_L + i * step
+        const y = PAD_T + innerH - (p.pageviews / yMax) * innerH
         return { x, y, ...p }
     })
 
@@ -171,23 +231,67 @@ const chart = computed(() => {
         .join(' ')
 
     const area =
-        `M${points[0].x.toFixed(1)},${(H - PAD).toFixed(1)} ` +
+        `M${points[0].x.toFixed(1)},${(PAD_T + innerH).toFixed(1)} ` +
         points.map((p) => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') +
-        ` L${points[points.length - 1].x.toFixed(1)},${(H - PAD).toFixed(1)} Z`
+        ` L${points[points.length - 1].x.toFixed(1)},${(PAD_T + innerH).toFixed(1)} Z`
 
-    return { W, H, PAD, line, area, max, points }
+    const yTicks = [0, 0.25, 0.5, 0.75, 1].map((r) => ({
+        y: PAD_T + innerH - r * innerH,
+        value: Math.round(r * yMax),
+    }))
+
+    const labelEvery = Math.max(1, Math.ceil(s.length / 6))
+    const xTicks = points
+        .filter((_, i) => i % labelEvery === 0 || i === points.length - 1)
+        .map((p) => ({ x: p.x, label: shortLabel(p.label) }))
+
+    return { W, H, PAD_L, PAD_R, PAD_T, PAD_B, innerH, line, area, points, yTicks, xTicks }
 })
 
-/* ───────────── Breakdown 分组 ───────────── */
+function niceCeil(n) {
+    if (n <= 5) return 5
+    const mag = Math.pow(10, Math.floor(Math.log10(n)))
+    const norm = n / mag
+    const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10
+    return nice * mag
+}
+
+function shortLabel(l) {
+    if (!l) return ''
+    if (l.includes('T')) return l.split('T')[1] + ':00'
+    return l.slice(5)
+}
+
+/* ───────────── 顶部对比 ───────────── */
+
+const deltas = computed(() => {
+    const s = stats.value?.series || []
+    if (s.length < 2) return null
+    const half = Math.floor(s.length / 2)
+    const cur = s.slice(-half).reduce((a, b) => a + b.pageviews, 0)
+    const prev = s.slice(0, -half).reduce((a, b) => a + b.pageviews, 0)
+    return { cur, prev, delta: prev === 0 ? null : (cur - prev) / prev }
+})
+
+/* ───────────── Breakdown ───────────── */
 
 const breakdownGroups = computed(() => {
     const b = stats.value?.breakdowns || {}
+    const totalPv = stats.value?.totals?.pageviews || 0
     return Object.entries(BREAKDOWN_TITLES)
-        .map(([key, title]) => ({
-            key,
-            title,
-            rows: (b[key] || []).filter((r) => r.val !== ''),
-        }))
+        .map(([key, title]) => {
+            const rows = (b[key] || []).filter((r) => r.val !== '')
+            const top = rows.length ? rows[0].pageviews : 1
+            return {
+                key,
+                title,
+                rows: rows.map((r) => ({
+                    ...r,
+                    percent: top > 0 ? r.pageviews / top : 0,
+                    ofTotal: totalPv > 0 ? r.pageviews / totalPv : 0,
+                })),
+            }
+        })
         .filter((g) => g.rows.length > 0)
 })
 
@@ -197,9 +301,24 @@ function fmt(n) {
     return Number(n ?? 0).toLocaleString()
 }
 
+function fmtPercent(n) {
+    if (n == null) return ''
+    const sign = n >= 0 ? '+' : ''
+    return `${sign}${(n * 100).toFixed(1)}%`
+}
+
 function fmtRange(r) {
     if (!r) return ''
     return r.from === r.to ? r.from : `${r.from} ~ ${r.to}`
+}
+
+function fmtUpdated(ts) {
+    if (!ts) return ''
+    const d = new Date(ts)
+    const hh = String(d.getHours()).padStart(2, '0')
+    const mm = String(d.getMinutes()).padStart(2, '0')
+    const ss = String(d.getSeconds()).padStart(2, '0')
+    return `${hh}:${mm}:${ss}`
 }
 
 function goBack() {
@@ -207,8 +326,9 @@ function goBack() {
 }
 
 function refresh() {
-    reloadAll()
-    Snackbar.success({ content: '已刷新', duration: 800 })
+    reloadAll().then(() => {
+        Snackbar.success({ content: '已刷新', duration: 800 })
+    })
 }
 
 function displayName(val) {
@@ -220,19 +340,17 @@ function displayName(val) {
 /* ───────────── 图表 hover ───────────── */
 
 const hoverIndex = ref(-1)
+const svgRef = ref(null)
 
 function onChartMove(e) {
-    if (!chart.value) return
-    const svg = e.currentTarget
-    const rect = svg.getBoundingClientRect()
+    if (!chart.value || !svgRef.value) return
+    const rect = svgRef.value.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width) * chart.value.W
-    const { PAD } = chart.value
-    const innerW = chart.value.W - PAD * 2
-    const step = chart.value.points.length > 1
-        ? innerW / (chart.value.points.length - 1)
-        : 0
-    const idx = step > 0 ? Math.round((x - PAD) / step) : 0
-    hoverIndex.value = Math.max(0, Math.min(chart.value.points.length - 1, idx))
+    const { PAD_L, PAD_R, points } = chart.value
+    const innerW = chart.value.W - PAD_L - PAD_R
+    const step = points.length > 1 ? innerW / (points.length - 1) : 0
+    const idx = step > 0 ? Math.round((x - PAD_L) / step) : 0
+    hoverIndex.value = Math.max(0, Math.min(points.length - 1, idx))
 }
 
 function onChartLeave() {
@@ -247,21 +365,35 @@ const hoverPoint = computed(() => {
 
 <template>
     <div class="wrap">
-        <!-- 404：站点不存在 / 无权访问 -->
-        <div v-if="notFound" class="not-found">
+        <!-- 无效 id -->
+        <div v-if="invalidId" class="empty-page">
+            <h2>无效的站点链接</h2>
+            <p>地址里的站点 ID 不是一个有效数字。</p>
+            <var-button type="primary" @click="goBack">返回站点列表</var-button>
+        </div>
+
+        <!-- 站点不存在 / 无权限 -->
+        <div v-else-if="notFound" class="empty-page">
             <h2>站点不存在</h2>
             <p>该站点可能已被删除，或你无权访问它。</p>
             <var-button type="primary" @click="goBack">返回站点列表</var-button>
         </div>
 
         <template v-else>
+            <div class="top-progress" :class="{ active: loading && stats }"></div>
+
             <!-- 头部 -->
             <div class="page-header">
                 <div class="header-left">
                     <var-button text class="back-btn" @click="goBack">←</var-button>
                     <div class="title-block">
                         <h2>{{ stats?.site?.name || '站点数据' }}</h2>
-                        <p class="domain">{{ stats?.site?.domain || '' }}</p>
+                        <p class="domain">
+                            {{ stats?.site?.domain || '' }}
+                            <span v-if="lastUpdated" class="updated">
+                                · {{ fmtUpdated(lastUpdated) }} 更新
+                            </span>
+                        </p>
                     </div>
                 </div>
 
@@ -276,18 +408,14 @@ const hoverPoint = computed(() => {
                 </div>
             </div>
 
-            <!-- 加载中 -->
             <var-progress v-if="loading && !stats" indeterminate />
 
-            <!-- 其它错误 -->
-            <div v-else-if="errorMsg && !stats" class="error-block">
+            <div v-else-if="errorMsg && !stats" class="empty-page">
                 <p>{{ errorMsg }}</p>
                 <var-button type="primary" @click="reloadAll">重试</var-button>
             </div>
 
-            <!-- 内容 -->
             <template v-else-if="stats">
-                <!-- 关键数字 -->
                 <div class="metrics">
                     <div class="metric">
                         <span class="metric-label">浏览</span>
@@ -299,7 +427,10 @@ const hoverPoint = computed(() => {
                     </div>
                     <div class="metric">
                         <span class="metric-label">当前在线</span>
-                        <span class="metric-value live">{{ realtime?.online ?? 0 }}</span>
+                        <span class="metric-value live">
+                            <i v-if="realtime?.online > 0" class="dot"></i>
+                            {{ realtime?.online ?? 0 }}
+                        </span>
                     </div>
                     <div class="metric">
                         <span class="metric-label">范围</span>
@@ -307,23 +438,57 @@ const hoverPoint = computed(() => {
                     </div>
                 </div>
 
-                <!-- 趋势图 -->
                 <section class="card">
-                    <h3>趋势</h3>
+                    <div class="card-head">
+                        <h3>趋势</h3>
+                        <span v-if="deltas" class="delta" :class="deltas.delta >= 0 ? 'up' : 'down'">
+                            {{ fmtPercent(deltas.delta) }} vs 前半段
+                        </span>
+                    </div>
+
                     <div v-if="chart" class="chart-wrap">
-                        <svg :viewBox="`0 0 ${chart.W} ${chart.H}`" class="chart" preserveAspectRatio="none"
-                            @mousemove="onChartMove" @mouseleave="onChartLeave">
-                            <path :d="chart.area" class="area" />
+                        <svg ref="svgRef" :viewBox="`0 0 ${chart.W} ${chart.H}`" class="chart" @mousemove="onChartMove"
+                            @mouseleave="onChartLeave">
+                            <defs>
+                                <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="var(--color-primary, #5b54e8)" stop-opacity="0.24" />
+                                    <stop offset="100%" stop-color="var(--color-primary, #5b54e8)" stop-opacity="0" />
+                                </linearGradient>
+                            </defs>
+
+                            <g class="grid">
+                                <template v-for="(t, i) in chart.yTicks" :key="'y' + i">
+                                    <line :x1="chart.PAD_L" :y1="t.y" :x2="chart.W - chart.PAD_R" :y2="t.y" />
+                                    <text :x="chart.PAD_L - 6" :y="t.y + 4" text-anchor="end" class="tick-label">{{
+                                        fmt(t.value) }}</text>
+                                </template>
+                            </g>
+
+                            <g class="grid">
+                                <template v-for="(t, i) in chart.xTicks" :key="'x' + i">
+                                    <text :x="t.x" :y="chart.H - 10" text-anchor="middle" class="tick-label">{{ t.label
+                                        }}</text>
+                                </template>
+                            </g>
+
+                            <path :d="chart.area" fill="url(#areaFill)" stroke="none" />
                             <path :d="chart.line" class="line" />
-                            <line :x1="chart.PAD" :y1="chart.H - chart.PAD" :x2="chart.W - chart.PAD"
-                                :y2="chart.H - chart.PAD" class="axis" />
-                            <line v-if="hoverPoint" :x1="hoverPoint.x" y1="24" :x2="hoverPoint.x" :y2="chart.H - 24"
-                                class="cursor" />
-                            <circle v-if="hoverPoint" :cx="hoverPoint.x" :cy="hoverPoint.y" r="4" class="dot" />
+
+                            <template v-if="hoverPoint">
+                                <line :x1="hoverPoint.x" :y1="chart.PAD_T" :x2="hoverPoint.x"
+                                    :y2="chart.PAD_T + chart.innerH" class="cursor" />
+                                <circle :cx="hoverPoint.x" :cy="hoverPoint.y" r="4" class="dot" />
+                            </template>
                         </svg>
 
-                        <div v-if="hoverPoint" class="chart-tip"
-                            :style="{ left: (hoverPoint.x / chart.W * 100) + '%' }">
+                        <div v-if="hoverPoint" class="chart-tip" :style="{
+                            left: (hoverPoint.x / chart.W * 100) + '%',
+                            transform: hoverPoint.x > chart.W * 0.75
+                                ? 'translateX(-100%) translateX(-8px)'
+                                : hoverPoint.x < chart.W * 0.25
+                                    ? 'translateX(8px)'
+                                    : 'translateX(-50%)',
+                        }">
                             <div class="tip-label">{{ hoverPoint.label }}</div>
                             <div class="tip-row">
                                 <span>浏览</span>
@@ -335,10 +500,10 @@ const hoverPoint = computed(() => {
                             </div>
                         </div>
                     </div>
+
                     <p v-else class="empty-line">暂无数据</p>
                 </section>
 
-                <!-- 实时 -->
                 <section class="card" v-if="realtime">
                     <div class="card-head">
                         <h3>最近 30 分钟</h3>
@@ -363,25 +528,21 @@ const hoverPoint = computed(() => {
                     </div>
                 </section>
 
-                <!-- Breakdown -->
                 <section v-for="group in breakdownGroups" :key="group.key" class="card">
                     <h3>{{ group.title }}</h3>
                     <div class="bd-list">
                         <div v-for="row in group.rows" :key="row.val" class="bd-row">
-                            <span class="bd-val" :title="row.val">
-                                {{ displayName(row.val) }}
-                            </span>
+                            <span class="bd-val" :title="row.val">{{ displayName(row.val) }}</span>
                             <div class="bd-bar-wrap">
-                                <div class="bd-bar" :style="{
-                                    width: (row.pageviews / group.rows[0].pageviews * 100) + '%'
-                                }"></div>
+                                <div class="bd-bar" :style="{ width: (row.percent * 100) + '%' }"></div>
                             </div>
                             <span class="bd-num">{{ fmt(row.pageviews) }}</span>
+                            <span class="bd-pct">{{ (row.ofTotal * 100).toFixed(1) }}%</span>
                         </div>
                     </div>
                 </section>
 
-                <div v-if="!breakdownGroups.length && stats.totals.pageviews === 0" class="no-data">
+                <div v-if="!breakdownGroups.length && stats.totals.pageviews === 0" class="empty-page">
                     <p>该时间范围内暂无数据</p>
                     <p class="hint">请确认嵌入脚本已正确安装</p>
                 </div>
@@ -397,21 +558,58 @@ const hoverPoint = computed(() => {
     padding: 20px;
 }
 
-/* ── 404 ── */
-.not-found {
-    text-align: center;
-    padding: 100px 20px;
+/* ── 顶部加载条 ── */
+.top-progress {
+    position: fixed;
+    top: 54px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: transparent;
+    z-index: 10;
+    pointer-events: none;
 }
 
-.not-found h2 {
+.top-progress.active {
+    background: linear-gradient(90deg,
+            transparent 0%,
+            var(--color-primary, #5b54e8) 50%,
+            transparent 100%);
+    background-size: 40% 100%;
+    background-repeat: no-repeat;
+    animation: slide 1.2s linear infinite;
+}
+
+@keyframes slide {
+    0% {
+        background-position: -40% 0;
+    }
+
+    100% {
+        background-position: 140% 0;
+    }
+}
+
+/* ── 空页 ── */
+.empty-page {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--color-text-secondary, #888);
+}
+
+.empty-page h2 {
     margin: 0 0 8px;
     font-size: 22px;
+    color: var(--color-text, #222);
 }
 
-.not-found p {
-    margin: 0 0 24px;
-    color: var(--color-text-secondary, #888);
-    font-size: 14px;
+.empty-page p {
+    margin: 0 0 20px;
+}
+
+.empty-page .hint {
+    font-size: 12.5px;
+    opacity: 0.7;
 }
 
 /* ── 头部 ── */
@@ -457,6 +655,10 @@ const hoverPoint = computed(() => {
     word-break: break-all;
 }
 
+.updated {
+    opacity: 0.7;
+}
+
 .header-right {
     display: flex;
     align-items: center;
@@ -468,17 +670,6 @@ const hoverPoint = computed(() => {
     display: flex;
     gap: 4px;
     flex-wrap: wrap;
-}
-
-/* ── 错误 ── */
-.error-block {
-    text-align: center;
-    padding: 60px 20px;
-}
-
-.error-block p {
-    margin: 0 0 16px;
-    color: var(--color-text-secondary, #888);
 }
 
 /* ── 关键数字 ── */
@@ -508,6 +699,9 @@ const hoverPoint = computed(() => {
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     line-height: 1.2;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .metric-value.small {
@@ -517,6 +711,14 @@ const hoverPoint = computed(() => {
 
 .metric-value.live {
     color: #12a594;
+}
+
+.metric-value .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #12a594;
+    animation: pulse 1.6s ease-in-out infinite;
 }
 
 /* ── 卡片 ── */
@@ -544,6 +746,25 @@ const hoverPoint = computed(() => {
     margin: 0;
 }
 
+/* ── 变化率 ── */
+.delta {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-variant-numeric: tabular-nums;
+}
+
+.delta.up {
+    color: #0f8a7a;
+    background: rgba(18, 165, 148, 0.12);
+}
+
+.delta.down {
+    color: #c4553d;
+    background: rgba(196, 85, 61, 0.12);
+}
+
 /* ── 折线图 ── */
 .chart-wrap {
     position: relative;
@@ -551,14 +772,9 @@ const hoverPoint = computed(() => {
 
 .chart {
     width: 100%;
-    height: 200px;
+    height: 220px;
     display: block;
     overflow: visible;
-}
-
-.chart .area {
-    fill: color-mix(in srgb, var(--color-primary, #5b54e8) 14%, transparent);
-    stroke: none;
 }
 
 .chart .line {
@@ -567,30 +783,39 @@ const hoverPoint = computed(() => {
     stroke-width: 2;
     stroke-linejoin: round;
     stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
 }
 
-.chart .axis {
-    stroke: var(--color-outline-variant, rgba(0, 0, 0, 0.12));
+.chart .grid line {
+    stroke: var(--color-outline-variant, rgba(0, 0, 0, 0.08));
     stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+
+.chart .tick-label {
+    font-size: 10px;
+    fill: var(--color-text-secondary, #888);
+    font-variant-numeric: tabular-nums;
 }
 
 .chart .cursor {
     stroke: var(--color-primary, #5b54e8);
     stroke-width: 1;
     stroke-dasharray: 3 3;
-    opacity: 0.5;
+    opacity: 0.6;
+    vector-effect: non-scaling-stroke;
 }
 
 .chart .dot {
     fill: var(--color-primary, #5b54e8);
     stroke: var(--color-surface, #fff);
     stroke-width: 2;
+    vector-effect: non-scaling-stroke;
 }
 
 .chart-tip {
     position: absolute;
     top: 8px;
-    transform: translateX(-50%);
     background: var(--color-surface, #fff);
     border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.1));
     border-radius: 8px;
@@ -600,6 +825,7 @@ const hoverPoint = computed(() => {
     box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.25);
     white-space: nowrap;
     z-index: 2;
+    transition: left 0.06s linear;
 }
 
 .tip-label {
@@ -727,7 +953,7 @@ const hoverPoint = computed(() => {
 
 .bd-row {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(40px, 1fr) auto;
+    grid-template-columns: minmax(0, 1.4fr) minmax(40px, 1fr) auto 52px;
     gap: 12px;
     padding: 8px 0;
     border-bottom: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.06));
@@ -767,19 +993,38 @@ const hoverPoint = computed(() => {
     text-align: right;
 }
 
-/* ── 无数据 ── */
-.no-data {
-    text-align: center;
-    padding: 60px 20px;
+.bd-pct {
+    font-variant-numeric: tabular-nums;
     color: var(--color-text-secondary, #888);
+    font-size: 12px;
+    text-align: right;
 }
 
-.no-data p {
-    margin: 0 0 6px;
-}
+/* ── 移动端 ── */
+@media (max-width: 640px) {
+    .wrap {
+        padding: 12px;
+    }
 
-.no-data .hint {
-    font-size: 12.5px;
-    opacity: 0.7;
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .header-right {
+        justify-content: space-between;
+    }
+
+    .chart {
+        height: 160px;
+    }
+
+    .bd-row {
+        grid-template-columns: minmax(0, 1.4fr) auto 48px;
+    }
+
+    .bd-bar-wrap {
+        display: none;
+    }
 }
 </style>

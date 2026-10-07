@@ -1,15 +1,27 @@
 <script setup>
-import { ref, onMounted, inject, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch, inject } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { Snackbar } from '@varlet/ui'
 import { getSites } from '@/mysites/utils/api'
 
 const router = useRouter()
+const route = useRoute()
 const user = inject('user')
 const goLogin = inject('goLogin')
 
 const loading = ref(false)
 const sites = ref([])
+
+/**
+ * ?redirect=/sites/123
+ * 只接受站内路径（单斜杠开头，且不以 // 开头），防开放重定向
+ */
+const redirect = computed(() => {
+    const r = route.query.redirect
+    if (typeof r !== 'string') return null
+    if (!r.startsWith('/') || r.startsWith('//')) return null
+    return r
+})
 
 async function load() {
     if (!user.value) return
@@ -24,13 +36,43 @@ async function load() {
     }
 }
 
+/** 若已登录且有合法 redirect，跳过去；返回 true 表示已经跳走 */
+function tryRedirect() {
+    if (user.value && redirect.value) {
+        router.replace(redirect.value)
+        return true
+    }
+    return false
+}
+
 function openSite(site) {
     router.push(`/sites/${site.id}`)
 }
 
-onMounted(load)
-// 登录状态变化时重新拉
-watch(() => user.value?.sub, load)
+function handleLogin() {
+    if (typeof goLogin === 'function') {
+        goLogin()
+    } else {
+        Snackbar.error('登录服务未就绪')
+    }
+}
+
+onMounted(() => {
+    if (tryRedirect()) return
+    load()
+})
+
+watch(
+    () => user.value?.sub,
+    (v) => {
+        if (v) {
+            if (tryRedirect()) return
+            load()
+        } else {
+            sites.value = []
+        }
+    }
+)
 </script>
 
 <template>
@@ -39,7 +81,12 @@ watch(() => user.value?.sub, load)
         <div v-if="!user" class="guest">
             <h1>AySites</h1>
             <p>登录后查看你的站点数据</p>
-            <var-button type="primary" @click="goLogin">立即登录</var-button>
+            <var-button type="primary" size="large" @click="handleLogin">
+                立即登录
+            </var-button>
+            <p v-if="redirect" class="redirect-hint">
+                登录成功后将自动跳回 <code>{{ redirect }}</code>
+            </p>
         </div>
 
         <!-- 已登录 -->
@@ -76,6 +123,7 @@ watch(() => user.value?.sub, load)
     padding: 24px 20px;
 }
 
+/* ── 未登录 ── */
 .guest {
     text-align: center;
     padding: 90px 20px;
@@ -91,6 +139,20 @@ watch(() => user.value?.sub, load)
     margin: 0 0 24px;
 }
 
+.redirect-hint {
+    margin-top: 20px;
+    font-size: 12.5px;
+    opacity: 0.75;
+}
+
+.redirect-hint code {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    padding: 2px 6px;
+    background: rgba(0, 0, 0, 0.06);
+    border-radius: 4px;
+}
+
+/* ── 站点列表 ── */
 .page-header {
     display: flex;
     justify-content: space-between;
@@ -109,7 +171,7 @@ watch(() => user.value?.sub, load)
 }
 
 .empty a {
-    color: var(--color-primary, #5B54E8);
+    color: var(--color-primary, #5b54e8);
     text-decoration: none;
 }
 
@@ -129,7 +191,7 @@ watch(() => user.value?.sub, load)
     border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
     background: var(--color-surface-container, #fff);
     cursor: pointer;
-    transition: transform .18s ease, box-shadow .18s ease;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .site-card:hover {
