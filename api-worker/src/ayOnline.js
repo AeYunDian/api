@@ -530,7 +530,7 @@ async function initDatabase(db) {
         `CREATE INDEX IF NOT EXISTS idx_analytics_sites_user ON analytics_sites(user_sub)`,
       )
       .run();
-    await env.db
+    await db
       .prepare(
         `CREATE TABLE IF NOT EXISTS file_manager (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -547,12 +547,12 @@ async function initDatabase(db) {
         )`,
       )
       .run();
-    await env.db
+    await db
       .prepare(
         `CREATE INDEX IF NOT EXISTS idx_file_manager_code ON file_manager (code)`,
       )
       .run();
-    await env.db
+    await db
       .prepare(
         `CREATE INDEX IF NOT EXISTS idx_file_manager_path ON file_manager (path)`,
       )
