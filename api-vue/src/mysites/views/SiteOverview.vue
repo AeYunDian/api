@@ -116,7 +116,10 @@ async function reloadAll() {
     await loadStats()
     if (!notFound.value) await loadRealtime()
 }
-
+function printPage() {
+    // 让浏览器把当前渲染结果打到打印机 / 存成 PDF
+    window.print()
+}
 /* ───────────── 实时定时器 ───────────── */
 
 function startRealtime() {
@@ -164,7 +167,6 @@ watch(
                 if (!notFound.value) startRealtime()
             })
         } else {
-            // 登出 → 带上回跳目标回首页
             stopRealtime()
             stats.value = null
             realtime.value = null
@@ -178,7 +180,6 @@ watch(
 onMounted(async () => {
     document.addEventListener('visibilitychange', onVisibilityChange)
 
-    // 未登录：直接跳回首页，由 Home 处理登录
     if (!user.value) {
         redirectToLogin()
         return
@@ -202,9 +203,13 @@ onUnmounted(() => {
 
 /* ───────────── 折线图 ───────────── */
 
+/**
+ * series 只有 1 个点画不出折线，返回 null。
+ * 模板里用 todaySummary 兜底显示"今日累计"。
+ */
 const chart = computed(() => {
     const s = stats.value?.series
-    if (!s || s.length === 0) return null
+    if (!s || s.length < 2) return null
 
     const W = 800
     const H = 220
@@ -218,7 +223,7 @@ const chart = computed(() => {
     const max = Math.max(1, ...s.map((p) => p.pageviews))
     const yMax = niceCeil(max)
 
-    const step = s.length > 1 ? innerW / (s.length - 1) : 0
+    const step = innerW / (s.length - 1)
 
     const points = s.map((p, i) => {
         const x = PAD_L + i * step
@@ -248,6 +253,17 @@ const chart = computed(() => {
     return { W, H, PAD_L, PAD_R, PAD_T, PAD_B, innerH, line, area, points, yTicks, xTicks }
 })
 
+/** 只有一个点时，用于 today 的累计卡片 */
+const todaySummary = computed(() => {
+    if (range.value !== 'today') return null
+    if (!stats.value?.totals) return null
+    if (chart.value) return null  // 有图就不显示
+    return {
+        pageviews: stats.value.totals.pageviews || 0,
+        visitors: stats.value.totals.visitors || 0,
+    }
+})
+
 function niceCeil(n) {
     if (n <= 5) return 5
     const mag = Math.pow(10, Math.floor(Math.log10(n)))
@@ -265,6 +281,7 @@ function shortLabel(l) {
 /* ───────────── 顶部对比 ───────────── */
 
 const deltas = computed(() => {
+    if (!chart.value) return null
     const s = stats.value?.series || []
     if (s.length < 2) return null
     const half = Math.floor(s.length / 2)
@@ -361,6 +378,18 @@ const hoverPoint = computed(() => {
     if (hoverIndex.value < 0 || !chart.value) return null
     return chart.value.points[hoverIndex.value] || null
 })
+
+function tipStyle() {
+    if (!hoverPoint.value || !chart.value) return {}
+    const { x } = hoverPoint.value
+    const { W } = chart.value
+    const left = (x / W * 100) + '%'
+    let transform
+    if (x > W * 0.75) transform = 'translateX(-100%) translateX(-8px)'
+    else if (x < W * 0.25) transform = 'translateX(8px)'
+    else transform = 'translateX(-50%)'
+    return { left, transform }
+}
 </script>
 
 <template>
@@ -368,7 +397,7 @@ const hoverPoint = computed(() => {
         <!-- 无效 id -->
         <div v-if="invalidId" class="empty-page">
             <h2>无效的站点链接</h2>
-            <p>地址里的站点 ID 不是一个有效数字。</p>
+            <p>地址里的站点 ID 不是一个有效 ID。</p>
             <var-button type="primary" @click="goBack">返回站点列表</var-button>
         </div>
 
@@ -405,6 +434,7 @@ const hoverPoint = computed(() => {
                         </var-button>
                     </div>
                     <var-button size="small" @click="refresh">刷新</var-button>
+                    <var-button size="small" @click="printPage">打印</var-button>
                 </div>
             </div>
 
@@ -416,6 +446,15 @@ const hoverPoint = computed(() => {
             </div>
 
             <template v-else-if="stats">
+                <div v-if="stats" class="print-header">
+                    <h1>{{ stats.site?.name }}</h1>
+                    <p class="print-meta">
+                        {{ stats.site?.domain }} · {{ fmtRange(stats.range) }}
+                    </p>
+                    <p class="print-meta">
+                        导出时间：{{ new Date().toLocaleString('zh-CN') }}
+                    </p>
+                </div>
                 <div class="metrics">
                     <div class="metric">
                         <span class="metric-label">浏览</span>
@@ -438,6 +477,7 @@ const hoverPoint = computed(() => {
                     </div>
                 </div>
 
+                <!-- 趋势卡片 -->
                 <section class="card">
                     <div class="card-head">
                         <h3>趋势</h3>
@@ -446,6 +486,7 @@ const hoverPoint = computed(() => {
                         </span>
                     </div>
 
+                    <!-- 折线图（>= 2 个点） -->
                     <div v-if="chart" class="chart-wrap">
                         <svg ref="svgRef" :viewBox="`0 0 ${chart.W} ${chart.H}`" class="chart" @mousemove="onChartMove"
                             @mouseleave="onChartLeave">
@@ -456,39 +497,35 @@ const hoverPoint = computed(() => {
                                 </linearGradient>
                             </defs>
 
+                            <!-- y 轴 -->
                             <g class="grid">
-                                <template v-for="(t, i) in chart.yTicks" :key="'y' + i">
+                                <g v-for="(t, i) in chart.yTicks" :key="'y' + i">
                                     <line :x1="chart.PAD_L" :y1="t.y" :x2="chart.W - chart.PAD_R" :y2="t.y" />
                                     <text :x="chart.PAD_L - 6" :y="t.y + 4" text-anchor="end" class="tick-label">{{
                                         fmt(t.value) }}</text>
-                                </template>
+                                </g>
                             </g>
 
+                            <!-- x 轴 -->
                             <g class="grid">
-                                <template v-for="(t, i) in chart.xTicks" :key="'x' + i">
+                                <g v-for="(t, i) in chart.xTicks" :key="'x' + i">
                                     <text :x="t.x" :y="chart.H - 10" text-anchor="middle" class="tick-label">{{ t.label
-                                        }}</text>
-                                </template>
+                                    }}</text>
+                                </g>
                             </g>
 
                             <path :d="chart.area" fill="url(#areaFill)" stroke="none" />
                             <path :d="chart.line" class="line" />
 
-                            <template v-if="hoverPoint">
+                            <!-- hover 竖线和点 -->
+                            <g v-if="hoverPoint">
                                 <line :x1="hoverPoint.x" :y1="chart.PAD_T" :x2="hoverPoint.x"
                                     :y2="chart.PAD_T + chart.innerH" class="cursor" />
                                 <circle :cx="hoverPoint.x" :cy="hoverPoint.y" r="4" class="dot" />
-                            </template>
+                            </g>
                         </svg>
 
-                        <div v-if="hoverPoint" class="chart-tip" :style="{
-                            left: (hoverPoint.x / chart.W * 100) + '%',
-                            transform: hoverPoint.x > chart.W * 0.75
-                                ? 'translateX(-100%) translateX(-8px)'
-                                : hoverPoint.x < chart.W * 0.25
-                                    ? 'translateX(8px)'
-                                    : 'translateX(-50%)',
-                        }">
+                        <div v-if="hoverPoint" class="chart-tip" :style="tipStyle()">
                             <div class="tip-label">{{ hoverPoint.label }}</div>
                             <div class="tip-row">
                                 <span>浏览</span>
@@ -501,9 +538,19 @@ const hoverPoint = computed(() => {
                         </div>
                     </div>
 
-                    <p v-else class="empty-line">暂无数据</p>
+                    <!-- 今日累计（只有 1 个数据点） -->
+                    <div v-else-if="todaySummary" class="today-summary">
+                        <div class="today-number">{{ fmt(todaySummary.pageviews) }}</div>
+                        <div class="today-label">次浏览 · 今日累计</div>
+                        <div class="today-sub">
+                            {{ fmt(todaySummary.visitors) }} 位访客
+                        </div>
+                    </div>
+
+                    <p v-else class="empty-line">该范围内暂无数据</p>
                 </section>
 
+                <!-- 实时 -->
                 <section class="card" v-if="realtime">
                     <div class="card-head">
                         <h3>最近 30 分钟</h3>
@@ -528,6 +575,7 @@ const hoverPoint = computed(() => {
                     </div>
                 </section>
 
+                <!-- Breakdown -->
                 <section v-for="group in breakdownGroups" :key="group.key" class="card">
                     <h3>{{ group.title }}</h3>
                     <div class="bd-list">
@@ -546,12 +594,151 @@ const hoverPoint = computed(() => {
                     <p>该时间范围内暂无数据</p>
                     <p class="hint">请确认嵌入脚本已正确安装</p>
                 </div>
+                <div class="print-footer">
+                    Generated by AyAnalytics · {{ new Date().toLocaleDateString('zh-CN') }}
+                </div>
             </template>
         </template>
     </div>
 </template>
 
 <style scoped>
+.print-footer {
+    display: none;
+}
+
+@media print {
+    .print-footer {
+        display: block !important;
+        margin-top: 24px;
+        padding-top: 8px;
+        border-top: 1px solid #ccc;
+        font-size: 11px;
+        color: #888;
+        text-align: center;
+    }
+
+    /* 屏幕上的 UI 全部藏掉 */
+    .top-progress,
+    .header-right,
+    .back-btn,
+    .live-indicator,
+    .bars,
+    .recent-list,
+    .empty-line,
+    .delta {
+        display: none !important;
+    }
+
+    /* 布局改为黑白、无背景、无阴影 */
+    .wrap {
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .card,
+    .metric {
+        background: #fff !important;
+        border: 1px solid #ddd !important;
+        box-shadow: none !important;
+        border-radius: 4px !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    /* 页面里的所有文字用黑色，打印才清晰 */
+    * {
+        color: #000 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* 折线图保留颜色，SVG 打印一般没问题 */
+    .chart .line {
+        stroke: #444 !important;
+        stroke-width: 1.5 !important;
+    }
+
+    .chart .grid line {
+        stroke: #e0e0e0 !important;
+    }
+
+    .chart .tick-label {
+        fill: #666 !important;
+        font-size: 11px !important;
+    }
+
+    /* 面积填充在黑白打印里改成浅灰 */
+    .chart path[fill^="url"] {
+        fill: #f0f0f0 !important;
+    }
+
+    /* Breakdown 的进度条改成灰底黑条 */
+    .bd-bar-wrap {
+        background: #eee !important;
+    }
+
+    .bd-bar {
+        background: #666 !important;
+    }
+
+    .page-header h2 {
+        font-size: 22px !important;
+    }
+
+    .domain {
+        color: #666 !important;
+        font-size: 13px !important;
+    }
+
+    .card {
+        margin-bottom: 10px !important;
+        padding: 12px 14px !important;
+    }
+
+    .metrics {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+
+    .print-header {
+        display: block !important;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #000;
+    }
+
+    .print-header h1 {
+        margin: 0 0 4px;
+        font-size: 24px;
+        color: #000;
+    }
+
+    .print-meta {
+        margin: 2px 0;
+        font-size: 12px;
+        color: #555;
+    }
+
+    section.card:has(.bars) {
+        display: none !important;
+    }
+
+    .bd-row {
+        grid-template-columns: minmax(0, 2fr) minmax(40px, 1fr) auto 52px !important;
+    }
+
+    .bd-bar-wrap {
+        display: block !important;
+    }
+}
+
+/* 屏幕上默认隐藏打印头部 */
+.print-header {
+    display: none;
+}
+
 .wrap {
     max-width: 1100px;
     margin: 0 auto;
@@ -847,6 +1034,36 @@ const hoverPoint = computed(() => {
     font-weight: 500;
 }
 
+/* ── 今日累计（代替折线图） ── */
+.today-summary {
+    text-align: center;
+    padding: 30px 0 20px;
+}
+
+.today-number {
+    font-size: 48px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    color: var(--color-text, #222);
+}
+
+.today-label {
+    font-size: 13px;
+    color: var(--color-text-secondary, #888);
+    margin-top: 4px;
+}
+
+.today-sub {
+    font-size: 13px;
+    color: var(--color-text-secondary, #888);
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.06));
+    display: inline-block;
+    min-width: 120px;
+}
+
 /* ── 空状态 ── */
 .empty-line {
     margin: 0;
@@ -1025,6 +1242,10 @@ const hoverPoint = computed(() => {
 
     .bd-bar-wrap {
         display: none;
+    }
+
+    .today-number {
+        font-size: 40px;
     }
 }
 </style>

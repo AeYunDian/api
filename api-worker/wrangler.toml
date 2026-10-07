@@ -8,6 +8,12 @@ kv_namespaces = [
   { binding = "kv", id = "483f0fad0c2841a2888c72869e041dfd" }
 ]
 
+[vars]
+block = ""
+blocktime = "360"
+BRANCH = "main"
+DEBUG = ""
+
 [ai]
 binding = "AI"
 

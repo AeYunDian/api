@@ -25,8 +25,6 @@ const DOMAIN_PATTERN =
   /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 const MAX_BODY_BYTES = 4096;
 
-const DEFAULT_TRACKER_DOMAIN = "mysites.undz.cn";
-
 /* ───────────────────────── helpers ───────────────────────── */
 
 function jsonResponse(data, status = 200, extraHeaders = {}) {
@@ -199,7 +197,7 @@ const TRACKER_TEMPLATE = `(function(){"use strict";
   @@a@@.href = @@src@@;
   var @@origin@@ = (@@a@@.protocol || 'https:') + '//' + (@@a@@.host || location.host);
   var @@endpoint@@ = @@origin@@ + '/api/event';
-  var @@domain@@ = @@script@@.getAttribute('data-domain') || '@@DEFAULT_DOMAIN@@';
+  var @@domain@@ = @@script@@.getAttribute('data-domain') || location.hostname;
   var @@winW@@ = window.innerWidth
     || (document.documentElement && document.documentElement.clientWidth)
     || (document.body && document.body.clientWidth)
@@ -302,9 +300,7 @@ function randomId() {
  * - 开发环境（env.DEBUG 真值）：变量名回填为原始可读名字，方便断点调试
  */
 function buildTrackerScript(env) {
-  const domain = DEFAULT_TRACKER_DOMAIN;
-
-  let js = TRACKER_TEMPLATE.split("@@DEFAULT_DOMAIN@@").join(domain);
+  let js = TRACKER_TEMPLATE;
 
   if (env.DEBUG) {
     for (const name of TRACKER_NAMES) {

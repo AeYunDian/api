@@ -31,7 +31,7 @@ const user = ref(null)
 const checking = ref(true)
 
 let pollTimer = null
-const POLL_INTERVAL = 60000
+const POLL_INTERVAL = 30000
 
 provide('sdk', sdk)
 provide('user', user)
@@ -58,7 +58,7 @@ async function ensureLoggedIn() {
             return user.value
         }
     } catch (error) {
-        console.warn('[AySites] verify 失败，尝试 refresh', error)
+        // verify 抛错通常是 401，未登录
     }
 
     try {
@@ -69,7 +69,7 @@ async function ensureLoggedIn() {
             return user.value
         }
     } catch (error) {
-        console.warn('[AySites] refresh 失败', error)
+        // refresh 也失败，就是真的未登录
     }
 
     user.value = null
@@ -78,23 +78,38 @@ async function ensureLoggedIn() {
 
 provide('refreshUser', ensureLoggedIn)
 
-function goLogin() {
+/**
+ * 打开 SDK 登录模态框并等待用户操作。
+ *
+ * sdk.login() 返回 Promise：
+ *   - 用户登录成功 → resolve({ user: {...} })
+ *   - 用户关闭窗口 → resolve(null)
+ *   - 重复打开 / Toast 未就绪 → reject
+ *
+ * @returns {Promise<Object|null>} 登录成功返回 user，其余返回 null
+ */
+async function goLogin() {
     if (!sdk) {
         Snackbar.error('登录服务未就绪，请刷新重试')
-        return
+        return null
     }
     try {
-        if (typeof sdk.login === 'function') {
-            sdk.login()
-        } else if (typeof sdk.openLogin === 'function') {
-            sdk.openLogin()
-        } else {
-            console.error('[AySites] account-sdk 未暴露登录方法')
-            Snackbar.error('登录服务暂时不可用')
+        const result = await sdk.login()
+        if (result && result.user) {
+            user.value = result.user
+            return result.user
         }
+        // 用户主动关闭窗口，静默返回
+        return null
     } catch (error) {
+        // 重复打开：可能是别处已经弹了，静默
+        const msg = error?.message || ''
+        if (msg.includes('已打开') || msg.includes('already open')) {
+            return null
+        }
         console.error('[AySites] 登录失败', error)
-        Snackbar.error('登录失败，请稍后重试')
+        Snackbar.error(msg || '登录失败，请稍后重试')
+        return null
     }
 }
 
@@ -132,7 +147,7 @@ onUnmounted(() => {
 
 <template>
     <var-app-bar onmousedown="if (window.hostshell) window.hostshell.startDrag()" color="primary" text-color="#fff"
-        style="height: 54px">
+        style="height: 54px;">
         <template #left>
             <div v-if="mobileByWidth && route.path !== '/'" @mousedown.stop>
                 <var-button text @mousedown.stop @click="goHome">
@@ -160,7 +175,19 @@ onUnmounted(() => {
             <WindowControls />
         </template>
     </var-app-bar>
-
+    <div class="header">
+        <div class="header-start">
+            <div class="header-title">AySites</div>
+        </div>
+        <div class="header-end">
+            <p v-if="user">
+                账户：{{ user.username }}
+            </p>
+            <p v-else>
+                未登录
+            </p>
+        </div>
+    </div>
     <main>
         <div v-if="checking" class="boot-loading">
             <var-loading type="circle" />
@@ -168,12 +195,50 @@ onUnmounted(() => {
         <RouterView v-else />
     </main>
 </template>
-
+<style>
+@media print {
+    .var-app-bar {
+        display: none !important;
+    }
+}
+</style>
 <style scoped>
+@media print {
+    div.header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 0 20px 8px !important;
+        border-bottom: 1px solid #ccc !important;
+        margin-bottom: 16px !important;
+        color: #000 !important;
+    }
+
+    .header-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #000;
+    }
+
+    .header-user {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .header-user--guest {
+        cursor: default;
+    }
+}
+
+
 main {
     height: calc(100% - 54px);
     overflow-y: auto;
     position: relative;
+}
+
+div.header {
+    display: none;
 }
 
 .boot-loading {

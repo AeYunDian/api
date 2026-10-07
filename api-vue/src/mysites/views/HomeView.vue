@@ -11,6 +11,7 @@ const goLogin = inject('goLogin')
 
 const loading = ref(false)
 const sites = ref([])
+const loggingIn = ref(false)
 
 /**
  * ?redirect=/sites/123
@@ -49,11 +50,31 @@ function openSite(site) {
     router.push(`/sites/${site.id}`)
 }
 
-function handleLogin() {
-    if (typeof goLogin === 'function') {
-        goLogin()
-    } else {
+/**
+ * 点登录：调 goLogin()，等 SDK 模态框关闭。
+ * - 登录成功 → 立刻跳回 redirect（不用等轮询）
+ * - 用户关闭 → 停在原地
+ */
+async function handleLogin() {
+    if (loggingIn.value) return
+    if (typeof goLogin !== 'function') {
         Snackbar.error('登录服务未就绪')
+        return
+    }
+    loggingIn.value = true
+    try {
+        const loggedUser = await goLogin()
+        if (loggedUser) {
+            // 优先跳回原目标
+            if (redirect.value) {
+                router.replace(redirect.value)
+                return
+            }
+            // 没有 redirect，留在首页并加载列表
+            await load()
+        }
+    } finally {
+        loggingIn.value = false
     }
 }
 
@@ -66,6 +87,7 @@ watch(
     () => user.value?.sub,
     (v) => {
         if (v) {
+            // 别的途径登录（比如另一个 tab）时，也能响应
             if (tryRedirect()) return
             load()
         } else {
@@ -81,12 +103,9 @@ watch(
         <div v-if="!user" class="guest">
             <h1>AySites</h1>
             <p>登录后查看你的站点数据</p>
-            <var-button type="primary" size="large" @click="handleLogin">
+            <var-button type="primary" size="large" :loading="loggingIn" @click="handleLogin">
                 立即登录
             </var-button>
-            <p v-if="redirect" class="redirect-hint">
-                登录成功后将自动跳回 <code>{{ redirect }}</code>
-            </p>
         </div>
 
         <!-- 已登录 -->
@@ -192,11 +211,6 @@ watch(
     background: var(--color-surface-container, #fff);
     cursor: pointer;
     transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-
-.site-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.3);
 }
 
 .site-name {
