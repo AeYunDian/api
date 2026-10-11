@@ -28,7 +28,7 @@ import { createKvStore } from "./kvWithD1.js";
 var kvStore = null;
 
 // ---------- 常量与配置 ----------
-const SDK_VER = "2.0.9";
+const SDK_VER = "2.0.8";
 const JWT_ALG = "HS256";
 const ACCESS_TOKEN_EXPIRES_IN = "10m"; // 访问令牌有效期
 const OAUTH_TOKEN_EXPIRES_IN = 300; // Oauth token 有效期 5m
