@@ -43,7 +43,7 @@ async function sendEmailCode() {
     try {
         const res = await request('send-verification', {
             method: 'POST',
-            body: { email: newEmail.value }
+            body: { email: newEmail.value, action: 'change_email' }
         });
         emailToken.value = res.token;
         Snackbar.success('验证码已发送，请查收邮件');

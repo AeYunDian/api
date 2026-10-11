@@ -15,14 +15,20 @@ import {
   generatePKCEPair,
 } from "./utils.js";
 import { handleVerifyCode } from "./mail_verify/verify.js";
-import { REG_TEMPLATE, handleSendVerification } from "./mail_verify/send.js";
+import {
+  REG_TEMPLATE,
+  LOGIN_TEMPLATE,
+  CHANGE_EMAIL_TEMPLATE,
+  handleSendVerification,
+  ACTION as EMAIL_ACTION,
+} from "./mail_verify/send.js";
 
 import { createKvStore } from "./kvWithD1.js";
 
 var kvStore = null;
 
 // ---------- 常量与配置 ----------
-const SDK_VER = "2.0.7";
+const SDK_VER = "2.0.9";
 const JWT_ALG = "HS256";
 const ACCESS_TOKEN_EXPIRES_IN = "10m"; // 访问令牌有效期
 const OAUTH_TOKEN_EXPIRES_IN = 300; // Oauth token 有效期 5m
@@ -2084,9 +2090,30 @@ export default {
 
         if (path === "/api/ayonline/send-verification" && method === "POST") {
           const body = await request.json().catch(() => null);
-          if (!body || !body.email) {
+          if (!body || !body.email || !body.action) {
             return jsonResponse(
-              { error: "Email required", error_code: 1029 },
+              { error: "Email or action required", error_code: 1029 },
+              400,
+              cors,
+            );
+          }
+          const actionMap = {
+            login: EMAIL_ACTION.LOGIN,
+            register: EMAIL_ACTION.REGISTER,
+            change_email: EMAIL_ACTION.CHANGE_EMAIL,
+          };
+          const templateMap = {
+            login: LOGIN_TEMPLATE,
+            register: REG_TEMPLATE,
+            change_email: CHANGE_EMAIL_TEMPLATE,
+          };
+
+          const action = actionMap[body.action];
+          const selectedTemplate = templateMap[body.action];
+
+          if (!action || !selectedTemplate) {
+            return jsonResponse(
+              { error: "Invalid action", error_code: 1029 },
               400,
               cors,
             );
@@ -2108,7 +2135,8 @@ export default {
             body.email,
             VERIFY_CODE_EXPDATA,
             "AyService",
-            REG_TEMPLATE,
+            selectedTemplate,
+            action,
           );
           if (result.msg === "OK") {
             return jsonResponse({ token: result.token }, 200, cors);

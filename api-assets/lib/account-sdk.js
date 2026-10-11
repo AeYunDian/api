@@ -1,17 +1,17 @@
 /**
  * @file AyAccountSDK - 用户认证管理库
  * @author AeYunDian
- * @version 2.0.8
+ * @version 2.0.9
  * @copyright 2026 AeYunDian. All rights reserved.
  * @license MIT
  */
-"v2.0.8 AyAccountSDK";
+"v2.0.9 AyAccountSDK";
 "use strict";
 if (typeof window === "undefined") {
   throw new Error("AyAccountSDK requires browser environment");
 }
 
-const VERSION = "2.0.8";
+const VERSION = "2.0.9";
 const PRODUCE = true;
 
 // ---------- 本地南瓜种植基地 ----------//
@@ -1230,7 +1230,7 @@ class AyAccount {
    * @param {string} email
    * @returns {Promise}
    */
-  async #_sendEmailCode(email) {
+  async #_sendEmailCode(email, action = "register") {
     // 校验邮箱域名
     const allowed = allowedEmailDomains.some((domain) =>
       email.endsWith(domain),
@@ -1240,7 +1240,7 @@ class AyAccount {
     }
     const res = await this._request(URLPATH.API.SENDMAILCODE, {
       method: "POST",
-      body: { email },
+      body: { email, action },
     });
     return res; // 返回 { token }
   }
