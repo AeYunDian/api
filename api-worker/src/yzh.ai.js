@@ -96,17 +96,23 @@ export default {
           },
         );
       }
-      const sanitizedMessages = messages.map((msg) => {
-        let contentStr = "";
-        if (typeof msg.content === "string") {
-          contentStr = msg.content;
-        } else if (Array.isArray(msg.content)) {
-          contentStr = msg.content.map((c) => c.text || "").join("");
-        } else if (msg.content !== null && msg.content !== undefined) {
-          contentStr = String(msg.content);
-        }
-        return { role: msg.role, content: contentStr };
-      });
+      const sanitizedMessages = messages
+        .filter((msg) => msg && typeof msg === "object")
+        .map((msg) => {
+          let contentStr = "";
+          if (typeof msg.content === "string") {
+            contentStr = msg.content;
+          } else if (Array.isArray(msg.content)) {
+            // 防止数组里塞了 null 导致 c.text 报错
+            contentStr = msg.content
+              .map((c) => (c && c.text ? c.text : ""))
+              .join("");
+          } else if (msg.content !== null && msg.content !== undefined) {
+            contentStr = String(msg.content);
+          }
+          // 如果客户端没给 role，强行补一个 user，防止 CF AI 拒绝
+          return { role: msg.role || "user", content: contentStr };
+        });
 
       const MAX_CHARS = 14000;
 
@@ -288,10 +294,20 @@ export default {
         });
       }
     } catch (err) {
-      return new Response(JSON.stringify({ error: { message: err.message } }), {
-        status: 500,
-        headers: { "Content-Type": "application/json; charset=utf-8" },
-      });
+      return new Response(
+        JSON.stringify({
+          error: {
+            message: err.message || "Unknown Error",
+            type: "worker_internal_error",
+            code: "internal_error",
+            stack: err.stack || "No stack trace available", // 直接返回详细的堆栈信息
+          },
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        },
+      );
     }
   },
 };
