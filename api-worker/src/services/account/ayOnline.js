@@ -57,7 +57,10 @@ export default {
       if (oauthServer) return oauthServer;
       return env.assets.fetch(request);
     } catch (error) {
-      if (env.DEBUG) console.error("Unhandled error:", error);
+      console.error(
+        `[account] unhandled ${request.method} ${path}:`,
+        error && error.stack ? error.stack : error,
+      );
       return jsonResponse(
         { action: "none", error: "Internal Server Error", error_code: ERROR_CODES.SERVER_DOWN },
         500,

@@ -211,9 +211,27 @@ export async function handleSessionRoutes({ request, env, url, path, method, cor
               "https://gcaptcha4.geetest.com/validate",
             );
             validateUrl.search = new URLSearchParams(query).toString();
+            // 上游校验通过之前的异常才算验证码侧故障(1020)；
+            // 通过之后的业务异常要冒泡到上层(1018)并打印真实堆栈。
+            let gtPassed = false;
             try {
               const geetestRes = await fetch(validateUrl);
-              const geetestData = await geetestRes.json();
+              const raw = await geetestRes.text();
+              let geetestData = null;
+              try {
+                geetestData = JSON.parse(raw);
+              } catch {
+                /* 非 JSON，下面按上游异常处理 */
+              }
+              if (!geetestData) {
+                console.error(
+                  "[geetest] 上游返回非 JSON",
+                  geetestRes.status,
+                  String(raw).slice(0, 300),
+                );
+                throw new Error("GeeTest returned non-JSON response");
+              }
+              gtPassed = true;
               if (geetestData.result === "success") {
                 const result = await registerUser(
                   env.db,
@@ -243,6 +261,7 @@ export async function handleSessionRoutes({ request, env, url, path, method, cor
                   cors,
                 );
               } else {
+                console.error("[geetest:register] 校验未通过", geetestData);
                 return jsonResponse(
                   {
                     action: "register",
@@ -253,7 +272,9 @@ export async function handleSessionRoutes({ request, env, url, path, method, cor
                   cors,
                 );
               }
-            } catch {
+            } catch (err) {
+              if (gtPassed) throw err; // 已通过校验后的业务异常交给上层(1018)
+              console.error("[geetest:register] 校验请求失败:", err && err.message);
               return jsonResponse(
                 {
                   action: "register",
@@ -332,9 +353,27 @@ export async function handleSessionRoutes({ request, env, url, path, method, cor
               "https://gcaptcha4.geetest.com/validate",
             );
             validateUrl.search = new URLSearchParams(query).toString();
+            // 上游校验通过之前的异常才算验证码侧故障(1020)；
+            // 通过之后的业务异常要冒泡到上层(1018)并打印真实堆栈。
+            let gtPassed = false;
             try {
               const geetestRes = await fetch(validateUrl);
-              const geetestData = await geetestRes.json();
+              const raw = await geetestRes.text();
+              let geetestData = null;
+              try {
+                geetestData = JSON.parse(raw);
+              } catch {
+                /* 非 JSON，下面按上游异常处理 */
+              }
+              if (!geetestData) {
+                console.error(
+                  "[geetest] 上游返回非 JSON",
+                  geetestRes.status,
+                  String(raw).slice(0, 300),
+                );
+                throw new Error("GeeTest returned non-JSON response");
+              }
+              gtPassed = true;
               if (geetestData.result === "success") {
                 const login = body.username || body.email;
                 const authResult = await authenticateUser(
@@ -429,6 +468,7 @@ export async function handleSessionRoutes({ request, env, url, path, method, cor
                   headers: headers,
                 });
               } else {
+                console.error("[geetest:login] 校验未通过", geetestData);
                 return jsonResponse(
                   {
                     action: "login",
@@ -439,7 +479,9 @@ export async function handleSessionRoutes({ request, env, url, path, method, cor
                   cors,
                 );
               }
-            } catch {
+            } catch (err) {
+              if (gtPassed) throw err; // 已通过校验后的业务异常交给上层(1018)
+              console.error("[geetest:login] 校验请求失败:", err && err.message);
               return jsonResponse(
                 {
                   action: "login",
@@ -544,9 +586,27 @@ export async function handleSessionRoutes({ request, env, url, path, method, cor
               "https://gcaptcha4.geetest.com/validate",
             );
             validateUrl.search = new URLSearchParams(query).toString();
+            // 上游校验通过之前的异常才算验证码侧故障(1020)；
+            // 通过之后的业务异常要冒泡到上层(1018)并打印真实堆栈。
+            let gtPassed = false;
             try {
               const geetestRes = await fetch(validateUrl);
-              const geetestData = await geetestRes.json();
+              const raw = await geetestRes.text();
+              let geetestData = null;
+              try {
+                geetestData = JSON.parse(raw);
+              } catch {
+                /* 非 JSON，下面按上游异常处理 */
+              }
+              if (!geetestData) {
+                console.error(
+                  "[geetest] 上游返回非 JSON",
+                  geetestRes.status,
+                  String(raw).slice(0, 300),
+                );
+                throw new Error("GeeTest returned non-JSON response");
+              }
+              gtPassed = true;
               if (geetestData.result === "success") {
                 const userId = parseInt(payload.sub, 10);
                 const result = await changePassword(
@@ -596,6 +656,7 @@ export async function handleSessionRoutes({ request, env, url, path, method, cor
                   },
                 );
               } else {
+                console.error("[geetest:changePassword] 校验未通过", geetestData);
                 return jsonResponse(
                   {
                     action: "changePassword",
@@ -606,7 +667,9 @@ export async function handleSessionRoutes({ request, env, url, path, method, cor
                   cors,
                 );
               }
-            } catch {
+            } catch (err) {
+              if (gtPassed) throw err; // 已通过校验后的业务异常交给上层(1018)
+              console.error("[geetest:changePassword] 校验请求失败:", err && err.message);
               return jsonResponse(
                 {
                   action: "changePassword",
