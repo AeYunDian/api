@@ -11,7 +11,6 @@ export default {
         },
       });
     }
-
     if (request.method !== "POST") {
       return new Response(
         JSON.stringify({
@@ -21,12 +20,14 @@ export default {
             code: "method_not_allowed",
           },
         }),
-        { status: 405, headers: { "Content-Type": "application/json" } },
+        {
+          status: 405,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        },
       );
     }
 
     const url = new URL(request.url);
-    // 兼容 /v1/chat/completions 和 /chat/completions
     if (!url.pathname.endsWith("/chat/completions")) {
       return new Response(
         JSON.stringify({
@@ -36,7 +37,10 @@ export default {
             code: "not_found",
           },
         }),
-        { status: 404, headers: { "Content-Type": "application/json" } },
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        },
       );
     }
 
@@ -49,7 +53,10 @@ export default {
             code: "invalid_api_key",
           },
         }),
-        { status: 500, headers: { "Content-Type": "application/json" } },
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        },
       );
     }
 
@@ -64,11 +71,13 @@ export default {
             code: "invalid_api_key",
           },
         }),
-        { status: 401, headers: { "Content-Type": "application/json" } },
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        },
       );
     }
 
-    // 解析请求
     try {
       const reqBody = await request.json();
       const { messages, stream = false } = reqBody;
@@ -81,14 +90,38 @@ export default {
               type: "invalid_request_error",
             },
           }),
-          { status: 400, headers: { "Content-Type": "application/json" } },
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json; charset=utf-8" },
+          },
         );
       }
 
-      // 处理流式请求 (stream: true)
+      // 清洗 messages 数据，兼容 OpenAI 的数组 content
+      const sanitizedMessages = messages.map((msg) => {
+        let contentStr = "";
+        if (typeof msg.content === "string") {
+          contentStr = msg.content;
+        } else if (Array.isArray(msg.content)) {
+          // 如果是数组（例如：[{"type":"text","text":"你好"}]），提取文本拼接
+          contentStr = msg.content.map((c) => c.text || "").join("");
+        } else if (msg.content === null || msg.content === undefined) {
+          contentStr = "";
+        } else {
+          contentStr = String(msg.content);
+        }
+
+        return {
+          role: msg.role,
+          content: contentStr,
+        };
+      });
+
+      const modelName = "qwen3-30b-a3b-fp8";
+
       if (stream) {
-        const aiStream = await env.AI.run("@cf/qwen/qwen3-30b-a3b-fp8", {
-          messages: messages,
+        const aiStream = await env.AI.run(`@cf/qwen/${modelName}`, {
+          messages: sanitizedMessages, // 使用清洗后的数据
           stream: true,
         });
 
@@ -97,7 +130,6 @@ export default {
         const encoder = new TextEncoder();
 
         const streamId = `chatcmpl-${Date.now()}`;
-        const modelName = "qwen3-30b-a3b-fp8";
 
         (async () => {
           const reader = aiStream.getReader();
@@ -115,7 +147,7 @@ export default {
 
               for (const line of lines) {
                 if (line.startsWith("data: ")) {
-                  const dataStr = line.slice(6);
+                  const dataStr = line.slice(6).trim();
                   if (dataStr === "[DONE]") continue;
 
                   try {
@@ -172,16 +204,15 @@ export default {
           },
         });
       } else {
-        // 处理非流式请求
-        const response = await env.AI.run("@cf/qwen/qwen3-30b-a3b-fp8", {
-          messages: messages,
+        const response = await env.AI.run(`@cf/qwen/${modelName}`, {
+          messages: sanitizedMessages,
         });
 
         const openAiResponse = {
           id: `chatcmpl-${Date.now()}`,
           object: "chat.completion",
           created: Math.floor(Date.now() / 1000),
-          model: "qwen3-30b-a3b-fp8",
+          model: modelName,
           choices: [
             {
               index: 0,
@@ -197,13 +228,13 @@ export default {
         };
 
         return new Response(JSON.stringify(openAiResponse), {
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json; charset=utf-8" },
         });
       }
     } catch (err) {
       return new Response(JSON.stringify({ error: { message: err.message } }), {
         status: 500,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json; charset=utf-8" },
       });
     }
   },
