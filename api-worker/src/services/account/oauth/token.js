@@ -3,7 +3,7 @@
 
 import { OAUTH_REFRESH_TOKEN_TTL } from "../config.js";
 import { signAccessToken } from "../auth/jwt.js";
-import { getKv } from "../auth/kv.js";
+import { createKvStore } from "../../../shared/kvWithD1.js";
 import { storeRefreshToken, deleteRefreshToken, getUserIdFromRefreshToken } from "../auth/tokens.js";
 import { generateToken } from "../../../shared/utils.js";
 
@@ -28,7 +28,7 @@ async function refreshAccessToken(refreshToken, clientId, clientSecret, env) {
     };
   }
 
-  const userId = await getUserIdFromRefreshToken(getKv(), refreshToken);
+  const userId = await getUserIdFromRefreshToken(createKvStore(env.db), refreshToken);
   if (!userId) {
     return {
       success: false,
@@ -44,7 +44,7 @@ async function refreshAccessToken(refreshToken, clientId, clientSecret, env) {
     .bind(userId)
     .first();
   if (!user) {
-    await deleteRefreshToken(getKv(), refreshToken);
+    await deleteRefreshToken(createKvStore(env.db), refreshToken);
     return {
       success: false,
       error: "invalid_grant",
@@ -200,7 +200,7 @@ export async function exchangeOAuthToken(params, env) {
   // 生成刷新令牌
   const refreshToken = generateToken();
   await storeRefreshToken(
-    getKv(),
+    createKvStore(env.db),
     refreshToken,
     user.sub,
     OAUTH_REFRESH_TOKEN_TTL,
@@ -232,7 +232,7 @@ export async function exchangeOAuthToken(params, env) {
 }
 /**
  * 撤销刷新令牌
- * @param {object} kv - getKv() 实例
+ * @param {object} kv - KV 适配器实例（createKvStore(env.db)）
  * @param {string} token - 要撤销的 refresh_token
  * @param {string} clientId - 客户端 ID
  * @param {string} clientSecret - 客户端密钥
