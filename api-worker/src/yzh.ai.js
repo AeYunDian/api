@@ -110,7 +110,23 @@ export default {
 
       const MAX_CHARS = 14000;
 
-      const systemMsgs = sanitizedMessages.filter((m) => m.role === "system");
+      const userSystemMsgs = sanitizedMessages.filter(
+        (m) => m.role === "system",
+      );
+      const userSystemContent = userSystemMsgs
+        .map((m) => m.content.trim())
+        .filter((c) => c)
+        .join("\n");
+
+      const DEFAULT_SYSTEM_PROMPT =
+        "默认使用简体中文回复。如果用户使用其他语言提问，请使用用户提问时使用的语言进行回复。语气友好专业，避免过度客套。日常对话偶尔可使用1~2个表情。代码报错、技术解释中不要使用表情，除非用户明确要求。不主动卖萌，不滥用感叹号。";
+
+      const combinedSystemContent = userSystemContent
+        ? `${DEFAULT_SYSTEM_PROMPT}\n\n[以下为环境专属设定，若与上述默认规则冲突，请以此设定为准]\n${userSystemContent}`
+        : DEFAULT_SYSTEM_PROMPT;
+
+      const systemMsgs = [{ role: "system", content: combinedSystemContent }];
+
       const chatMsgs = sanitizedMessages.filter((m) => m.role !== "system");
 
       let currentChars = systemMsgs.reduce(
@@ -129,10 +145,19 @@ export default {
       const finalChatMsgs = [];
       for (let i = chatMsgs.length - 1; i >= 0; i--) {
         const msg = chatMsgs[i];
-        if (currentChars + msg.content.length > MAX_CHARS) {
-          // 如果加上这条就超了，直接终止循环，丢弃这条以及更早的所有历史
+
+        // 如果单条消息本身就超长，就截取它的尾部（保留最新内容）
+        if (msg.content.length > MAX_CHARS) {
+          msg.content = msg.content.slice(-MAX_CHARS); // 截取末尾的14000个字符
+          finalChatMsgs.unshift(msg);
+          currentChars = MAX_CHARS;
           break;
         }
+
+        if (currentChars + msg.content.length > MAX_CHARS) {
+          break;
+        }
+
         finalChatMsgs.unshift(msg);
         currentChars += msg.content.length;
       }
