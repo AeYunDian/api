@@ -13,7 +13,7 @@ import ayRelay from "./wsRelay.js";
 import ayAnalytics from "./ayAnalytics.js";
 import ai from "./ai.js";
 import ayFiles from "./ayFiles.js";
-
+import { yzhAi } from "./yzh.ai.js";
 // import shundzcn from './sh.undz.cn.js'
 
 // const corsHeaders_GPO = {
@@ -70,7 +70,7 @@ export default {
       if (hostname === "cdn.undz.cn") return await uniCDN.fetch(request, env);
 
       if (hostname === "ai.undz.cn") return await ai.fetch(request, env);
-
+      if (hostname === "yzh.ai.undz.cn") return await yzhAi.fetch(request, env);
       if (hostname === "files.undz.cn")
         return await ayFiles.fetch(request, env);
 
