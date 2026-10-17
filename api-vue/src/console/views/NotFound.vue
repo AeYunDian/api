@@ -1,58 +1,47 @@
 <script setup>
 import { useRouter } from 'vue-router'
+import EmptyIllustration from '@/shared/components/EmptyIllustration.vue'
 
 const router = useRouter()
 
+function goBack() {
+    if (window.history.length > 1) router.back()
+    else router.push('/')
+}
 </script>
 
 <template>
-    <div>
-        <div class="not-found-container">
-            <div class="not-found-content">
-                <h1 class="not-found-title">哎呀，页面走丢了！</h1>
-                <p class="not-found-desc">您访问的页面可能已被移除或不存在。</p>
+    <div class="not-found-page">
+        <var-result type="empty" title="页面不存在"
+            description="你访问的地址可能已被移除、改名，或者链接拼写有误。">
+            <template #image>
+                <EmptyIllustration />
+            </template>
 
-                <var-button type="primary" block @click="router.push('/')">
-                    <span>返回主页</span>
-                </var-button>
-            </div>
-        </div>
+            <template #footer>
+                <var-space :size="[8, 8]" justify="center">
+                    <var-button type="primary" @click="router.push('/')">返回首页</var-button>
+                    <var-button text type="primary" @click="goBack">返回上一页</var-button>
+                </var-space>
+            </template>
+        </var-result>
     </div>
 </template>
 
 <style scoped>
-.not-found-container {
-    flex: 1;
+.not-found-page {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
-    padding: 2rem;
+    min-height: calc(100vh - var(--md-app-bar-height));
+    /* 底部多留 12vh：几何居中会显得整块偏下，视觉重心上移约 6vh */
+    padding: var(--md-space-8) var(--md-space-4) calc(var(--md-space-8) + 12vh);
     box-sizing: border-box;
 }
 
-.not-found-content {
-    text-align: center;
-}
-
-.not-found-status {
-    font-size: 8rem;
-    font-weight: 900;
-    line-height: 1;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 0.5rem;
-}
-
-.not-found-title {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
-}
-
-.not-found-desc {
-    font-size: 1.1rem;
-    color: var(--color-text-disabled);
-    margin-bottom: 2rem;
+/* var-result 自带的上/下留白在这类整屏空态里偏小，补一点呼吸 */
+.not-found-page :deep(.var-result) {
+    padding-top: 0;
+    padding-bottom: 0;
 }
 </style>

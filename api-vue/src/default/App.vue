@@ -1,14 +1,7 @@
 <script setup>
 import WindowControls from '@/shared/components/WindowControls.vue'
+import EmptyIllustration from '@/shared/components/EmptyIllustration.vue'
 import '@/shared/assets/base.css'
-
-const descriptions = [
-    'Description: HTTP 404. The resource you are looking for (or one of its dependencies) could have been removed, had its name changed, or is temporarily unavailable.',
-    '描述：HTTP 404。您要查找的资源（或其依赖项）可能已被删除、名称已更改，或暂时不可用。',
-    'Descripción: HTTP 404. El recurso que está buscando podría haber sido eliminado, haber cambiado de nombre o no estar disponible temporalmente.',
-    'Description : HTTP 404. La ressource que vous recherchez a peut-être été supprimée, renommée ou est temporairement indisponible.',
-    'الوصف: HTTP 404. قد يكون المورد الذي تبحث عنه قد تم حذفه، أو تغيير اسمه، أو أنه غير متوفر مؤقتًا.',
-]
 
 function reload() {
     window.location.reload()
@@ -24,58 +17,35 @@ function reload() {
         </template>
     </var-app-bar>
 
-    <main class="not-found-layout">
-        <div class="not-found-content">
-            <p class="not-found-code">404</p>
-            <h1 class="not-found-title">Not Found</h1>
-            <p v-for="text in descriptions" :key="text" class="not-found-desc">{{ text }}</p>
+    <!-- 与 online（账号中心）的 404 完全同版式：插画 + 标题 + 描述 + 操作。
+         这里没有可返回的路由，所以只有「重新加载」一个按钮。 -->
+    <main class="not-found-page">
+        <var-result type="empty" title="页面不存在" description="你访问的地址可能已被移除、改名，或者链接拼写有误。">
+            <template #image>
+                <EmptyIllustration />
+            </template>
 
-            <var-space justify="center" size="[8, 8]" class="not-found-actions">
+            <template #footer>
                 <var-button type="primary" @click="reload">重新加载</var-button>
-            </var-space>
-        </div>
+            </template>
+        </var-result>
     </main>
 </template>
 
 <style scoped>
-.not-found-layout {
+.not-found-page {
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: calc(100vh - var(--md-app-bar-height));
-    padding: var(--md-space-8) var(--md-space-4);
+    /* 底部多留 12vh：几何居中会显得整块偏下，视觉重心上移约 6vh */
+    padding: var(--md-space-8) var(--md-space-4) calc(var(--md-space-8) + 12vh);
+    box-sizing: border-box;
 }
 
-.not-found-content {
-    max-width: 640px;
-    text-align: center;
-}
-
-.not-found-code {
-    margin: 0;
-    font-size: 96px;
-    line-height: 104px;
-    font-weight: 400;
-    letter-spacing: -1.5px;
-    color: var(--color-primary);
-}
-
-.not-found-title {
-    margin: 0 0 var(--md-space-3);
-    font-size: 24px;
-    line-height: 32px;
-    font-weight: 400;
-}
-
-.not-found-desc {
-    margin: 0 0 var(--md-space-2);
-    font-size: 12px;
-    line-height: 16px;
-    letter-spacing: 0.4px;
-    color: var(--color-text-secondary);
-}
-
-.not-found-actions {
-    margin-top: var(--md-space-6);
+/* 与 online 的 404 一致：整屏居中时不需要 result 自带的上/下留白 */
+.not-found-page :deep(.var-result) {
+    padding-top: 0;
+    padding-bottom: 0;
 }
 </style>

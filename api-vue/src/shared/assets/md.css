@@ -300,6 +300,15 @@ html:root:root {
   --field-decorator-placeholder-size: 16px;
   --checkbox-text-color: var(--color-text);
 
+  /* --- 结果页 / 空状态 ---
+   * 底色用透明：空状态是"页面内容"，应该跟着所在层（chrome 或面板）走，
+   * 否则在 chrome 上会浮出一块近白的板；主题还把标题写死成 #1D1B20，暗色下会失效。 */
+  --result-background: transparent;
+  --result-border-radius: 0;
+  --result-title-color: var(--color-text);
+  --result-title-font-size: 28px;
+  --result-description-color: var(--color-on-surface-variant);
+
   /* --- 其他 --- */
   --progress-linear-border-radius: var(--md-shape-full);
   --uploader-file-border-radius: var(--md-shape-sm);
