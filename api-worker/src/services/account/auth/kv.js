@@ -13,6 +13,9 @@ export function setKv(db) {
 }
 
 export function getKv() {
+  if (!store) {
+    throw new Error("KV 未初始化：ayOnline.fetch 里的 setKv() 没有被调用");
+  }
   return store;
 }
 

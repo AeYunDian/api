@@ -6,7 +6,6 @@
 // ============================================================
 
 import { getMainPage } from "../../shared/utils.js";
-import { createKvStore } from "../../shared/kvWithD1.js";
 import { jsonResponse, corsHeaders, handleOptions } from "./http.js";
 import { setKv } from "./auth/kv.js";
 import { TAG_LOGGEDIN, TAG_NOT_LOGGEDIN, TAG_BANNED } from "./config.js";
@@ -28,7 +27,23 @@ export default {
     const path = url.pathname;
     const method = request.method;
     const cors = corsHeaders(request);
-    setKv(createKvStore(env.db));
+
+    // 线上 500 且 wallTime≈0 的最常见原因：部署时丢了 D1 绑定，env.db 为 undefined，
+    // 之后任何 db.prepare 都会同步抛 TypeError。这里提前讲清楚。
+    if (!env.db) {
+      console.error(
+        "[account] 缺少 D1 绑定：env.db 未定义，请检查 wrangler.toml 的 [[d1_databases]]",
+      );
+      return jsonResponse(
+        { error_code: ERROR_CODES.SERVER_DOWN, error: "D1 binding missing" },
+        500,
+        cors,
+      );
+    }
+
+    // 注意：setKv 内部会自己 createKvStore，这里只能传 env.db。
+    // 早期误写成 setKv(createKvStore(env.db)) 会包两层，运行时报 "db.prepare is not a function"。
+    setKv(env.db);
 
     if (env.block === "true") {
       return new Response(
