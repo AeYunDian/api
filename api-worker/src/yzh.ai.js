@@ -202,7 +202,13 @@ export default {
 
                   try {
                     const data = JSON.parse(dataStr);
-                    const content = data.response || "";
+                    let content = data.response;
+                    if (typeof content !== "string") {
+                      content =
+                        content !== null && content !== undefined
+                          ? String(content)
+                          : "";
+                    }
 
                     const openAiChunk = {
                       id: streamId,
