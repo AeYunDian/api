@@ -3,6 +3,7 @@
 
 import { jsonResponse } from "../http.js";
 import {
+  BLOCKED_CODE_KEYWORDS,
   CODE_CHARS_ADMIN,
   CODE_CHARS_USER,
   CODE_LEN_MAX,
@@ -16,6 +17,7 @@ import {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   RESERVED_CODES,
+  SYSTEM_CODES,
   TARGET_MAX_LEN,
   buildShortUrl,
 } from "../config.js";
@@ -78,21 +80,58 @@ function generateCode(length = CODE_LENGTH) {
   return out;
 }
 
-/** 校验短码；返回 error code，合法则返回 null */
+function invalidCode(message) {
+  return { code: ERROR_CODES.LINK_INVALID_CODE, message };
+}
+
+/** 校验短码；合法返回 null，非法返回 { code, message } */
 function validateCode(code, isAdmin) {
-  if (typeof code !== "string") return ERROR_CODES.LINK_INVALID_CODE;
+  if (typeof code !== "string") return invalidCode("短码不合法");
+
   const min = isAdmin ? CODE_LEN_MIN_ADMIN : CODE_LEN_MIN_USER;
   if (code.length < min || code.length > CODE_LEN_MAX) {
-    return ERROR_CODES.LINK_INVALID_CODE;
+    return invalidCode(
+      isAdmin
+        ? `短码需 1–${CODE_LEN_MAX} 位`
+        : `短码需 ${CODE_LEN_MIN_USER}–${CODE_LEN_MAX} 位`,
+    );
   }
-  const pattern = isAdmin ? CODE_CHARS_ADMIN : CODE_CHARS_USER;
-  if (!pattern.test(code)) return ERROR_CODES.LINK_INVALID_CODE;
+
   if (code.startsWith("/") || code.endsWith("/") || code.includes("//")) {
-    return ERROR_CODES.LINK_INVALID_CODE;
+    return invalidCode("短码不能以 / 开头或结尾，也不能包含 //");
   }
-  if (RESERVED_CODES.has(code.split("/")[0])) {
-    return ERROR_CODES.LINK_INVALID_CODE;
+
+  // 真实存在的系统路径，任何人都不能占用
+  if (SYSTEM_CODES.has(code)) {
+    return invalidCode(`${code} 是系统路径，不能作为短码`);
   }
+
+  // 保留名称只对普通用户关闭；管理员可以创建
+  if (!isAdmin && RESERVED_CODES.has(code)) {
+    return invalidCode("该短码为保留名称，仅管理员可以创建");
+  }
+
+  // 屏蔽词：包含即拒绝，管理员不受限
+  if (!isAdmin) {
+    const lower = code.toLowerCase();
+    const hit = BLOCKED_CODE_KEYWORDS.find(
+      (word) => word && lower.includes(String(word).toLowerCase()),
+    );
+    if (hit) {
+      return invalidCode(`短码包含屏蔽词「${hit}」，仅管理员可以创建`);
+    }
+  }
+
+  // 字符集放在最后：这样命中屏蔽词的短码会给出更贴近意图的提示
+  const pattern = isAdmin ? CODE_CHARS_ADMIN : CODE_CHARS_USER;
+  if (!pattern.test(code)) {
+    return invalidCode(
+      isAdmin
+        ? "短码可用 a-z A-Z 1-9 / @ # $ % * ( )"
+        : "短码仅限 a-z、数字 1-9 和 /",
+    );
+  }
+
   return null;
 }
 
@@ -291,7 +330,9 @@ export async function handleLinksRoutes({
     if (body.code !== undefined && body.code !== null && body.code !== "") {
       code = String(body.code).trim();
       const codeError = validateCode(code, admin);
-      if (codeError) return fail(cors, codeError);
+      if (codeError) {
+        return fail(cors, codeError.code, { error: codeError.message });
+      }
     }
 
     let passwordHash = null;
@@ -455,7 +496,9 @@ export async function handleLinksRoutes({
       const newCode = String(body.code).trim();
       if (newCode !== rec.code) {
         const codeError = validateCode(newCode, admin);
-        if (codeError) return fail(cors, codeError);
+        if (codeError) {
+          return fail(cors, codeError.code, { error: codeError.message });
+        }
         sets.push("code = ?");
         params.push(newCode);
       }

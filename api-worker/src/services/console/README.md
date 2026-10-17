@@ -177,6 +177,8 @@ console.undz.cn/*
 | 点击统计 | `click_count` / `last_clicked_at`，跳转时异步 +1 |
 | 过期 | `expires_at` 秒级时间戳；到期后公开访问统一 404 |
 | 短码保留 | 软删后短码永久保留，避免旧链接被他人注册劫持 |
+| 保留名称 | `admin`、`api`、`test` 等仅管理员可创建；`health` 是系统路径，任何人都不能占用 |
+| 屏蔽词 | 非管理员短码包含 `BLOCKED_CODE_KEYWORDS` 任意片段即拒绝（默认 `["test"]`），管理员不受限 |
 
 > `#` 和 `%` 在 URL 路径里必须转义，`config.js` 的 `buildShortUrl()` 会逐段
 > `encodeURIComponent`，对外展示的 `short_url` 可直接复制访问。

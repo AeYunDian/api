@@ -102,9 +102,15 @@ CREATE INDEX idx_short_links_status ON short_links(status, expires_at);
 - 数字 **0 不允许**；不允许 `-`、`_`、空格等其它字符。
 - 长度按**解码后的原始字符数**计算（不是 URL 编码后的长度）。
 - 不允许首尾 `/`，也不允许 `//` 空段。
-- 保留字按第一段判断：`api`、`s`、`admin`、`static`、`assets`、`files`、`login`、
-  `logout`、`oauth`、`callback`、`health`、`test`、`init`、`console`、`favicon.ico`、
-  `robots.txt`、`sitemap.xml`、`_`、`next`。
+- 保留名称按**完整短码**判断，普通用户不可用，管理员可以创建：
+  `api`、`s`、`admin`、`static`、`assets`、`files`、`login`、`logout`、`oauth`、
+  `callback`、`test`、`init`、`console`、`favicon.ico`、`robots.txt`、`sitemap.xml`、
+  `_`、`next`。
+- 系统路径 `health`（`go.undz.cn/health` 是真实端点）**任何角色都不能**用作短码。
+- 屏蔽词：非管理员创建的短码只要**包含** `BLOCKED_CODE_KEYWORDS` 里的任意一段就拒绝
+  （不区分大小写）；管理员不受限制。默认配置 `["test"]`，所以普通用户不能创建
+  `test`、`test/showInfos`、`mytest`，管理员都可以。
+- 多段短码不受单段保留名称影响，例如 `test/showInfos`、`admin/foo`。
 
 ### 4.2 URL 转义
 

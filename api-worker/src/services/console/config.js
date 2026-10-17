@@ -43,8 +43,15 @@ export const LINK_PAGE_DEFAULT = 20;
 export const LINK_PAGE_MAX = 100;
 
 /**
- * 保留短码：go.undz.cn 上如果以后要挂运维端点，先用这些名字占位。
- * 校验时按**第一段**判断，所以 `admin/foo` 也会被挡住。
+ * 系统路径：go.undz.cn 实际提供的端点，任何人都不能拿来当短码。
+ * 目前只有 /health。
+ */
+export const SYSTEM_CODES = new Set(["health"]);
+
+/**
+ * 保留名称：不占用真实路由，但为了避免和未来的运维/静态路径撞车，
+ * 只允许管理员创建；普通用户使用会返回 LINK_INVALID_CODE。
+ * 按**完整短码**匹配，所以 `test/showInfos` 不受这里的 `test` 影响。
  */
 export const RESERVED_CODES = new Set([
   "api",
@@ -57,7 +64,6 @@ export const RESERVED_CODES = new Set([
   "logout",
   "oauth",
   "callback",
-  "health",
   "test",
   "init",
   "console",
@@ -67,6 +73,13 @@ export const RESERVED_CODES = new Set([
   "_",
   "next",
 ]);
+
+/**
+ * 屏蔽词：非管理员创建的短码只要**包含**其中任意一段就拒绝（不区分大小写）。
+ * 管理员不受限制。例如配置 "test" 后，普通用户不能创建 `test`、`test/showInfos`、
+ * `mytest`，但管理员可以。改完需要重新部署。
+ */
+export const BLOCKED_CODE_KEYWORDS = ["test", "login", "logout"];
 
 /** 把短码转成对外 URL：逐段 encodeURIComponent，保留 `/` 分隔 */
 export function buildShortUrl(code) {
