@@ -1,20 +1,20 @@
-import { cleanExpiredKv, initKvTable } from "./kvWithD1.js";
-import { cleanExpiredPsp, initPspTables } from "./wsRelay.js";
+import { cleanExpiredKv, initKvTable } from "./shared/kvWithD1.js";
+import { cleanExpiredPsp, initPspTables } from "./services/relay/wsRelay.js";
 
-import uniAPI from "./uniAPI.js";
-import chatRoom from "./ayChatRoom.js";
-import uniCDN from "./jsdelivrCDN.js";
-import i0UndzCn from "./i0.undz.cn.js";
-import i1UndzCn from "./i1.undz.cn.js";
-import i2UndzCn from "./i2.undz.cn.js";
-import ayOnline from "./ayOnline.js";
-import ayConsole from "./ayConsole.js";
-import ayRelay from "./wsRelay.js";
-import ayAnalytics from "./ayAnalytics.js";
-import ai from "./ai.js";
-import ayFiles from "./ayFiles.js";
-import yzhAi from "./yzh.ai.js";
-// import shundzcn from './sh.undz.cn.js'
+import uniAPI from "./services/gateway/uniAPI.js";
+import chatRoom from "./services/chat/ayChatRoom.js";
+import uniCDN from "./services/cdn/jsdelivrCDN.js";
+import i0UndzCn from "./services/image/i0.undz.cn.js";
+import i1UndzCn from "./services/image/i1.undz.cn.js";
+import i2UndzCn from "./services/image/i2.undz.cn.js";
+import ayOnline from "./services/account/ayOnline.js";
+import ayConsole from "./services/console/ayConsole.js";
+import ayRelay from "./services/relay/wsRelay.js";
+import ayAnalytics from "./services/analytics/ayAnalytics.js";
+import ai from "./services/ai/ai.js";
+import ayFiles from "./services/files/ayFiles.js";
+import yzhAi from "./services/ai/yzh.ai.js";
+// import shundzcn from './legacy/sh.undz.cn.js'
 
 // const corsHeaders_GPO = {
 //     'Access-Control-Allow-Origin': '*',

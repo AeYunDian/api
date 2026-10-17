@@ -3,11 +3,17 @@
   "version": "1.0.0",
   "description": "AyApiCenter",
   "main": "src/index.js",
+  "type": "module",
   "scripts": {
     "dev": "wrangler dev src/index.js",
-    "deploy": "wrangler deploy src/index.js"
+    "deploy": "wrangler deploy src/index.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^16.0.0",
     "wrangler": "^4.34.0"
   },
   "private": true,
