@@ -1,17 +1,17 @@
 /**
  * @file AyAccountSDK - 用户认证管理库
  * @author AeYunDian
- * @version 2.0.9
+ * @version 2.1.0
  * @copyright 2026 AeYunDian. All rights reserved.
  * @license MIT
  */
-"v2.0.9 AyAccountSDK";
+"v2.1.0 AyAccountSDK";
 "use strict";
 if (typeof window === "undefined") {
   throw new Error("AyAccountSDK requires browser environment");
 }
 
-const VERSION = "2.0.9";
+const VERSION = "2.1.0";
 const PRODUCE = true;
 
 // ---------- 本地南瓜种植基地 ----------//
@@ -118,9 +118,9 @@ const BUILTIN_TRANSLATIONS = {
     cookie_policy: "《Cookie 政策》",
     terms: "《服务条款》",
     "btn.login.oauth.yzhyzxy": "使用 Yzhyzxy 账号登入",
-    "privacy_policy.link": "https://undz.cn/privacy/",
-    "cookie_policy.link": "https://undz.cn/cookies/",
-    "terms.link": "https://undz.cn/terms/",
+    "privacy_policy.link": "https://go.undz.cn/privacy/zh-cn",
+    "cookie_policy.link": "https://go.undz.cn/cookies/zh-cn",
+    "terms.link": "https://go.undz.cn/terms/zh-cn",
     "btn.reg": "注册",
     "login.usernameoremail": "用户名/邮箱",
     "login.password": "密码",
@@ -169,10 +169,6 @@ const BUILTIN_TRANSLATIONS = {
     "error.1037": "未知错误",
     "error.1038": "登陆视窗已关闭",
     "error.1039": "登录超时，请重试",
-    "error.1040": "客户端版本过旧，请刷新页面或升级后重试",
-    "error.1041": "该邮箱已被其他账号使用",
-    "error.1042": "该用户名已被占用",
-    "error.1043": "修改邮箱需要验证码与凭证",
     "common.send_email_code_success": "发送验证码成功",
     "common.send_email_code_failure": "发送验证码失败",
     "error.modal_already_open": "登录窗口已打开，请勿重复操作",
@@ -230,9 +226,9 @@ const BUILTIN_TRANSLATIONS = {
     "agreement.and1": ", ",
     "agreement.and2": "and",
     "link.faq": "https://online.undz.cn/login/faq/en-us",
-    "privacy_policy.link": "https://undz.cn/privacy/",
-    "cookie_policy.link": "https://undz.cn/cookies/",
-    "terms.link": "https://undz.cn/terms/",
+    "privacy_policy.link": "https://go.undz.cn/privacy/en-us",
+    "cookie_policy.link": "https://go.undz.cn/cookies/en-us",
+    "terms.link": "https://go.undz.cn/terms/en-us",
     "error.1000": "Invalid email format",
     "error.1001":
       "Password must be between 4 and 20 characters and contain only a-z A-Z 0-9 -_=+@#$%",
@@ -274,10 +270,6 @@ const BUILTIN_TRANSLATIONS = {
     "error.1037": "Unknown error.",
     "error.1038": "Login window has been closed.",
     "error.1039": "Login timed out. Please try again.",
-    "error.1040": "Client version is outdated. Please refresh or upgrade.",
-    "error.1041": "This email is already used by another account",
-    "error.1042": "This username is already taken",
-    "error.1043": "Changing email requires a verification code and token",
     "error.modal_already_open":
       "Login modal is already open, please do not repeat",
     "error.aytoast_not_found":
@@ -330,9 +322,9 @@ const BUILTIN_TRANSLATIONS = {
     cookie_policy: "《Cookie 政策》",
     terms: "《服務條款》",
     "link.faq": "https://online.undz.cn/login/faq/zh-hk",
-    "privacy_policy.link": "https://undz.cn/privacy/",
-    "cookie_policy.link": "https://undz.cn/cookies/",
-    "terms.link": "https://undz.cn/terms/",
+    "privacy_policy.link": "https://go.undz.cn/privacy/zh-hk",
+    "cookie_policy.link": "https://go.undz.cn/cookies/zh-hk",
+    "terms.link": "https://go.undz.cn/terms/zh-hk",
     "btn.reg": "註冊",
     "login.usernameoremail": "用戶名/電郵",
     "login.password": "密碼",
@@ -381,10 +373,6 @@ const BUILTIN_TRANSLATIONS = {
     "error.1037": "未知錯誤",
     "error.1038": "登入視窗已關閉",
     "error.1039": "登入超時，請重試",
-    "error.1040": "用戶端版本過舊，請重新整理或升級後重試",
-    "error.1041": "此電子郵件已被其他帳號使用",
-    "error.1042": "此使用者名稱已被佔用",
-    "error.1043": "修改電子郵件需要驗證碼與憑證",
     "error.modal_already_open": "登錄視窗已打開，請勿重複操作",
     "error.aytoast_not_found": "AyToast 組件未成功加載，請你重載",
     "common.network_error": "網絡請求失敗，請檢查網絡",

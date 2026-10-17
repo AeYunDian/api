@@ -13,8 +13,8 @@ api-worker/
 │   ├── README.md           # 目录结构与新增服务的约定
 │   ├── shared/             # 错误码、KV 适配、通用工具
 │   ├── services/           # 每个域名一个目录
-│   │   ├── account/        # online.undz.cn  ← 详细文档见 services/account/README.md
-│   │   ├── console/        # console.undz.cn + go.undz.cn ← 详见 services/console/README.md
+│   │   ├── account/        # online.undz.cn  ← 文档见 docs/account.md
+│   │   ├── console/        # console.undz.cn + go.undz.cn ← 见 docs/console.md / docs/shortlink.md
 │   │   ├── analytics/ relay/ ai/ files/ gateway/ chat/ cdn/ image/ crossfire/
 │   └── legacy/             # 无引用的历史文件，未接入路由
 └── scripts/set-secrets.ps1
@@ -90,8 +90,14 @@ npx wrangler deploy --dry-run --outdir ../.dryrun-check
 
 ## 文档索引
 
+一个子服务一个文档，统一在仓库根目录的 `docs/`：
+
+- [docs/README.md](../docs/README.md) —— 子服务文档总索引
+- [docs/account.md](../docs/account.md) —— 账号中心：鉴权模型、OAuth2、数据表
+- [docs/console.md](../docs/console.md) —— 管理后台：权限、配额、文件管理
+- [docs/shortlink.md](../docs/shortlink.md) —— 短链接：`go.undz.cn` + 管理接口
+- [docs/relay.md](../docs/relay.md) / [docs/analytics.md](../docs/analytics.md) / [docs/files.md](../docs/files.md)
+- [docs/ai.md](../docs/ai.md) / [docs/gateway.md](../docs/gateway.md) / [docs/chat.md](../docs/chat.md)
+- [docs/cdn.md](../docs/cdn.md) / [docs/image.md](../docs/image.md) / [docs/kv.md](../docs/kv.md)
 - [src/README.md](src/README.md) —— 目录结构、新增服务的约定
-- [src/services/account/README.md](src/services/account/README.md) —— 账号中心：鉴权模型、OAuth2、数据表
-- [src/services/account/routes/README.md](src/services/account/routes/README.md) —— 账号中心端点清单
-- [src/services/console/README.md](src/services/console/README.md) —— 管理后台：权限、配额、文件管理
 - [src/shared/README.md](src/shared/README.md) —— 错误码注册表、KV 适配器、工具函数

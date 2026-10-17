@@ -7,9 +7,10 @@
 | 文档 | 内容 |
 |---|---|
 | [../README.md](../README.md) | 顶层：命令、绑定、密钥、发布检查单 |
-| [services/account/README.md](services/account/README.md) | **账号中心**：鉴权模型、口令与验证码、OAuth2 流程、数据表、闸门顺序 |
-| [services/account/routes/README.md](services/account/routes/README.md) | **账号中心端点清单**：方法 / 路径 / 登录态 / 错误码 |
-| [services/console/README.md](services/console/README.md) | **管理后台**：权限模型、端点表、配额、反馈状态机、R2 文件管理 |
+| [../../docs/README.md](../../docs/README.md) | **全部子服务文档索引**（一个子服务一篇） |
+| [../../docs/account.md](../../docs/account.md) | **账号中心**：鉴权模型、口令与验证码、OAuth2 流程、数据表、闸门顺序 |
+| [../../docs/console.md](../../docs/console.md) | **管理后台**：权限模型、端点表、配额、反馈状态机、R2 文件管理 |
+| [../../docs/shortlink.md](../../docs/shortlink.md) | **短链接**：`go.undz.cn` 跳转、密码、配额、字符集、屏蔽词 |
 | [shared/README.md](shared/README.md) | 错误码注册表、D1-KV 适配器、通用工具 |
 
 ## 域名 → 服务

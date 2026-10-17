@@ -12,14 +12,14 @@ export const CODE_LEN_MAX = 250;
 
 /**
  * 短码字符集：
- *   普通用户  a-z 1-9 /
+ *   普通用户  a-z 1-9 / -
  *   管理员    额外允许 A-Z @ # $ % * ( )
  *
  * 注意 `#` 与 `%` 在 URL 路径里必须转义：`#` → `%23`、`%` → `%25`。
  * 对外展示的 short_url 由 buildShortUrl() 按路径段编码，直接复制即可访问。
  */
-export const CODE_CHARS_USER = /^[a-z1-9/]+$/;
-export const CODE_CHARS_ADMIN = /^[a-zA-Z1-9/@#$%*()]+$/;
+export const CODE_CHARS_USER = /^[a-z1-9/-]+$/;
+export const CODE_CHARS_ADMIN = /^[a-zA-Z1-9/@#$%*()-]+$/;
 
 /** 自动生成短码时使用的字符集（不含 0/O/1/l/I 等易混字符） */
 export const CODE_ALPHABET = "abcdefghijklmnopqrstuvwxyz123456789";

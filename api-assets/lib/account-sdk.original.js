@@ -1,17 +1,17 @@
 /**
  * @file AyAccountSDK - 用户认证管理库
  * @author AeYunDian
- * @version 2.0.9
+ * @version 2.1.0
  * @copyright 2026 AeYunDian. All rights reserved.
  * @license MIT
  */
-"v2.0.9 AyAccountSDK";
+"v2.1.0 AyAccountSDK";
 "use strict";
 if (typeof window === "undefined") {
   throw new Error("AyAccountSDK requires browser environment");
 }
 
-const VERSION = "2.0.9";
+const VERSION = "2.1.0";
 const PRODUCE = false;
 
 // ---------- 本地南瓜种植基地 ----------//
@@ -118,9 +118,9 @@ const BUILTIN_TRANSLATIONS = {
     cookie_policy: "《Cookie 政策》",
     terms: "《服务条款》",
     "btn.login.oauth.yzhyzxy": "使用 Yzhyzxy 账号登入",
-    "privacy_policy.link": "https://undz.cn/privacy/",
-    "cookie_policy.link": "https://undz.cn/cookies/",
-    "terms.link": "https://undz.cn/terms/",
+    "privacy_policy.link": "https://go.undz.cn/privacy/zh-cn",
+    "cookie_policy.link": "https://go.undz.cn/cookies/zh-cn",
+    "terms.link": "https://go.undz.cn/terms/zh-cn",
     "btn.reg": "注册",
     "login.usernameoremail": "用户名/邮箱",
     "login.password": "密码",
@@ -226,9 +226,9 @@ const BUILTIN_TRANSLATIONS = {
     "agreement.and1": ", ",
     "agreement.and2": "and",
     "link.faq": "https://online.undz.cn/login/faq/en-us",
-    "privacy_policy.link": "https://undz.cn/privacy/",
-    "cookie_policy.link": "https://undz.cn/cookies/",
-    "terms.link": "https://undz.cn/terms/",
+    "privacy_policy.link": "https://go.undz.cn/privacy/en-us",
+    "cookie_policy.link": "https://go.undz.cn/cookies/en-us",
+    "terms.link": "https://go.undz.cn/terms/en-us",
     "error.1000": "Invalid email format",
     "error.1001":
       "Password must be between 4 and 20 characters and contain only a-z A-Z 0-9 -_=+@#$%",
@@ -322,9 +322,9 @@ const BUILTIN_TRANSLATIONS = {
     cookie_policy: "《Cookie 政策》",
     terms: "《服務條款》",
     "link.faq": "https://online.undz.cn/login/faq/zh-hk",
-    "privacy_policy.link": "https://undz.cn/privacy/",
-    "cookie_policy.link": "https://undz.cn/cookies/",
-    "terms.link": "https://undz.cn/terms/",
+    "privacy_policy.link": "https://go.undz.cn/privacy/zh-hk",
+    "cookie_policy.link": "https://go.undz.cn/cookies/zh-hk",
+    "terms.link": "https://go.undz.cn/terms/zh-hk",
     "btn.reg": "註冊",
     "login.usernameoremail": "用戶名/電郵",
     "login.password": "密碼",

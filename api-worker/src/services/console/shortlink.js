@@ -2,7 +2,11 @@
 // go.undz.cn —— 短链公开跳转 + 可选密码页。
 // 只读短链表，不提供任何写操作；写操作在 routes/links.js（console.undz.cn）。
 
-import { hashPassword, fromBase64, hmacSha256 } from "../account/auth/crypto.js";
+import {
+  hashPassword,
+  fromBase64,
+  hmacSha256,
+} from "../account/auth/crypto.js";
 import {
   CODE_CHARS_ADMIN,
   CODE_LEN_MAX,
@@ -183,7 +187,7 @@ ${hasError ? '<div class="error">密码错误，请重试</div>' : ""}
 </form>`;
   return renderPage({
     status: hasError ? 403 : 401,
-    title: "受保护的短链接",
+    title: "受保护的链接",
     heading: "此链接需要密码",
     sub: "该短链接已开启访问保护，请输入密码后继续。",
     body,
@@ -255,8 +259,8 @@ function tooManyAttempts(key) {
   const bucket = attemptBuckets.get(key);
   return Boolean(
     bucket &&
-      bucket.reset > Date.now() &&
-      bucket.count >= PASSWORD_MAX_ATTEMPTS,
+    bucket.reset > Date.now() &&
+    bucket.count >= PASSWORD_MAX_ATTEMPTS,
   );
 }
 

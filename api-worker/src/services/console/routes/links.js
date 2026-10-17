@@ -127,8 +127,8 @@ function validateCode(code, isAdmin) {
   if (!pattern.test(code)) {
     return invalidCode(
       isAdmin
-        ? "短码可用 a-z A-Z 1-9 / @ # $ % * ( )"
-        : "短码仅限 a-z、数字 1-9 和 /",
+        ? "短码可用 a-z A-Z 1-9 / - @ # $ % * ( )"
+        : "短码仅限 a-z、数字 1-9、/ 和 -",
     );
   }
 
