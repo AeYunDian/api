@@ -96,32 +96,57 @@ export default {
           },
         );
       }
-
-      // 清洗 messages 数据，兼容 OpenAI 的数组 content
       const sanitizedMessages = messages.map((msg) => {
         let contentStr = "";
         if (typeof msg.content === "string") {
           contentStr = msg.content;
         } else if (Array.isArray(msg.content)) {
-          // 如果是数组（例如：[{"type":"text","text":"你好"}]），提取文本拼接
           contentStr = msg.content.map((c) => c.text || "").join("");
-        } else if (msg.content === null || msg.content === undefined) {
-          contentStr = "";
-        } else {
+        } else if (msg.content !== null && msg.content !== undefined) {
           contentStr = String(msg.content);
         }
-
-        return {
-          role: msg.role,
-          content: contentStr,
-        };
+        return { role: msg.role, content: contentStr };
       });
+
+      const MAX_CHARS = 14000;
+
+      const systemMsgs = sanitizedMessages.filter((m) => m.role === "system");
+      const chatMsgs = sanitizedMessages.filter((m) => m.role !== "system");
+
+      let currentChars = systemMsgs.reduce(
+        (sum, m) => sum + m.content.length,
+        0,
+      );
+
+      if (currentChars > MAX_CHARS) {
+        systemMsgs.forEach((m) => {
+          m.content = m.content.slice(0, MAX_CHARS / systemMsgs.length);
+        });
+        currentChars = MAX_CHARS; // 重置计数
+      }
+
+      // 从最新的一条消息开始往前遍历，能塞下就塞，塞不下就丢弃更早的历史
+      const finalChatMsgs = [];
+      for (let i = chatMsgs.length - 1; i >= 0; i--) {
+        const msg = chatMsgs[i];
+        if (currentChars + msg.content.length > MAX_CHARS) {
+          // 如果加上这条就超了，直接终止循环，丢弃这条以及更早的所有历史
+          break;
+        }
+        finalChatMsgs.unshift(msg);
+        currentChars += msg.content.length;
+      }
+
+      const finalMessages = [...systemMsgs, ...finalChatMsgs];
+      console.log(
+        `[上下文清洗] 原始: ${messages.length} 条 / 截断后: ${finalMessages.length} 条，总字符数: ${currentChars}`,
+      );
 
       const modelName = "qwen3-30b-a3b-fp8";
 
       if (stream) {
         const aiStream = await env.AI.run(`@cf/qwen/${modelName}`, {
-          messages: sanitizedMessages, // 使用清洗后的数据
+          messages: finalMessages,
           stream: true,
         });
 
@@ -205,7 +230,7 @@ export default {
         });
       } else {
         const response = await env.AI.run(`@cf/qwen/${modelName}`, {
-          messages: sanitizedMessages,
+          messages: finalMessages,
         });
 
         const openAiResponse = {
