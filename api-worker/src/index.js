@@ -13,7 +13,7 @@ import ayRelay from "./wsRelay.js";
 import ayAnalytics from "./ayAnalytics.js";
 import ai from "./ai.js";
 import ayFiles from "./ayFiles.js";
-import { yzhAi } from "./yzh.ai.js";
+import yzhAi from "./yzh.ai.js";
 // import shundzcn from './sh.undz.cn.js'
 
 // const corsHeaders_GPO = {
