@@ -1,7 +1,6 @@
 import qr from 'qr-image';
 import { getMainPage, escapeHtml, corsHeaders_GPO, mobileRegex } from '../../shared/utils.js';
 import graduation_yearbook from './graduation_yearbook_v1.js';
-import short_link from './short_link_v1.js';
 import {
     CreateAccount, InitDatabase, Login,
     PushUserBag, GetUserBag, Logout,
@@ -58,7 +57,6 @@ const exactRoutes = {
     '/api/crossfire/v1/account/logout': ['POST'],
     '/api/crossfire/v1/bag/get': ['POST'],
     '/api/crossfire/v1/bag/push': ['POST'],
-    '/go/addlink': ['POST'],
     '/api/v1/verify': ['POST'],
     '/api/v1/submit': ['POST'],
 
@@ -181,7 +179,6 @@ async function handlePost(path, request, env) {
         case '/api/crossfire/v1/account/logout': return Logout(request, env);
         case '/api/crossfire/v1/bag/get': return GetUserBag(request, env);
         case '/api/crossfire/v1/bag/push': return PushUserBag(request, env);
-        case '/go/addlink': return short_link.addLink(request, env);
         case '/api/v1/verify': return graduation_yearbook.handleVerify(request, env);
         case '/api/v1/submit': return graduation_yearbook.handleSubmit(request, env);
         case '/gy/v1/initdb': {

@@ -12,8 +12,8 @@ import '@varlet/ui/es/fab/style'
 const user = inject('user')
 const isAdmin = useIsAdmin()
 
-/* 普通用户最多可注册 3 个客户端，管理员不限 */
-const CLIENT_LIMIT = 3
+/* 普通用户最多可注册 6 个客户端，管理员不限 */
+const CLIENT_LIMIT = 6
 
 const loading = ref(false)
 const refreshState = ref(false)

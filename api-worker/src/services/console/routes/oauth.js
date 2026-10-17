@@ -7,6 +7,9 @@ import {
 } from "../../account/ayOnline.js";
 import { generateToken } from "../../../shared/utils.js";
 
+/** 普通用户最多可创建的 OAuth 客户端数量；管理员不受限 */
+const MAX_CLIENTS_PER_USER = 6;
+
 export async function handleOauthRoutes({ request, env, url, path, method, cors, user, isAdmin }) {
         if (
           path === "/api/console/oauth/client/register" &&
@@ -32,9 +35,9 @@ export async function handleOauthRoutes({ request, env, url, path, method, cors,
               )
               .bind(user.sub)
               .first();
-            if (countResult.cnt >= 3) {
+            if (countResult.cnt >= MAX_CLIENTS_PER_USER) {
               return jsonResponse(
-                { error: "Maximum 3 clients per user" },
+                { error: `Maximum ${MAX_CLIENTS_PER_USER} clients per user` },
                 403,
                 cors,
               );

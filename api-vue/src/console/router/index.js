@@ -20,6 +20,12 @@ const router = createRouter({
           meta: { title: "OAuth 客户端管理" },
         },
         {
+          path: "short-links",
+          component: () =>
+            import("@/console/views/console/ShortLinkManager.vue"),
+          meta: { title: "短链接管理" },
+        },
+        {
           path: "feedback-center",
           component: () => import("@/console/views/console/FeedbackCenter.vue"),
           meta: { title: "反馈中心" },

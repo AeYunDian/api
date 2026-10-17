@@ -1,7 +1,7 @@
 # api-worker
 
 Cloudflare Workers 后端。**一个 Worker 按域名分发到十几个子服务**：账号中心、管理后台、
-站点统计、WebSocket 中继、文件分发、AI 代理、聊天室、图床反代、jsDelivr 代理……
+站点统计、WebSocket 中继、文件分发、AI 代理、聊天室、短链接、图床反代、jsDelivr 代理……
 
 ```
 api-worker/
@@ -14,7 +14,7 @@ api-worker/
 │   ├── shared/             # 错误码、KV 适配、通用工具
 │   ├── services/           # 每个域名一个目录
 │   │   ├── account/        # online.undz.cn  ← 详细文档见 services/account/README.md
-│   │   ├── console/        # console.undz.cn ← 详细文档见 services/console/README.md
+│   │   ├── console/        # console.undz.cn + go.undz.cn ← 详见 services/console/README.md
 │   │   ├── analytics/ relay/ ai/ files/ gateway/ chat/ cdn/ image/ crossfire/
 │   └── legacy/             # 无引用的历史文件，未接入路由
 └── scripts/set-secrets.ps1
@@ -63,7 +63,7 @@ npx wrangler deploy --dry-run --outdir ../.dryrun-check
 | `YZHYZXY_CLIENT_ID` / `YZHYZXY_CLIENT_SECRET` | 第三方登录用 | Yzhyzxy OAuth |
 | `CHAT_OAUTH_CLIENT_SECRET` | 聊天室用 | 聊天室换取/撤销 token |
 | `ADMIN_TOKEN` | 可选 | `uniAPI` 的 `X-Admin-Token`；不配则相关接口放行 |
-| `GOKEY` | 短链用 | `/go/addlink` 的校验串 |
+| `SHORTLINK_BLOCKED_HOSTS` | 可选 | 短链目标域名黑名单，逗号分隔 |
 | `YZH_AI_API_KEY` | AI 用 | `yzh.ai.undz.cn` 的 Bearer 校验 |
 | `GITHUB_TOKEN` / `RESEND_API_KEY` | 可选 | 历史遗留 / 未启用 |
 | `DEBUG` | 可选 | 真值时打印 `env.DEBUG && console.*` 的调试日志 |

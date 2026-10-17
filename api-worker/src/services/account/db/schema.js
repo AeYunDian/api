@@ -198,6 +198,39 @@ async function initDatabase(db) {
         `CREATE INDEX IF NOT EXISTS idx_file_manager_path ON file_manager (path)`,
       )
       .run();
+    // ── 短链接（cf. services/console/README.md 短链接一节）──
+    await db
+      .prepare(
+        `CREATE TABLE IF NOT EXISTS short_links (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          code TEXT NOT NULL UNIQUE,
+          target TEXT NOT NULL,
+          user_sub INTEGER NOT NULL,
+          title TEXT NOT NULL DEFAULT '',
+          password_hash TEXT,
+          password_salt TEXT,
+          expires_at INTEGER,
+          status TEXT NOT NULL DEFAULT 'active',
+          click_count INTEGER NOT NULL DEFAULT 0,
+          last_clicked_at INTEGER,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        )`,
+      )
+      .run();
+    await db
+      .prepare(
+        `CREATE INDEX IF NOT EXISTS idx_short_links_user
+           ON short_links(user_sub, created_at DESC)`,
+      )
+      .run();
+    await db
+      .prepare(
+        `CREATE INDEX IF NOT EXISTS idx_short_links_status
+           ON short_links(status, expires_at)`,
+      )
+      .run();
+
     await db
       .prepare(
         `CREATE TABLE IF NOT EXISTS analytics_events (

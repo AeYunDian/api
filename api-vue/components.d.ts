@@ -24,6 +24,7 @@ declare module 'vue' {
     VarCheckbox: typeof import('@varlet/ui')['Checkbox']
     VarChip: typeof import('@varlet/ui')['Chip']
     VarDateInput: typeof import('@varlet/ui')['DateInput']
+    VarDatePicker: typeof import('@varlet/ui')['DatePicker']
     VarDialog: typeof import('@varlet/ui')['_DialogComponent']
     VarFab: typeof import('@varlet/ui')['Fab']
     VarForm: typeof import('@varlet/ui')['Form']

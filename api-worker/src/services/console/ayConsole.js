@@ -1,5 +1,4 @@
 // console.undz.cn —— 入口：CORS/OPTIONS、登录态校验、按前缀分发到 routes/*
-// 各路由模块由 ayConsole.js 逐行搬运而来，未改业务逻辑。
 import {
   checkAuth,
   TAG_BANNED,
@@ -10,6 +9,7 @@ import { handleOauthRoutes } from "./routes/oauth.js";
 import { handleUserRoutes } from "./routes/users.js";
 import { handleFeedbackRoutes } from "./routes/feedback.js";
 import { handleSitesRoutes } from "./routes/sites.js";
+import { handleLinksRoutes } from "./routes/links.js";
 import { handleFilesAdmin } from "./routes/files.js";
 
 // /api/console/* 的处理链（顺序即匹配顺序；各模块内部仍保持原文件里的块顺序）
@@ -18,6 +18,7 @@ const CONSOLE_ROUTES = [
   handleUserRoutes,
   handleFeedbackRoutes,
   handleSitesRoutes,
+  handleLinksRoutes,
 ];
 
 export default {

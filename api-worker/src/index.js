@@ -14,6 +14,7 @@ import ayAnalytics from "./services/analytics/ayAnalytics.js";
 import ai from "./services/ai/ai.js";
 import ayFiles from "./services/files/ayFiles.js";
 import yzhAi from "./services/ai/yzh.ai.js";
+import { handleShortLink } from "./services/console/shortlink.js";
 // import shundzcn from './legacy/sh.undz.cn.js'
 
 // const corsHeaders_GPO = {
@@ -85,6 +86,10 @@ export default {
       // IE8 怀旧聊天室服务
       if (hostname === "chat.undz.cn" || hostname === "c.undz.cn")
         return await chatRoom.fetch(request, env);
+
+      // 短链接跳转（go.undz.cn/{code}）
+      if (hostname === "go.undz.cn")
+        return await handleShortLink(request, env, ctx);
 
       if (hostname === "console.undz.cn")
         return await ayConsole.fetch(request, env);

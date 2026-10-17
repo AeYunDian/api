@@ -239,3 +239,84 @@ export function transferSiteOwner(siteId, targetUserId) {
     body: { site_id: siteId, target_user_id: targetUserId },
   });
 }
+
+// ========== 短链接管理 ==========
+
+/**
+ * 获取短链接列表
+ * @param {object} [params]
+ * @param {number|null} [params.cursor] - 上一页最后一条的 id
+ * @param {number} [params.limit]
+ * @param {string} [params.q] - 搜索短码 / 目标 / 备注
+ * @param {string} [params.status] - all | active | expired | disabled | deleted
+ */
+export function getShortLinks({
+  cursor = null,
+  limit = 20,
+  q = "",
+  status = "all",
+} = {}) {
+  const params = new URLSearchParams();
+  if (cursor) params.set("cursor", String(cursor));
+  if (limit) params.set("limit", String(limit));
+  if (q) params.set("q", q);
+  if (status && status !== "all") params.set("status", status);
+  const query = params.toString();
+  return request(`console/links${query ? `?${query}` : ""}`);
+}
+
+/**
+ * 创建短链接
+ * @param {object} payload
+ * @param {string} payload.target - 目标 URL（http/https）
+ * @param {string} [payload.code] - 自定义短码，不传自动生成
+ * @param {string} [payload.title] - 备注
+ * @param {string} [payload.password] - 访问密码
+ * @param {number|null} [payload.expires_at] - 过期时间（秒）
+ */
+export function createShortLink(payload) {
+  return request("console/links", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+/**
+ * 修改短链接
+ * @param {number} id
+ * @param {object} payload - 字段同创建；另有 clear_password / clear_expires / status
+ */
+export function updateShortLink(id, payload) {
+  return request(`console/links/${id}`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+/**
+ * 软删除短链接（短码保留，不可被他人复用）
+ */
+export function deleteShortLink(id) {
+  return request(`console/links/${id}`, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * 重新生成短码，旧短码立即失效
+ */
+export function rotateShortLink(id) {
+  return request(`console/links/${id}/rotate`, {
+    method: "POST",
+  });
+}
+
+/**
+ * 转移短链接所有权（仅管理员）
+ */
+export function transferShortLink(id, targetUserId) {
+  return request(`console/links/${id}/transfer`, {
+    method: "PUT",
+    body: { target_user_id: targetUserId },
+  });
+}

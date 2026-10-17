@@ -98,6 +98,7 @@ onUnmounted(() => {
 const navItems = computed(() => {
     const items = [
         { path: '/oauth-client', title: 'OAuth 应用管理', icon: 'openid' },
+        { path: '/short-links', title: '短链接管理', icon: 'link-variant' },
         { path: '/analytics', title: '网站分析', icon: 'chart-line' },
         { path: '/feedback-center', title: '反馈中心', icon: 'feedback' },
     ];
@@ -208,8 +209,7 @@ function openAyAccountCenter() {
         <aside v-if="!mobileByWidth" class="md-nav-drawer">
             <!-- 悬停账号块：var-menu(trigger="hover") 弹出账号卡，内容与账号概览一致。
                  不加 offset：hover 菜单与触发块之间有间隙时容易移出即关闭。 -->
-            <var-menu trigger="hover" placement="right-start"
-                popover-class="md-account-popover">
+            <var-menu trigger="hover" placement="right-start" popover-class="md-account-popover">
                 <div class="md-nav-drawer__header">
                     <var-avatar v-if="user?.avatar" :src="user.avatar" :size="40" class="md-nav-avatar" />
                     <var-avatar v-else :size="40" class="md-nav-avatar">
@@ -251,8 +251,7 @@ function openAyAccountCenter() {
                                 <span class="md-account-card__label">UID</span>
                                 <span class="md-account-card__value">
                                     {{ user.sub }}
-                                    <var-button text round class="md-account-copy" aria-label="复制 UID"
-                                        @click="copyUid">
+                                    <var-button text round class="md-account-copy" aria-label="复制 UID" @click="copyUid">
                                         <my-icon icon="content-copy" size="16px" />
                                     </var-button>
                                 </span>

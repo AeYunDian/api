@@ -1,4 +1,4 @@
-// utils.js —— 由 ayConsole.js 拆分而来（逐行搬运，未改逻辑）
+// utils.js
 // 请求参数与上传体的解析助手。
 
 function parseBool(v) {

@@ -1,12 +1,13 @@
-# console —— console.undz.cn（管理后台 API）
+# console —— console.undz.cn（管理后台 API）+ go.undz.cn（短链跳转）
 
-一个域名两套接口：
+两个域名、三套接口：
 
-- `/api/console/*` —— 后台业务接口（OAuth 应用、用户、反馈、站点统计）
+- `/api/console/*` —— 后台业务接口（OAuth 应用、用户、反馈、站点统计、短链接）
 - `/api/filesmanager` —— R2 文件管理（上传 / 更新 / 列表 / 下载 / 删除）
+- `go.undz.cn/{code}` —— 短链接公开跳转（含可选密码页，**不经过登录态**）
 
-入口 [`ayConsole.js`](./ayConsole.js) 只做鉴权与分发，业务在 `routes/`。所有代码由早期单文件
-`ayConsole.js`（1248 行）逐行搬运而来，**块内逻辑未改写**。
+入口 [`ayConsole.js`](./ayConsole.js) 只做鉴权与分发，业务在 `routes/`；短链跳转在
+[`shortlink.js`](./shortlink.js)，由 `src/index.js` 直接挂到 `go.undz.cn`。
 
 ## 目录与职责
 
@@ -15,10 +16,13 @@
 | `ayConsole.js` | 入口：CORS/OPTIONS、登录态校验、算 `isAdmin`、按前缀分发 |
 | `http.js` | `jsonResponse` / `corsHeaders`（含跨域白名单） |
 | `utils.js` | `parseBool` / `normalizePath`（路径归一与穿越防护）/ `readUploadBody`（表单或 JSON） |
+| `config.js` | 短链配额、字符集、密码与限流参数、`buildShortUrl` |
+| `shortlink.js` | `go.undz.cn` 公开跳转：短码查询、302、密码页、点击计数 |
 | `routes/oauth.js` | OAuth 客户端：注册、列表、删除、转移 |
 | `routes/users.js` | 当前用户、用户列表、封禁/解封 |
 | `routes/feedback.js` | 反馈：列表、提交、删除、转移、详情、改状态、回复 |
 | `routes/sites.js` | 统计站点：列表、创建、删除、转移 |
+| `routes/links.js` | 短链接：列表、创建、修改、软删、换码、转移 |
 | `routes/files.js` | R2 文件管理，自带管理员校验与 try/catch |
 
 ## 请求流程
@@ -75,7 +79,7 @@ console.undz.cn/*
 | DELETE | `/api/console/oauth/client/{client_id}` | 所有者或管理员 | 删除应用 |
 | PUT | `/api/console/oauth/client/transfer` | 管理员 | 把应用所有权转给另一个用户 |
 
-限制：**每个用户最多 3 个客户端**（`Maximum 3 clients per user`）。
+限制：**每个用户最多 6 个客户端**（`Maximum 6 clients per user`，管理员不限）。
 
 ### 用户（`routes/users.js`）
 
@@ -141,14 +145,50 @@ console.undz.cn/*
 对外下载走**另一个域名**：`files.undz.cn/files/{code}`（见 `services/files/ayFiles.js`），
 带口令的文件会返回一个口令表单，猜对后直出文件。
 
+### 短链接（`routes/links.js` + `shortlink.js`）
+
+管理接口（前缀 `/api/console/links`，全部需要登录）：
+
+| 方法 | 路径 | 权限 | 说明 |
+|---|---|---|---|
+| GET | `/api/console/links` | 登录 | 列表，`cursor` / `limit` / `q` / `status`；管理员看全部并附带 `creator_username` |
+| POST | `/api/console/links` | 登录 | 创建，body: `{ target, code?, title?, password?, expires_at? }` |
+| GET | `/api/console/links/{id}` | 所有者或管理员 | 详情 |
+| PATCH | `/api/console/links/{id}` | 所有者或管理员 | 改目标 / 短码 / 备注 / 密码 / 过期 / 状态 |
+| DELETE | `/api/console/links/{id}` | 所有者或管理员 | 软删除（`status='deleted'`，短码不复用） |
+| POST | `/api/console/links/{id}/rotate` | 所有者或管理员 | 重新生成短码 |
+| PUT | `/api/console/links/{id}/transfer` | 管理员 | 转移所有权 |
+
+公开跳转：
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `go.undz.cn/{code}` | 302 到目标；带密码时返回密码表单 |
+| POST | `go.undz.cn/{code}` | 校验密码，通过后写 10 分钟免密 Cookie 并 302 |
+
+规则：
+
+| 项 | 值 |
+|---|---|
+| 配额 | 普通用户 100 条（软删释放），管理员不限 |
+| 短码字符集 | 普通用户 `a-z 1-9 /`；管理员额外 `A-Z @ # $ % * ( )` |
+| 短码长度 | 普通用户 3–250；管理员 1–250 |
+| 密码 | 可选，PBKDF2-SHA256 10 万次 + 每链接随机盐，不存明文 |
+| 点击统计 | `click_count` / `last_clicked_at`，跳转时异步 +1 |
+| 过期 | `expires_at` 秒级时间戳；到期后公开访问统一 404 |
+| 短码保留 | 软删后短码永久保留，避免旧链接被他人注册劫持 |
+
+> `#` 和 `%` 在 URL 路径里必须转义，`config.js` 的 `buildShortUrl()` 会逐段
+> `encodeURIComponent`，对外展示的 `short_url` 可直接复制访问。
+
 ## 扩展指南
 
 1. 新端点先选文件：OAuth 相关 → `oauth.js`；用户 → `users.js`；反馈 → `feedback.js`；
-   统计 → `sites.js`；文件 → `files.js`。
+   统计 → `sites.js`；短链接 → `links.js`；文件 → `files.js`。
 2. 保持 `if (path === "..." && method === "POST") { ... }` 形状，用 `jsonResponse(data, status, cors)`。
 3. 需要管理员：用 ctx 里的 `isAdmin`，别自己再查。
 4. 需要新表字段：改 `services/account/db/schema.js` 并跑一次 `/api/ayonline/init`（没有迁移系统）。
-5. 需要错误码：从 `shared/error-codes.js` 的 1100–1199 段取号（控制台段目前还没用）。
+5. 需要错误码：从 `shared/error-codes.js` 的 1100–1199 段取号（短链已用到 1113）。
 6. 自查：`npm run lint` + `wrangler deploy --dry-run`。
 
 ## 已知债
@@ -159,3 +199,5 @@ console.undz.cn/*
 - **兜底泄露栈**：`/api/filesmanager` 之外的最外层 catch 仍把 `err.message`/`err.stack`
   拼进 500 响应体（拆分前就有的写法），生产环境建议只回通用文案。
 - **`/api/console/*` 没有限流**：只有反馈提交用了 `env.limiter`，其它接口靠登录态兜底。
+- **短链密码尝试限流是进程内的**：isolate 之间不共享，属于软限制；要强一致需要落 D1。
+- **旧 `links` 表**：`api.undz.cn` 的历史短链表已停止读写，数据未迁移，确认无人使用后可删除。

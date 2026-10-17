@@ -17,12 +17,13 @@
 | 域名 | 模块 | 说明 |
 |---|---|---|
 | `online.undz.cn` | `services/account/ayOnline.js` | 统一账号 / OAuth2（全站登录态的根） |
-| `console.undz.cn` | `services/console/ayConsole.js` | 管理后台 API |
+| `console.undz.cn` | `services/console/ayConsole.js` | 管理后台 API + 短链接管理 |
+| `go.undz.cn` | `services/console/shortlink.js` | 短链接公开跳转（`/{code}`） |
 | `mysites.undz.cn` | `services/analytics/ayAnalytics.js` | 埋点采集 + 统计查询 |
 | `files.undz.cn` | `services/files/ayFiles.js` | R2 文件分发（`/files/{code}`） |
 | `relay.undz.cn` | `services/relay/wsRelay.js` | WebSocket 中继（PSP 1.0） |
 | `ai.undz.cn` / `yzh.ai.undz.cn` | `services/ai/*` | Workers AI 代理 |
-| `api.undz.cn` / `api.io.hb.cn` | `services/gateway/uniAPI.js` | 二维码 / IP / 短链 / 毕业纪念册 |
+| `api.undz.cn` / `api.io.hb.cn` | `services/gateway/uniAPI.js` | 二维码 / IP / 毕业纪念册 |
 | `chat.undz.cn` / `c.undz.cn` | `services/chat/ayChatRoom.js` | 聊天室（数据层在 `chat_room.js`） |
 | `cdn.undz.cn` | `services/cdn/jsdelivrCDN.js` | jsDelivr / gstatic 代理 |
 | `i0/i1/i2.undz.cn` | `services/image/*` | 图床反代（三份仅换 host） |
@@ -60,19 +61,21 @@ src/
 │   │   ├── ayConsole.js          # 入口：OPTIONS、登录态校验、按前缀分发
 │   │   ├── http.js               # jsonResponse / corsHeaders / 域名白名单
 │   │   ├── utils.js              # parseBool / normalizePath / readUploadBody
+│   │   ├── config.js             # 短链配额、字符集、限流等常量
+│   │   ├── shortlink.js          # go.undz.cn —— 公开跳转 + 密码页
 │   │   └── routes/
 │   │       ├── oauth.js          # /api/console/oauth/*（注册 / 列表 / 删除 / 转移）
 │   │       ├── users.js          # /users /user/ban /me
 │   │       ├── feedback.js       # /feedback/*（列表 / 提交 / 删除 / 转移 / 详情 / 改状态 / 回复）
 │   │       ├── sites.js          # /sites*（统计站点增删查与转移）
+│   │       ├── links.js          # /api/console/links*（短链增删改查 / 换码 / 转移）
 │   │       └── files.js          # /api/filesmanager（R2 上传 / 更新 / 下载 / 删除）
 │   ├── analytics/ayAnalytics.js  # mysites.undz.cn —— 埋点采集与统计
 │   ├── relay/wsRelay.js          # relay.undz.cn —— WebSocket 中继（PSP 1.0，含离线队列）
 │   ├── ai/ai.js                  # ai.undz.cn —— Workers AI 流式代理
 │   ├── ai/yzh.ai.js              # yzh.ai.undz.cn —— 另一个 AI 入口
 │   ├── files/ayFiles.js          # files.undz.cn —— R2 文件分发（含口令保护）
-│   ├── gateway/uniAPI.js         # api.undz.cn —— 通用网关：二维码 / IP / 短链 / 毕业纪念册
-│   ├── gateway/short_link_v1.js
+│   ├── gateway/uniAPI.js         # api.undz.cn —— 通用网关：二维码 / IP / 毕业纪念册
 │   ├── gateway/graduation_yearbook_v1.js
 │   ├── crossfire/v1/crossfire.js # uniAPI 内的账号 + 背包子模块
 │   ├── chat/ayChatRoom.js        # chat.undz.cn —— 路由与页面

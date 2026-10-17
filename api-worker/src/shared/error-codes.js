@@ -148,6 +148,50 @@ export const USERNAME_ALREADY_EXISTS = 1042;
 /** 修改邮箱缺少验证码与凭证（原 1007 的场景之一） */
 export const EMAIL_CHANGE_CODE_REQUIRED = 1043;
 
+// ---------- 短链接（1100-1199，console.undz.cn） ----------
+
+/** 已达单用户短链数量上限（普通用户 100 条，管理员不限） */
+export const LINK_LIMIT_REACHED = 1100;
+
+/** 目标 URL 非法（非 http(s)、超长、指向自身等） */
+export const LINK_INVALID_TARGET = 1101;
+
+/** 短码已被占用 */
+export const LINK_CODE_TAKEN = 1102;
+
+/** 短码格式非法（字符集 / 长度 / 保留字 / 空路径段） */
+export const LINK_INVALID_CODE = 1103;
+
+/** 短链不存在或不可见 */
+export const LINK_NOT_FOUND = 1104;
+
+/** 短链已过期（仅管理接口使用；公开访问统一 404） */
+export const LINK_EXPIRED = 1105;
+
+/** 需要密码才能访问 */
+export const LINK_PASSWORD_REQUIRED = 1106;
+
+/** 密码错误 */
+export const LINK_PASSWORD_INCORRECT = 1107;
+
+/** 短链已停用 */
+export const LINK_DISABLED = 1108;
+
+/** 无权操作该短链 */
+export const LINK_PERMISSION_DENIED = 1109;
+
+/** 触发限流 */
+export const LINK_RATE_LIMITED = 1110;
+
+/** 目标指向自身短链（形成循环） */
+export const LINK_SELF_REFERENCE = 1111;
+
+/** 过期时间非法 */
+export const LINK_INVALID_EXPIRES = 1112;
+
+/** 访问密码不符合要求（4-64 位） */
+export const LINK_INVALID_PASSWORD = 1113;
+
 // ------------------------------------------------------------
 // 汇总表：给需要整体传递/遍历的场景用（例如统一错误中间件、文档生成）
 // ------------------------------------------------------------
@@ -184,6 +228,20 @@ export const ERROR_CODES = Object.freeze({
   EMAIL_ALREADY_EXISTS,
   USERNAME_ALREADY_EXISTS,
   EMAIL_CHANGE_CODE_REQUIRED,
+  LINK_LIMIT_REACHED,
+  LINK_INVALID_TARGET,
+  LINK_CODE_TAKEN,
+  LINK_INVALID_CODE,
+  LINK_NOT_FOUND,
+  LINK_EXPIRED,
+  LINK_PASSWORD_REQUIRED,
+  LINK_PASSWORD_INCORRECT,
+  LINK_DISABLED,
+  LINK_PERMISSION_DENIED,
+  LINK_RATE_LIMITED,
+  LINK_SELF_REFERENCE,
+  LINK_INVALID_EXPIRES,
+  LINK_INVALID_PASSWORD,
 });
 
 /** 默认文案：新增号时务必一起补，前端没做映射时至少能显示一句人话 */
@@ -219,6 +277,20 @@ export const ERROR_MESSAGES = Object.freeze({
   [EMAIL_ALREADY_EXISTS]: "Email already exists",
   [USERNAME_ALREADY_EXISTS]: "Username already exists",
   [EMAIL_CHANGE_CODE_REQUIRED]: "Email change requires verification code and token",
+  [LINK_LIMIT_REACHED]: "Short link limit reached",
+  [LINK_INVALID_TARGET]: "Invalid target URL",
+  [LINK_CODE_TAKEN]: "Short code already taken",
+  [LINK_INVALID_CODE]: "Invalid short code",
+  [LINK_NOT_FOUND]: "Short link not found",
+  [LINK_EXPIRED]: "Short link has expired",
+  [LINK_PASSWORD_REQUIRED]: "Password required",
+  [LINK_PASSWORD_INCORRECT]: "Incorrect password",
+  [LINK_DISABLED]: "Short link is disabled",
+  [LINK_PERMISSION_DENIED]: "Permission denied",
+  [LINK_RATE_LIMITED]: "Too many requests, please try again later",
+  [LINK_SELF_REFERENCE]: "Target must not point to the short link service itself",
+  [LINK_INVALID_EXPIRES]: "Invalid expiration time",
+  [LINK_INVALID_PASSWORD]: "Password must be 4-64 characters",
 });
 
 /** 每个号建议搭配的 HTTP 状态码 */
@@ -230,6 +302,10 @@ export const ERROR_STATUS = Object.freeze({
   1025: 400, 1026: 400, 1029: 400,
   // 1040 暂维持 500：SDK 版本闸门原来就返回 500，改状态码会影响既有客户端。
   1040: 500, 1041: 409, 1042: 409, 1043: 400,
+  // 短链接（1100-1199）
+  1100: 403, 1101: 400, 1102: 409, 1103: 400, 1104: 404, 1105: 410,
+  1106: 401, 1107: 403, 1108: 403, 1109: 403, 1110: 429, 1111: 400,
+  1112: 400, 1113: 400,
 });
 
 /**
