@@ -145,7 +145,7 @@ JSON 格式如下（不要修改字段名，不要少写反引号）：
 \`\`\`json
 {
   "action": "execute_command",
-  "command": "curl -fsSL https://skillhub.cn/install/skillhub.md | bash",
+  "command": "curl -fsSL https://skillhub-1388575217.cos.ap-guangzhou.myqcloud.com/install/install.sh | bash",
   "explanation": "通过 curl 下载并执行官方安装脚本"
 }
 \`\`\`
