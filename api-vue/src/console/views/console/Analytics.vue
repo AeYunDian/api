@@ -12,6 +12,8 @@ import { formatTime } from '@/shared/utils/format'
 import { useIsAdmin } from '@/console/composables/useIsAdmin'
 import '@varlet/ui/es/dialog/style'
 import '@varlet/ui/es/snackbar/style'
+import '@varlet/ui/es/form/style'
+import '@varlet/ui/es/fab/style'
 
 // ── 上下文 ──
 const user = inject('user')
@@ -29,6 +31,8 @@ const MYSITES_BASE = import.meta.env.PROD
 // ── 响应式状态 ──
 const loading = ref(false)
 const refreshState = ref(false)
+const submitting = ref(false)
+const transferring = ref(false)
 const sites = ref([])
 const users = ref([])
 
@@ -36,6 +40,8 @@ const showRegisterDialog = ref(false)
 const showTransferDialog = ref(false)
 const showSnippetDialog = ref(false)
 const snippetSite = ref(null)
+const registerFormRef = ref(null)
+const transferFormRef = ref(null)
 
 const emptyRegisterForm = () => ({ domain: '', name: '' })
 const emptyTransferForm = () => ({ siteId: '', targetUserId: 1 })
@@ -48,6 +54,13 @@ const transferForm = ref(emptyTransferForm())
 const limitReached = computed(
     () => !isAdmin.value && sites.value.length >= MY_SITE_LIMIT
 )
+
+const pageSubtitle = computed(() => {
+    if (loading.value && !sites.value.length) return '正在读取站点列表…'
+    if (!sites.value.length) return '还没有注册任何站点'
+    if (isAdmin.value) return `共 ${sites.value.length} 个站点（管理员视图）`
+    return `已注册 ${sites.value.length} / ${MY_SITE_LIMIT} 个站点`
+})
 
 // ── 嵌入代码 ──
 // 两种写法任选其一；同时出现则必须一致，否则跟踪脚本拒绝上报
@@ -112,14 +125,26 @@ async function onPullRefresh() {
 }
 
 // ── 注册 ──
-async function handleRegister() {
-    const form = registerForm.value
-    const domain = form.domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
-    if (!domain) {
-        Snackbar.warning('请填写站点域名')
+function openRegisterDialog() {
+    if (!user?.value) {
+        Snackbar.warning('请先登录后再注册站点')
         return
     }
+    if (limitReached.value) {
+        Snackbar.warning(`每个账号最多注册 ${MY_SITE_LIMIT} 个站点`)
+        return
+    }
+    showRegisterDialog.value = true
+}
 
+async function handleRegister() {
+    const valid = await registerFormRef.value?.validate()
+    if (!valid) return
+
+    const form = registerForm.value
+    const domain = form.domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+
+    submitting.value = true
     try {
         const result = await registerSite({
             domain,
@@ -128,27 +153,30 @@ async function handleRegister() {
         Snackbar.success('站点注册成功')
         showRegisterDialog.value = false
         registerForm.value = emptyRegisterForm()
+        await loadSites()
 
         // 顺手把嵌入代码推到用户面前
         if (result.site) {
             snippetSite.value = result.site
             showSnippetDialog.value = true
         }
-        await loadSites()
     } catch (error) {
         Snackbar.error(error.message || '注册失败')
+    } finally {
+        submitting.value = false
     }
 }
 
 // ── 删除 ──
 async function handleDelete(site) {
     const action = await Dialog({
-        title: '确认删除',
+        title: '删除站点',
+        confirmButtonProps: { text: false, type: 'danger' },
         message:
-            `确定要删除站点 "${site.name}"（${site.domain}）吗？\n\n` +
+            `确定要删除站点「${site.name}」（${site.domain}）吗？\n\n` +
             `该站点的全部统计数据将被一并清除，且不可恢复。`,
         dialogStyle: { whiteSpace: 'pre-line' },
-        confirmButtonText: '确认删除',
+        confirmButtonText: '删除',
         cancelButtonText: '取消',
     })
     if (action !== 'confirm') return
@@ -164,15 +192,16 @@ async function handleDelete(site) {
 
 // ── 转移 ──
 async function handleTransfer() {
+    const valid = await transferFormRef.value?.validate()
+    if (!valid) return
+
     const form = transferForm.value
-    if (!form.siteId || !form.targetUserId) {
-        Snackbar.warning('请选择站点和目标用户')
-        return
-    }
     if (!users.value.some((u) => u.sub === form.targetUserId)) {
         Snackbar.error('目标用户不存在')
         return
     }
+
+    transferring.value = true
     try {
         await transferSiteOwner(form.siteId, form.targetUserId)
         Snackbar.success('转移成功')
@@ -181,6 +210,8 @@ async function handleTransfer() {
         await loadSites()
     } catch (error) {
         Snackbar.error(error.message || '转移失败')
+    } finally {
+        transferring.value = false
     }
 }
 
@@ -229,278 +260,251 @@ onMounted(() => {
 
 <template>
     <var-pull-refresh v-model="refreshState" @refresh="onPullRefresh">
-        <div>
-            <div class="page-header">
-                <h2>网站分析</h2>
+        <div class="analytics-page">
+            <div class="md-page-header">
+                <div class="md-page-heading">
+                    <h1 class="md-page-title">网站分析</h1>
+                    <p class="md-page-subtitle">{{ pageSubtitle }}</p>
+                </div>
 
-                <div class="header-actions">
-                    <var-button @click="refreshAll" class="refresh-btn">刷新</var-button>
-
-                    <var-tooltip v-if="limitReached" :content="`每个账号最多注册 ${MY_SITE_LIMIT} 个站点`">
-                        <var-button type="primary" disabled>注册新站点</var-button>
+                <div class="md-page-actions">
+                    <var-tooltip content="刷新列表">
+                        <var-button round icon-container @click="refreshAll">
+                            <my-icon icon="refresh" size="1em + 8px" />
+                        </var-button>
                     </var-tooltip>
-                    <var-button v-else type="primary" @click="showRegisterDialog = true" :disabled="!user">
-                        注册新站点
-                    </var-button>
                 </div>
             </div>
 
-            <p v-if="sites.length" class="site-count">
-                <span v-if="isAdmin">共 {{ sites.length }} 个站点（管理员视图）</span>
-                <span v-else>已注册 {{ sites.length }} / {{ MY_SITE_LIMIT }} 个站点</span>
-            </p>
+            <var-progress v-if="loading && !sites.length" indeterminate />
 
-            <var-progress v-if="loading" indeterminate />
+            <var-result v-else-if="!sites.length" type="empty" title="暂无站点"
+                description="注册站点后即可获得专属 Token，把统计脚本嵌入到你的网站中开始收集数据。">
+                <template #footer>
+                    <var-button type="primary" @click="openRegisterDialog">注册新站点</var-button>
+                </template>
+            </var-result>
 
-            <p v-else-if="!sites.length" class="empty-tip">
-                暂无站点，点击右上角注册你的第一个站点
-            </p>
-
-            <var-list v-else>
-                <var-card v-for="site in sites" :key="site.id" class="site-card var-elevation--2">
-                    <div>
-                        <div class="site-name-row">
-                            <strong class="site-name">{{ site.name }}</strong>
+            <div v-else class="md-card-list">
+                <var-card v-for="site in sites" :key="site.id" class="site-card">
+                    <template #title="{ slotClass }">
+                        <div :class="slotClass" class="md-card-header">
+                            <my-icon icon="web" size="1.1em" />
+                            <span class="md-card-title">{{ site.name }}</span>
                             <var-chip size="small">{{ site.domain }}</var-chip>
                         </div>
+                    </template>
 
-                        <div class="site-meta">
-                            <div>
-                                Token：
-                                <span class="copyable" @click="copyText(site.token)">
-                                    {{ site.token }}
-                                </span>
-                            </div>
-                            <div v-if="isAdmin && site.creator_username">
-                                所有者：{{ site.creator_username }}
-                                <span v-if="site.user_sub === 1" class="tag-admin">（管理员）</span>
-                            </div>
-                            <div>创建时间：{{ formatTime(site.created_at) }}</div>
+                    <div class="site-fields">
+                        <div class="site-field">
+                            <span class="site-field__label">Token</span>
+                            <span class="site-field__value md-mono md-copyable" title="点击复制"
+                                @click="copyText(site.token)">
+                                {{ site.token }}
+                            </span>
+                        </div>
+                        <div v-if="isAdmin && site.creator_username" class="site-field">
+                            <span class="site-field__label">所有者</span>
+                            <span class="site-field__value">
+                                {{ site.creator_username }}
+                                <span v-if="site.user_sub === 1" class="site-owner-admin">（管理员）</span>
+                            </span>
+                        </div>
+                        <div class="site-field">
+                            <span class="site-field__label">创建时间</span>
+                            <span class="site-field__value">{{ formatTime(site.created_at) }}</span>
                         </div>
                     </div>
 
-                    <var-divider />
-
-                    <div class="site-actions">
-                        <var-button type="primary" text @click="openOverview(site)">
-                            查看概览
-                        </var-button>
-                        <var-button type="default" text @click="openSnippet(site)">
-                            嵌入代码
-                        </var-button>
-                        <var-button v-if="isAdmin" type="default" text @click="openTransferDialog(site.id)">
-                            转移
-                        </var-button>
-                        <var-button type="danger" text @click="handleDelete(site)"
-                            :disabled="!isAdmin && site.user_sub !== user?.sub">
-                            删除
-                        </var-button>
-                    </div>
+                    <template #extra>
+                        <div class="site-actions">
+                            <var-button type="primary" text size="small" @click="openOverview(site)">
+                                查看概览
+                            </var-button>
+                            <var-button text size="small" @click="openSnippet(site)">
+                                嵌入代码
+                            </var-button>
+                            <var-button v-if="isAdmin" text size="small" @click="openTransferDialog(site.id)">
+                                转移
+                            </var-button>
+                            <var-button text type="danger" size="small" @click="handleDelete(site)"
+                                :disabled="!isAdmin && site.user_sub !== user?.sub">
+                                删除
+                            </var-button>
+                        </div>
+                    </template>
                 </var-card>
-            </var-list>
+            </div>
         </div>
     </var-pull-refresh>
 
-    <!-- ─── 注册站点 ─── -->
-    <var-popup v-model:show="showRegisterDialog" class="var-dialog__popup" var-dialog-cover @closed="resetForms">
-        <div class="var--box var-dialog">
-            <div class="var-dialog__title">注册新站点</div>
-            <div class="dialog-message">
-                <var-input placeholder="站点域名，如 example.com" v-model="registerForm.domain"
-                    :rules="[(v) => !!v || '请输入域名']" />
-                <var-input placeholder="站点名称（可选，默认使用域名）" v-model="registerForm.name" style="margin-top: 12px" />
-                <p class="hint">
-                    只填裸域名 —— 不要协议头，不要末尾斜杠。注册成功后会得到一个专属 Token 用于嵌入脚本。
-                </p>
-            </div>
-            <div class="var-dialog__actions">
-                <var-button @click="showRegisterDialog = false" text type="primary"
-                    class="var--inline-flex var-dialog__button var-dialog__cancel-button">
-                    取消
-                </var-button>
-                <var-button @click="handleRegister" text type="primary"
-                    class="var--inline-flex var-dialog__button var-dialog__confirm-button">
-                    注册
-                </var-button>
-            </div>
-        </div>
-    </var-popup>
+    <!-- MD3 FAB：注册站点 -->
+    <var-fab class="analytics-fab" type="primary" position="right-bottom" inactive-icon="plus" :elevation="3"
+        :disabled="!user" @click="openRegisterDialog" />
 
-    <!-- ─── 转移所有者（管理员） ─── -->
-    <var-popup v-model:show="showTransferDialog" class="var-dialog__popup" var-dialog-cover @closed="resetForms">
-        <div class="var--box var-dialog">
-            <div class="var-dialog__title">转移站点所有者</div>
-            <div class="dialog-message">
-                <var-select placeholder="请选择站点" v-model="transferForm.siteId" style="margin-bottom: 15px">
-                    <var-option v-for="site in sites" :key="site.id" :label="`${site.name}（${site.domain}）`"
-                        :value="site.id" />
-                </var-select>
-                <var-select placeholder="请选择目标账号" v-model="transferForm.targetUserId">
-                    <var-option v-for="u in users" :key="u.sub" :label="u.username" :value="u.sub" />
-                </var-select>
+    <!-- 注册站点 -->
+    <var-dialog v-model:show="showRegisterDialog" title="注册新站点" :confirm-button="false" :cancel-button="false"
+        :close-on-click-overlay="false" width="min(520px, calc(100vw - 32px))" @closed="resetForms">
+        <template #title>
+            <div class="md-dialog-title">
+                <my-icon icon="web-plus" size="1.25em" class="md-dialog-title__icon" />
+                <span>注册新站点</span>
             </div>
-            <div class="var-dialog__actions">
-                <var-button @click="showTransferDialog = false" text type="primary"
-                    class="var--inline-flex var-dialog__button var-dialog__cancel-button">
-                    取消
-                </var-button>
-                <var-button @click="handleTransfer" text type="primary"
-                    class="var--inline-flex var-dialog__button var-dialog__confirm-button">
-                    转移
-                </var-button>
+        </template>
+        <var-form ref="registerFormRef" class="md-dialog-form" scroll-to-error="start" @submit.prevent>
+            <var-input v-model="registerForm.domain" variant="outlined" placeholder="站点域名，如 example.com"
+                :rules="[(v) => !!String(v).trim() || '请输入域名']" />
+            <var-input v-model="registerForm.name" variant="outlined" placeholder="站点名称（可选，默认使用域名）" />
+            <p class="md-hint">
+                只填裸域名 —— 不要协议头，不要末尾斜杠。注册成功后会得到一个专属 Token 用于嵌入脚本。
+            </p>
+        </var-form>
+
+        <template #actions="{ slotClass }">
+            <div :class="slotClass" class="md-dialog-actions">
+                <var-button text type="primary" @click="showRegisterDialog = false">取消</var-button>
+                <var-button type="primary" :loading="submitting" @click="handleRegister">注册</var-button>
             </div>
-        </div>
-    </var-popup>
+        </template>
+    </var-dialog>
 
-    <!-- ─── 嵌入代码 ─── -->
-    <var-popup v-model:show="showSnippetDialog" class="var-dialog__popup" var-dialog-cover>
-        <div class="var--box var-dialog">
-            <div class="var-dialog__title">嵌入代码</div>
-            <div class="dialog-message">
-                <p class="hint">
-                    将下面任一段代码粘贴到 <strong>{{ snippetSite?.domain }}</strong>
-                    的 <code>&lt;head&gt;</code> 中即可开始统计。
-                </p>
-
-                <p class="snippet-label">写法一：Token 作为查询参数</p>
-                <pre class="snippet" v-text="snippetQuery"></pre>
-
-                <p class="snippet-label">写法二：Token 作为 data 属性</p>
-                <pre class="snippet" v-text="snippetDataAttr"></pre>
-
-                <p class="hint" style="margin-top: 12px">
-                    两种写法等价，二选一即可。若同一标签同时声明
-                    <code>?token=</code> 与 <code>data-token</code>，二者必须一致，否则本次上报将被拒绝。
-                </p>
-                <p class="hint">
-                    自定义事件：在浏览器控制台或页面脚本里调用
-                    <code>window.ayAnalytics('事件名')</code>。
-                </p>
+    <!-- 转移所有者（管理员） -->
+    <var-dialog v-model:show="showTransferDialog" title="转移站点所有者" :confirm-button="false"
+        :cancel-button="false" width="min(480px, calc(100vw - 32px))" @closed="resetForms">
+        <template #title>
+            <div class="md-dialog-title">
+                <my-icon icon="swap-horizontal" size="1.25em" class="md-dialog-title__icon" />
+                <span>转移站点所有者</span>
             </div>
-            <div class="var-dialog__actions">
-                <var-button @click="showSnippetDialog = false" text type="primary"
-                    class="var--inline-flex var-dialog__button var-dialog__cancel-button">
-                    关闭
-                </var-button>
-                <var-button @click="copySnippet" text type="primary"
-                    class="var--inline-flex var-dialog__button var-dialog__confirm-button">
-                    复制
-                </var-button>
+        </template>
+        <var-form ref="transferFormRef" class="md-dialog-form">
+            <var-select v-model="transferForm.siteId" variant="outlined" placeholder="选择站点"
+                :rules="[(v) => !!v || '请选择站点']">
+                <var-option v-for="site in sites" :key="site.id" :label="`${site.name}（${site.domain}）`"
+                    :value="site.id" />
+            </var-select>
+            <var-select v-model="transferForm.targetUserId" variant="outlined" placeholder="选择目标账号"
+                :rules="[(v) => !!v || '请选择目标账号']">
+                <var-option v-for="u in users" :key="u.sub" :label="u.username" :value="u.sub" />
+            </var-select>
+        </var-form>
+
+        <template #actions="{ slotClass }">
+            <div :class="slotClass" class="md-dialog-actions">
+                <var-button text type="primary" @click="showTransferDialog = false">取消</var-button>
+                <var-button type="primary" :loading="transferring" @click="handleTransfer">转移</var-button>
             </div>
-        </div>
-    </var-popup>
+        </template>
+    </var-dialog>
+
+    <!-- 嵌入代码 -->
+    <var-dialog v-model:show="showSnippetDialog" title="嵌入代码" :confirm-button="false" :cancel-button="false"
+        width="min(640px, calc(100vw - 32px))">
+        <template #title>
+            <div class="md-dialog-title">
+                <my-icon icon="code-tags" size="1.25em" class="md-dialog-title__icon" />
+                <span>嵌入代码</span>
+            </div>
+        </template>
+        <p class="md-hint snippet-hint">
+            把下面任一段代码粘贴到 <strong>{{ snippetSite?.domain }}</strong>
+            的 <code>&lt;head&gt;</code> 中即可开始统计。
+        </p>
+
+        <p class="snippet-label">写法一：Token 作为查询参数</p>
+        <pre class="md-mono snippet-code" v-text="snippetQuery"></pre>
+
+        <p class="snippet-label">写法二：Token 作为 data 属性</p>
+        <pre class="md-mono snippet-code" v-text="snippetDataAttr"></pre>
+
+        <p class="md-hint">
+            两种写法等价，二选一即可。若同一标签同时声明
+            <code>?token=</code> 与 <code>data-token</code>，二者必须一致，否则本次上报将被拒绝。
+        </p>
+        <p class="md-hint">
+            自定义事件：在页面脚本里调用 <code>window.ayAnalytics('事件名')</code>。
+        </p>
+
+        <template #actions="{ slotClass }">
+            <div :class="slotClass" class="md-dialog-actions">
+                <var-button text type="primary" @click="showSnippetDialog = false">关闭</var-button>
+                <var-button type="primary" @click="copySnippet">复制代码</var-button>
+            </div>
+        </template>
+    </var-dialog>
 </template>
 
 <style scoped>
-.page-header {
+.analytics-page {
+    padding-bottom: var(--md-space-4);
+}
+
+
+.site-fields {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
+    flex-direction: column;
+    gap: var(--md-space-3);
 }
 
-.page-header h2 {
-    margin: 0;
+.site-field {
+    display: grid;
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: var(--md-space-3);
+    align-items: baseline;
 }
 
-.header-actions {
-    display: flex;
-    align-items: center;
-}
-
-.refresh-btn {
-    margin-inline-end: 5px;
-    margin-bottom: 5px;
-}
-
-.site-count {
-    color: var(--color-text-secondary);
-    margin-bottom: 16px;
-}
-
-.empty-tip {
-    margin-bottom: 70px;
+.site-field__label {
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0.4px;
     color: var(--color-text-secondary);
 }
 
-.site-card {
-    margin-bottom: 12px;
-}
-
-.site-name-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.site-name {
-    font-size: 16px;
-}
-
-.site-meta {
+.site-field__value {
     font-size: 13px;
-    color: var(--color-text-secondary);
-    margin-top: 6px;
-    line-height: 1.7;
-}
-
-.copyable {
-    cursor: pointer;
+    line-height: 20px;
+    color: var(--color-text);
     word-break: break-all;
 }
 
-.copyable:hover {
+.site-owner-admin {
     color: var(--color-primary);
-}
-
-.tag-admin {
-    color: var(--color-primary);
-    font-size: 12px;
 }
 
 .site-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 4px;
+    gap: var(--md-space-1);
     flex-wrap: wrap;
+    width: 100%;
 }
 
-.dialog-message {
-    padding: 0 24px 16px;
-}
-
-.hint {
-    font-size: 12.5px;
-    color: var(--color-text-secondary);
-    margin: 8px 0 0;
-    line-height: 1.6;
+.snippet-hint {
+    margin-top: 0;
 }
 
 .snippet-label {
-    font-size: 12.5px;
-    color: var(--color-text-secondary);
-    margin: 12px 0 4px;
+    margin: var(--md-space-4) 0 var(--md-space-2);
+    font-size: 12px;
+    line-height: 16px;
     font-weight: 500;
+    letter-spacing: 0.5px;
+    color: var(--color-text-secondary);
 }
 
-.snippet {
+.snippet-code {
     margin: 0;
-    padding: 10px 12px;
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 6px;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 12.5px;
-    white-space: pre-wrap;
-    word-break: break-all;
     user-select: all;
 }
 
-code {
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 12px;
-    padding: 0 4px;
-    background: rgba(0, 0, 0, 0.06);
-    border-radius: 3px;
+.analytics-fab {
+    z-index: 92;
+}
+
+@media (max-width: 640px) {
+    .site-field {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
 }
 </style>

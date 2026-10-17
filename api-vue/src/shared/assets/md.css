@@ -1,0 +1,1128 @@
+/* ============================================================================
+ * Material Design 3 设计层（Google Material You）
+ *
+ * 设计原则
+ * ----------------------------------------------------------------------------
+ * 1. 颜色不重复定义：Varlet 的 StyleProvider(Themes.md3Light/md3Dark) 会把
+ *    MD3 语义色注入为 --color-* （primary / primary-container / surface-container-* /
+ *    on-surface-variant / outline / inverse-surface ...），本文件只做「引用」。
+ * 2. 组件不自己造：布局、导航、弹层、表单、上传、面包屑全部复用 Varlet 组件，
+ *    这里只把 Varlet 的「组件级 CSS 变量」对齐到 MD3 规范（形状、密度、海拔、动效）。
+ * 3. 覆写用 `html:root` 而不是 `:root`：Varlet 每个组件的样式文件都以
+ *    `:root{ --button-*: ... }` 声明变量，特异性 (0,1,0)；`html:root` 是 (0,1,1)，
+ *    因此无论样式注入顺序如何，本文件都稳定生效。
+ * 4. MD3 专属的形状/密度只作用于 `html:not(.md2)`，MD2 皮肤保持原有观感。
+ *
+ * MD3 对照
+ * ----------------------------------------------------------------------------
+ * 顶栏 small top app bar   64dp（本工程为宿主窗口独占 54px，用 --md-app-bar-height 统一）
+ * 导航抽屉 navigation drawer 360dp 内 240-280dp，条目 56dp，激活指示 pill
+ * 卡片 card               12dp 圆角，surface-container 底色，level 1 海拔
+ * 对话框 dialog           28dp 圆角，surface-container-high，bottom-right 文本按钮
+ * 按钮 button             40dp 高，全圆角（stadium）
+ * FAB                     56dp，16dp 圆角，level 3 海拔，距边 24dp
+ * 列表项 list item        56dp 高，16dp 水平内边距
+ * 字体 Roboto             display/headline/title/body/label 五档，14sp 正文
+ * ========================================================================== */
+
+/* ---------- 1. 设计令牌（Design Tokens） ---------- */
+
+:root {
+  /* 布局 */
+  --md-app-bar-height: 64px;
+  --md-nav-drawer-width: 260px;
+  --md-fab-inset: 16px;
+  --md-content-max-width: 1120px;
+
+  /* 形状（MD3 shape scale） */
+  --md-shape-xs: 4px;
+  --md-shape-sm: 8px;
+  --md-shape-md: 12px;
+  --md-shape-lg: 16px;
+  --md-shape-xl: 28px;
+  --md-shape-full: 999px;
+
+  /* 间距（8dp 网格） */
+  --md-space-1: 4px;
+  --md-space-2: 8px;
+  --md-space-3: 12px;
+  --md-space-4: 16px;
+  --md-space-5: 20px;
+  --md-space-6: 24px;
+  --md-space-8: 32px;
+  --md-space-10: 40px;
+
+  /* 海拔（MD3 elevation level 0-5） */
+  --md-elevation-0: none;
+  --md-elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.3),
+    0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --md-elevation-2: 0 1px 2px 0 rgba(0, 0, 0, 0.3),
+    0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --md-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15),
+    0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  --md-elevation-4: 0 6px 10px 4px rgba(0, 0, 0, 0.15),
+    0 2px 3px 0 rgba(0, 0, 0, 0.3);
+  --md-elevation-5: 0 8px 12px 6px rgba(0, 0, 0, 0.15),
+    0 4px 4px 0 rgba(0, 0, 0, 0.3);
+
+  /* 动效（MD3 easing / duration） */
+  --md-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-duration-short: 120ms;
+  --md-duration-medium: 240ms;
+  --md-duration-long: 400ms;
+
+  /* 状态层不透明度（MD3 state layer） */
+  --md-state-hover: 0.08;
+  --md-state-focus: 0.12;
+  --md-state-pressed: 0.12;
+
+  /* 字体栈：Google Sans Mono → Roboto → Noto Sans → 系统字体。
+   * Google Sans Mono 不是公开可分发的 webfont，只有本机装了才会命中；
+   * 没装时自然回退到 Roboto（已在 base.css 里通过 CDN 引入）。 */
+  --md-font-family: "Google Sans Mono", "Roboto", "Noto Sans", system-ui,
+    -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  --md-font-mono: "Google Sans Mono", "Roboto Mono", ui-monospace,
+    SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* 兼容别名：工程内长期使用的变量名，统一指向 MD3 语义色 */
+  --color-text-secondary: var(--color-on-surface-variant, rgba(0, 0, 0, 0.6));
+  --color-text-tertiary: var(--color-outline, rgba(0, 0, 0, 0.38));
+  /* MD3 outline-variant：比 outline 更淡，用于分隔线/网格线。
+   * 老代码大量写了 `var(--color-outline-variant, rgba(0,0,0,.06))`，
+   * 暗色下那个黑色 fallback 会失效，这里补上真正的角色色。 */
+  --color-outline-variant: color-mix(
+    in srgb,
+    var(--color-outline) 45%,
+    transparent
+  );
+
+  /* Chrome（顶栏 + 导航抽屉）共用一种底色，视觉上连成一体；
+   * 内容区用 --md-panel-bg 单独铺一层，靠上方两个圆角与 chrome 分开。 */
+  --md-chrome-bg: var(--color-surface-container);
+  --md-chrome-fg: var(--color-text);
+  --md-panel-bg: var(--color-body);
+  --md-panel-radius: 20px;
+
+  /* 兼容旧命名（顶栏用） */
+  --md-app-bar-bg: var(--md-chrome-bg);
+  --md-app-bar-fg: var(--md-chrome-fg);
+}
+
+html.dark {
+  --md-chrome-bg: var(--color-surface-container);
+  --md-chrome-fg: var(--color-text);
+}
+
+/* 暗色下 MD3 海拔需要更大的阴影不透明度才可见 */
+html.dark {
+  --md-elevation-1: 0 1px 3px 1px rgba(0, 0, 0, 0.55),
+    0 1px 2px 0 rgba(0, 0, 0, 0.7);
+  --md-elevation-2: 0 2px 6px 2px rgba(0, 0, 0, 0.55),
+    0 1px 2px 0 rgba(0, 0, 0, 0.7);
+  --md-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.55),
+    0 1px 3px 0 rgba(0, 0, 0, 0.7);
+  --md-elevation-4: 0 6px 10px 4px rgba(0, 0, 0, 0.55),
+    0 2px 3px 0 rgba(0, 0, 0, 0.7);
+  --md-elevation-5: 0 8px 12px 6px rgba(0, 0, 0, 0.55),
+    0 4px 4px 0 rgba(0, 0, 0, 0.7);
+}
+
+/* ---------- 1b. Material You 蓝色调（Monet 取色，seed ≈ #0061A4） ----------
+ *
+ * Varlet 的 MD3 主题把颜色定义成「HSL 三元组 + 派生」两段：
+ *   --hsl-primary: "256, 34%, 48%";
+ *   --color-primary: hsla(var(--hsl-primary), 1);
+ * 所以只要覆盖三元组，所有派生色（组件、容器色、状态层、文字色）会一起变蓝，
+ * 不需要改 JS 主题对象，也不影响组件的其余变量。
+ *
+ * 覆盖用 `html:root:root`（0,2,1），压得过主题运行时注入的 `:root:root`（0,2,0）。
+ * 语义色一并拉回 Material 基线：青蓝 info、绿 success、琥珀 warning、红 danger。
+ */
+html:root:root {
+  /* 主色族：蓝 */
+  --hsl-primary: 206, 100%, 32%;
+  --hsl-on-primary: 0, 0%, 100%;
+  --hsl-primary-container: 208, 100%, 91%;
+  --hsl-on-primary-container: 207, 100%, 11%;
+
+  /* 中性表面：带一点点蓝的灰（莫奈风格的"冷白"） */
+  --hsl-body: 220, 100%, 99%;
+  --hsl-text: 210, 7%, 11%;
+  --hsl-surface-container-low: 220, 40%, 98%;
+  --hsl-surface-container: 215, 30%, 96%;
+  --hsl-surface-container-high: 213, 25%, 93%;
+  --hsl-surface-container-highest: 213, 22%, 91%;
+  --hsl-outline: 220, 9%, 48%;
+  --hsl-on-surface-variant: 215, 8%, 28%;
+  --hsl-inverse-surface: 210, 7%, 17%;
+  --hsl-disabled: 210, 12%, 88%;
+  --hsl-text-disabled: 210, 6%, 60%;
+
+  /* 语义色：主色变蓝后，把 varlet 那套"橄榄绿/酱紫"的语义色拉回 Material 基线，
+   * 否则状态 chip（待处理=warning、处理中=info）会和蓝色主色互相打架。 */
+  --hsl-info: 183, 100%, 21%;
+  --hsl-info-container: 183, 60%, 88%;
+  --hsl-on-info-container: 183, 100%, 11%;
+
+  --hsl-success: 102, 54%, 27%;
+  --hsl-success-container: 102, 40%, 84%;
+  --hsl-on-success-container: 102, 100%, 11%;
+
+  --hsl-warning: 38, 92%, 30%;
+  --hsl-warning-container: 45, 100%, 88%;
+  --hsl-on-warning-container: 38, 100%, 12%;
+}
+
+html.dark:root:root {
+  /* 暗色主色族：暗底上用浅蓝，容器用深蓝 */
+  --hsl-primary: 209, 100%, 84%;
+  --hsl-on-primary: 207, 100%, 17%;
+  --hsl-primary-container: 206, 100%, 24%;
+  --hsl-on-primary-container: 208, 100%, 91%;
+
+  --hsl-body: 210, 11%, 8%;
+  --hsl-text: 240, 6%, 89%;
+  --hsl-surface-container-low: 210, 10%, 10%;
+  --hsl-surface-container: 212, 9%, 13%;
+  --hsl-surface-container-high: 213, 8%, 17%;
+  --hsl-surface-container-highest: 212, 7%, 21%;
+  --hsl-outline: 216, 7%, 55%;
+  --hsl-on-surface-variant: 216, 12%, 80%;
+  --hsl-inverse-surface: 240, 6%, 89%;
+  --hsl-disabled: 210, 5%, 26%;
+  --hsl-text-disabled: 210, 5%, 55%;
+
+  --hsl-info: 178, 65%, 72%;
+  --hsl-info-container: 180, 100%, 20%;
+  --hsl-on-info-container: 180, 80%, 85%;
+
+  --hsl-success: 105, 60%, 75%;
+  --hsl-success-container: 105, 100%, 20%;
+  --hsl-on-success-container: 105, 80%, 87%;
+
+  --hsl-warning: 40, 100%, 78%;
+  --hsl-warning-container: 35, 100%, 22%;
+  --hsl-on-warning-container: 40, 100%, 88%;
+}
+
+/* ---------- 2. 把 Varlet 组件变量对齐到 MD3 ---------- */
+/*
+ * 关键：Varlet 的 MD3 皮肤会把组件级变量再注入一次到 <style id="varlet-style-vars">，
+ * 选择器是 `:root:root`（特异性 0,2,0），运行时插入 head 末尾。
+ * 所以这里统一用 `html:root:root`（0,2,1）：
+ *   · 压得过主题注入的 `:root:root`
+ *   · 也压得过各组件样式里的 `:root`
+ * 也就是说，本段每条声明都是「对 Varlet MD3 主题的修正」，而不是重复。
+ * 典型需要修正的点：主题把标题/文字色写成了硬编码 #1D1B20 或 inverse-surface，
+ * 在暗色或自定义配色下会失真，这里全部改回语义色。
+ */
+html:root:root {
+  /* --- 顶部应用栏：small top app bar（表面色 + 细分隔线，无彩色底） --- */
+  --app-bar-height: var(--md-app-bar-height);
+  --app-bar-font-size: 16px;
+  --app-bar-title-font-size: 16px;
+  --app-bar-title-padding: 0 var(--md-space-2);
+  --app-bar-left-gap: 12px;
+  --app-bar-right-gap: 12px;
+  --app-bar-surface-color: var(--color-body);
+  --app-bar-surface-text-color: var(--color-text);
+  --app-bar-border-bottom: 1px solid var(--color-outline);
+  --app-bar-surface-border-bottom: 1px solid var(--color-outline);
+  --app-bar-color: var(--color-primary);
+
+  /* --- 卡片：MD3 elevated card（12dp 圆角 / 低饱和表面 / level 1 海拔） --- */
+  --card-border-radius: var(--md-shape-md);
+  --card-background: var(--color-surface-container-low, var(--color-body));
+  --card-surface-low-background: var(--color-surface-container-low, var(--color-body));
+  --card-title-color: var(--color-text);
+  --card-title-font-size: 16px;
+  --card-title-padding: 0 var(--md-space-4);
+  --card-title-margin: 0;
+  --card-subtitle-margin: var(--md-space-1) 0 0;
+  --card-content-padding: 0 var(--md-space-4);
+  --card-content-margin: var(--md-space-3) 0 0;
+  --card-content-color: var(--color-on-surface-variant);
+  --card-subtitle-color: var(--color-on-surface-variant);
+  --card-description-color: var(--color-on-surface-variant);
+  --card-outline-color: var(--color-outline);
+  --card-footer-padding: 0 var(--md-space-4);
+  --card-footer-margin: var(--md-space-4) 0 0;
+  /* 上下留白交给容器 padding，避免标题靠 margin 塌陷出卡片 */
+  --card-padding: var(--md-space-4) 0 var(--md-space-4);
+
+  /* --- 对话框：MD3 dialog（28dp 圆角 / headline 标题 / bottom-right 操作区） --- */
+  --dialog-width: min(420px, calc(100vw - 32px));
+  --dialog-border-radius: var(--md-shape-xl);
+  --dialog-background: var(--color-surface-container-high);
+  --dialog-title-color: var(--color-text);
+  --dialog-title-font-size: 22px;
+  --dialog-title-padding: 28px 24px 0;
+  --dialog-message-color: var(--color-on-surface-variant);
+  --dialog-message-padding: 12px 24px 24px;
+  --dialog-actions-padding: 0 24px 24px;
+  --dialog-button-margin-left: 8px;
+  --dialog-confirm-button-color: var(--color-primary);
+  --dialog-cancel-button-color: var(--color-primary);
+
+  /* --- 列表项：MD3 list item（56dp / 16dp 内边距，分割线与内边距对齐） --- */
+  --cell-min-height: 56px;
+  --cell-padding: 12px var(--md-space-4);
+  --cell-border-color: var(--color-outline);
+  --cell-border-left: var(--md-space-4);
+  --cell-border-right: var(--md-space-4);
+  --cell-font-size: 14px;
+
+  /* --- 浮层：MD3 菜单 / 提示 4dp 圆角 --- */
+  --tooltip-border-radius: var(--md-shape-xs);
+  --tooltip-padding: 8px 12px;
+  --menu-border-radius: var(--md-shape-xs);
+  --select-scroller-border-radius: var(--md-shape-xs);
+  /* 多选 chip 的默认底色是硬编码的紫灰（rgb(218,212,219)），换成表面色 */
+  --select-chip-background-color: var(--color-surface-container-high);
+
+  /* --- 选项卡：透明底 + 上方圆角指示器（MD3 primary tabs） --- */
+  --tabs-background: transparent;
+  --tabs-indicator-border-radius: 3px 3px 0 0;
+
+  /* --- 图标按钮（icon-container）：中性 tonal 底 + on-surface-variant 图标 --- */
+  --button-default-icon-container-color: var(--color-surface-container-high);
+  --button-default-icon-color: var(--color-on-surface-variant);
+
+  /* --- 输入框：MD3 filled text field --- */
+  --field-decorator-filled-background-color: var(
+    --color-surface-container-highest
+  );
+  --field-decorator-filled-border-radius: var(--md-shape-xs);
+  --field-decorator-line-border-radius: var(--md-shape-xs);
+  --field-decorator-text-color: var(--color-text);
+  --field-decorator-blur-color: var(--color-on-surface-variant);
+  --field-decorator-placeholder-size: 16px;
+  --checkbox-text-color: var(--color-text);
+
+  /* --- 其他 --- */
+  --progress-linear-border-radius: var(--md-shape-full);
+  --uploader-file-border-radius: var(--md-shape-sm);
+  --uploader-action-background: var(--color-surface-container-high);
+  --uploader-action-icon-color: var(--color-on-surface-variant);
+}
+
+/* --- 形状 / 密度：按钮、Chip、FAB --- */
+html:root:root {
+  /* 按钮：40dp 高、全圆角、24dp 左右内边距 */
+  --button-border-radius: var(--md-shape-full);
+  --button-normal-height: 40px;
+  --button-large-height: 48px;
+  --button-small-height: 32px;
+  --button-mini-height: 24px;
+  --button-normal-padding: 0 24px;
+  --button-large-padding: 0 24px;
+  --button-small-padding: 0 16px;
+  --button-fab-border-radius: var(--md-shape-lg);
+
+  /* Chip：8dp 圆角、surface-container-high 底色 */
+  --chip-border-radius: var(--md-shape-sm);
+  --chip-default-color: var(--color-surface-container-high);
+  --chip-default-text-color: var(--color-on-surface-variant);
+
+  /* FAB：56dp / 16dp 圆角 / 距边 16dp（MD3） */
+  --fab-trigger-border-radius: var(--md-shape-lg);
+  --fab-trigger-size: 56px;
+  --fab-bottom: var(--md-fab-inset);
+  --fab-right: var(--md-fab-inset);
+  --fab-left: var(--md-fab-inset);
+}
+
+/* MD3 海拔：替换 M2 的三层阴影为 MD3 阴影，观感更轻 */
+html .var-elevation--1 {
+  box-shadow: var(--md-elevation-1);
+}
+
+html .var-elevation--2 {
+  box-shadow: var(--md-elevation-2);
+}
+
+html .var-elevation--3 {
+  box-shadow: var(--md-elevation-3);
+}
+
+html .var-elevation--4 {
+  box-shadow: var(--md-elevation-4);
+}
+
+/* 卡片统一使用 MD3 elevated card 的 level 1 海拔：
+ * 这样即使主题底色与页面底色接近（MD2 皮肤两者都是纯白），卡片也有明确的边界。 */
+html .var-card {
+  box-shadow: var(--md-elevation-1);
+}
+
+/*
+ * var-pull-refresh 自带 `overflow: hidden`，用于把下拉指示器（translateY(-125%)）
+ * 藏在盒子上方。所以：
+ *   · 不能放开成 visible / clip + margin —— 指示器的下半截会露进页面；
+ *   · 它内部的卡片阴影也会被裁成硬边。
+ * 结论：下拉刷新页里的卡片改用 MD3 outlined card —— 描边用 outline + negative
+ * offset 画在盒子内侧，既不会被裁，也不需要外部空间。
+ */
+html .var-pull-refresh .var-card {
+  box-shadow: none;
+  outline: 1px solid var(--color-outline);
+  outline-offset: -1px;
+}
+
+html .var-card__title {
+  font-weight: 500;
+  letter-spacing: 0.15px;
+}
+
+html .var-card__content {
+  line-height: 20px;
+}
+
+/* FAB 触发器用「填充主色」而不是 tonal（primary-container）：
+ * var-fab 内部把触发器渲染成 iconContainer 按钮，默认取 tonal 配色，
+ * 放在页面右下角对比度不足，这里显式改回 filled primary。 */
+html .var-fab__trigger[var-fab-cover] {
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+/* MD3 图标按钮统一 40dp 圆形：
+ * var-button--round 只设置了 padding，遇到只装图标的按钮会按内容高度撑成椭圆。 */
+html .var-button--round {
+  min-width: 40px;
+  min-height: 40px;
+  padding: var(--md-space-2);
+}
+
+/* 图标按钮不带海拔：var-button 的 elevation 默认是 true，
+ * 会被挂上 var-elevation--2（= MD3 level-2 阴影），看起来像浮起的圆片。
+ * FAB 触发器同样带 icon-container / round，但它必须有海拔，用 [var-fab-cover] 排除。 */
+html .var-button--round:not([var-fab-cover]),
+html .var-button[class*="--icon-container"]:not([var-fab-cover]) {
+  box-shadow: none;
+}
+
+/* MD3 standard icon button：
+ *   · 静止态背景透明 —— 与所在的 chrome / 面板同色，不再留一个灰圆底；
+ *   · 悬浮叠 8% on-surface 状态层，按下 12%，跟随明暗主题自动反向。 */
+html .var-button--round:not([var-fab-cover]) {
+  background-color: transparent;
+}
+
+html .var-button--round:not([var-fab-cover]):hover {
+  background-color: color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+html .var-button--round:not([var-fab-cover]):active {
+  background-color: color-mix(in srgb, var(--color-text) 12%, transparent);
+}
+
+/* ---------- 3. 基础排版（MD3 type scale） ---------- */
+
+/* chrome 底色铺满整个应用区：顶栏、抽屉、内容面板四周露出的都是它 */
+main {
+  background: var(--md-chrome-bg);
+}
+
+/* 统一 border-box：否则「固定高度 + padding」的元素（如抽屉）
+ * 会比容器高出 padding 那么多，页面明明有空位也会冒出一条滚动条。 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+
+body {
+  margin: 0;
+  font-family: var(--md-font-family);
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.25px;
+  color: var(--color-text);
+  background-color: var(--color-body);
+  color-scheme: var(--color-scheme);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--md-duration-medium),
+    color var(--md-duration-medium);
+}
+
+/* varlet 的 chip 写死了 font-family: Roboto，这里跟随全站字体栈 */
+html .var-chip {
+  font-family: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0 0 var(--md-space-3);
+  font-weight: 400;
+  color: var(--color-text);
+}
+
+/* headline-medium / headline-small / title-large / title-medium / label-large */
+h1 {
+  font-size: 28px;
+  line-height: 36px;
+  letter-spacing: 0;
+}
+
+h2 {
+  font-size: 24px;
+  line-height: 32px;
+  letter-spacing: 0;
+}
+
+h3 {
+  font-size: 22px;
+  line-height: 28px;
+  letter-spacing: 0;
+}
+
+h4 {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+}
+
+h5 {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+
+h6 {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+p {
+  margin: 0 0 var(--md-space-3);
+}
+
+small {
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.4px;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--md-font-mono);
+  font-size: 12px;
+}
+
+code {
+  padding: 2px 6px;
+  border-radius: var(--md-shape-xs);
+  background: var(--color-surface-container-high);
+  color: var(--color-on-surface-variant);
+}
+
+pre {
+  margin: 0;
+  padding: var(--md-space-3) var(--md-space-4);
+  border-radius: var(--md-shape-sm);
+  background: var(--color-surface-container-high);
+  color: var(--color-on-surface-variant);
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: all;
+}
+
+::selection {
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 细滚动条，贴合 MD3 的低干扰观感 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-outline) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--md-shape-full);
+  background: var(--color-outline);
+  background-clip: padding-box;
+}
+
+/* 尊重系统「减少动态效果」 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- 4. 页面骨架（每个业务页统一入口） ---------- */
+
+.md-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--md-space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--md-space-6);
+}
+
+.md-page-heading {
+  min-width: 0;
+}
+
+.md-page-title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--color-text);
+}
+
+.md-page-subtitle {
+  margin: var(--md-space-1) 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.25px;
+  color: var(--color-text-secondary);
+}
+
+.md-page-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--md-space-1);
+  flex-wrap: wrap;
+}
+
+.md-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-4);
+}
+
+.md-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-3);
+}
+
+.md-row {
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-2);
+}
+
+.md-row--wrap {
+  flex-wrap: wrap;
+}
+
+.md-row--between {
+  justify-content: space-between;
+}
+
+.md-hint {
+  margin: var(--md-space-2) 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.4px;
+  color: var(--color-text-secondary);
+}
+
+.md-text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.md-mono {
+  font-family: var(--md-font-mono);
+  word-break: break-all;
+}
+
+.md-copyable {
+  cursor: pointer;
+  word-break: break-all;
+  border-radius: var(--md-shape-xs);
+  transition: color var(--md-duration-short) var(--md-ease-standard);
+}
+
+.md-copyable:hover {
+  color: var(--color-primary);
+}
+
+/* 顶部应用栏标题（标题可点击返回首页） */
+.app-bar-title {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* 应用栏：与导航抽屉共用 chrome 底色（color/text-color 由壳层传入
+ * var(--md-chrome-bg) / var(--md-chrome-fg)），视觉上连成一片。
+ * 必须去掉 var-app-bar 默认的 elevation 阴影，否则 chrome 上会多出一条投影。 */
+.md-top-app-bar {
+  height: var(--md-app-bar-height);
+}
+
+html .md-top-app-bar[class] {
+  box-shadow: none;
+}
+
+/* 卡片内的标题行（卡头） */
+.md-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-2);
+  flex-wrap: wrap;
+}
+
+.md-card-title {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+  color: var(--color-text);
+}
+
+.md-card-meta {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+/* ---------- 5. 导航抽屉（MD3 navigation drawer，控制台 / 账号中心共用） ---------- */
+
+.md-nav-drawer {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  width: var(--md-nav-drawer-width);
+  height: 100%;
+  padding: var(--md-space-3) var(--md-space-3) var(--md-space-4);
+  /* 透明：露出 main 的 chrome 底色，顶栏与抽屉连成一片 */
+  background: transparent;
+  overflow-y: auto;
+}
+
+/* 移动端弹层里的抽屉没有 main 兜底，自己铺 chrome 底色 */
+.md-nav-drawer--popup {
+  background: var(--md-chrome-bg);
+  height: 100%;
+}
+
+/* 图片头像统一白底：透明 PNG/SVG（渠道 logo、第三方头像）不会露出深色抽屉/页面底色。
+ * 注意特异性：面板里的 scoped `.md-nav-avatar[data-v-x]` 是 (0,2,0)，
+ * 所以这条要写成 `html .var-avatar:has(> img)` 才压得住，且头像底色统一在这里定义。 */
+html .var-avatar:has(> img) {
+  background: #fff;
+}
+
+/* 抽屉头部的头像底：无图片时（图标/文字兜底）用 primary-container */
+.md-nav-avatar {
+  flex: 0 0 auto;
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+.md-nav-drawer__header {
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-3);
+  padding: var(--md-space-2) var(--md-space-3) var(--md-space-4);
+}
+
+.md-nav-drawer__title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+  color: var(--color-text);
+}
+
+.md-nav-drawer__subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.4px;
+  color: var(--color-text-secondary);
+}
+
+.md-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.md-nav-list--footer {
+  margin-top: auto;
+  padding-top: var(--md-space-2);
+}
+
+/* var-cell 作为 MD3 navigation drawer item：56dp 高 + 全圆角激活指示 */
+.md-nav-item {
+  --cell-min-height: 56px;
+  --cell-padding: 0 var(--md-space-4);
+  --cell-color: var(--color-on-surface-variant);
+  --cell-font-size: 14px;
+  border-radius: var(--md-shape-full);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--md-duration-short) var(--md-ease-standard),
+    color var(--md-duration-short) var(--md-ease-standard);
+}
+
+.md-nav-item:hover {
+  background: var(--color-surface-container-high);
+}
+
+.md-nav-item--active,
+.md-nav-item--active:hover {
+  --cell-color: var(--color-on-primary-container);
+  background: var(--color-primary-container);
+}
+
+.md-nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: var(--md-space-3);
+  font-size: 22px;
+  color: currentColor;
+}
+
+.md-nav-item .var-cell__title {
+  font-weight: 500;
+  letter-spacing: 0.15px;
+}
+
+/* 移动端：导航抽屉用 var-popup(position="left") 承载。
+ * 注意 var-popup 是 inheritAttrs:false，外部 class 会合并到 __content 元素上，
+ * 所以这里的 `.md-nav-popup` 就是内容区本身。 */
+.md-nav-popup {
+  border-radius: 0 var(--md-shape-md) var(--md-shape-md) 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+/* ---------- 6. 内容区（列表 / 空状态 / 代码块） ---------- */
+
+.md-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--md-space-3);
+  padding: var(--md-space-10) var(--md-space-4);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.md-code-block {
+  margin: 0;
+  padding: var(--md-space-3) var(--md-space-4);
+  border-radius: var(--md-shape-sm);
+  background: var(--color-surface-container-high);
+  font-family: var(--md-font-mono);
+  font-size: 12.5px;
+  line-height: 20px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: all;
+}
+
+/* 对话框底部操作区（配合 var-dialog 的 #actions 插槽） */
+.md-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--md-space-1);
+}
+
+.md-dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-4);
+}
+
+/* ---------- 8. 打印：解除应用外壳的高度 / 滚动限制 ----------
+ *
+ * 圆角面板方案的代价：内容装在 `main`（height: calc(100vh - appbar); overflow: hidden）
+ * 与 `.app-panel`（height: 100%; overflow-y: auto）里。打印时浏览器只输出"可见滚动框"
+ * 那一屏 —— 内容被裁掉，纸上还带一条滚动条。
+ * 所以打印时把这些容器的高度/overflow 全部还原成自然流。
+ */
+@media print {
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  main,
+  .app-panel,
+  .var-pull-refresh {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+    border-radius: 0 !important;
+  }
+
+  /* 外壳 UI 不打印 */
+  .var-app-bar,
+  .md-top-app-bar,
+  .md-nav-drawer,
+  .var-fab,
+  .top-progress,
+  .var-snackbar,
+  .var-dialog__popup {
+    display: none !important;
+  }
+}
+
+/* ---------- 9. 账号悬浮卡（抽屉头部 hover 弹出） ----------
+ *
+ * 弹出层被 teleport 到 body，scoped 样式够不到它，所以这些规则放在全局层。
+ * 注意 var-menu 是 inheritAttrs: false，外部 class 会丢，只能从父级选择器命中。
+ */
+.md-nav-drawer > .var-menu {
+  display: block;
+  width: 100%;
+}
+
+/* 触发区与卡片都是「控件」，不允许选中文本：
+ * 否则 hover 弹出时拖拽会选中半截文字，光标也会变成 I-beam。 */
+.md-nav-drawer__header {
+  user-select: none;
+  cursor: pointer;
+}
+
+html .md-account-popover {
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--md-shape-md);
+  background: var(--color-surface-container-low);
+}
+
+.md-account-card {
+  width: 320px;
+  padding: var(--md-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-3);
+  user-select: none;
+}
+
+.md-account-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-3);
+}
+
+.md-account-card__id {
+  min-width: 0;
+}
+
+.md-account-card__name {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+  color: var(--color-text);
+}
+
+.md-account-card__email,
+.md-account-card__role {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.4px;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+/* 头像：v-hover 驱动遮罩上滑，露出编辑图标 */
+.md-account-avatar {
+  position: relative;
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.md-account-avatar__mask {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  transition: transform var(--md-duration-medium) var(--md-ease-emphasized);
+}
+
+.md-account-card__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-2);
+  padding-top: var(--md-space-3);
+  border-top: 1px solid var(--color-outline-variant);
+}
+
+.md-account-card__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--md-space-4);
+}
+
+.md-account-card__label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.4px;
+  color: var(--color-text-secondary);
+}
+
+.md-account-card__value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--md-space-1);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--color-text);
+  text-align: right;
+  word-break: break-all;
+}
+
+/* UID 行尾的复制按钮：比全局 40dp 图标按钮小一号 */
+html .md-account-card .md-account-copy {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 4px;
+}
+
+.md-account-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--md-space-1);
+  padding-top: var(--md-space-3);
+  border-top: 1px solid var(--color-outline-variant);
+}
+
+/* 对话框标题：适合配图标时，图标跟在标题左侧（MD3 icon dialog） */
+.md-dialog-title {
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-3);
+}
+
+.md-dialog-title__icon {
+  color: var(--color-primary);
+}
+
+/* 信息行：标签定宽 + 值占满剩余宽度。
+ * 不要用 auto-fit 多列网格——长 URL / Client ID 只差几个字符就会折出孤零零的一两个字母。 */
+.md-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-3);
+}
+
+.md-field {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: var(--md-space-3);
+  align-items: baseline;
+}
+
+.md-field__label {
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.4px;
+  color: var(--color-text-secondary);
+}
+
+.md-field__value {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--color-text);
+  word-break: break-all;
+}
+
+@media (max-width: 640px) {
+  .md-field {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+/* 卡片页之外的分段（单卡片页面直接写在页面上，不再套卡片） */
+.md-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-4);
+}
+
+.md-section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-2);
+  margin: 0 0 var(--md-space-3);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+  color: var(--color-text);
+}

@@ -146,21 +146,22 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <var-app-bar onmousedown="if (window.hostshell) window.hostshell.startDrag()" color="primary" text-color="#fff"
-        style="height: 54px;">
+    <!-- MD3 small top app bar：品牌主色底 + on-primary 前景色，高度由 --md-app-bar-height 统一 -->
+    <var-app-bar class="md-top-app-bar" color="var(--md-chrome-bg)" text-color="var(--md-chrome-fg)"
+        onmousedown="if (window.hostshell) window.hostshell.startDrag()">
         <template #left>
             <div v-if="mobileByWidth && route.path !== '/'" @mousedown.stop>
-                <var-button text @mousedown.stop @click="goHome">
+                <var-button text round @mousedown.stop @click="goHome">
                     <my-icon icon="arrow-left" size="1em + 8px" />
                 </var-button>
             </div>
-            <div style="margin-left: 15px; user-select: none;" @click="goHome" @mousedown.stop>
+            <div class="app-bar-brand" @click="goHome" @mousedown.stop>
                 <span class="app-bar-title" @mousedown.stop>AyAnalytics</span>
             </div>
         </template>
 
         <template #right>
-            <var-button color="transparent" text-color="#fff" round text @click="toggleTheme" @mousedown.stop>
+            <var-button text round @click="toggleTheme" @mousedown.stop>
                 <var-icon :name="themeStore.currentTheme === 'light' ? 'weather-night' : 'white-balance-sunny'"
                     :size="24" />
             </var-button>
@@ -181,10 +182,13 @@ onUnmounted(() => {
         </div>
     </div>
     <main>
-        <div v-if="checking" class="boot-loading">
-            <var-loading type="circle" />
+        <!-- 内容面板：上方两个圆角常驻，滚动发生在面板内部（与 console/account 同构） -->
+        <div class="app-panel">
+            <div v-if="checking" class="boot-loading">
+                <var-loading type="circle" />
+            </div>
+            <RouterView v-else />
         </div>
-        <RouterView v-else />
     </main>
 </template>
 <style>
@@ -223,11 +227,32 @@ onUnmounted(() => {
 }
 
 
+/* 与 console/account 一致：main 只负责 chrome 底色，内容是一块圆角面板。
+ * 注意高度必须用 100vh 计算（原来写 100% 时 body 没有确定高度，
+ * 结果 main 只有内容那么高，下面露出 body 的白底 → 页面看起来被切成两截）。 */
 main {
-    height: calc(100% - 54px);
-    overflow-y: auto;
+    height: calc(100vh - var(--md-app-bar-height, 64px));
+    overflow: hidden;
     position: relative;
 }
+
+/* 圆角面板本身是唯一滚动容器：滚动时上方圆角不会跟着滚走 */
+.app-panel {
+    height: 100%;
+    overflow-y: auto;
+    background: var(--md-panel-bg);
+    border-radius: var(--md-panel-radius) var(--md-panel-radius) 0 0;
+}
+
+.app-bar-brand {
+    display: inline-flex;
+    align-items: center;
+    height: 100%;
+    margin-left: var(--md-space-2);
+    cursor: pointer;
+    user-select: none;
+}
+
 
 div.header {
     display: none;

@@ -274,114 +274,136 @@ async function pasteWithClipboard(refvalue) {
 </script>
 
 <template>
-
-
-    <!-- var-dialog 组件调用有bug，基于 var-dialog 创建原理，自己弄一个 -->
-    <var-popup v-model:show="showChangeEmailDialog" class="var-dialog__popup" var-dialog-cover>
-        <div class="var--box var-dialog">
-            <div class="var-dialog__title">修改邮箱</div>
-
-            <div style="padding: 0 24px 16px;" class="var-dialog__message">
-                <p style="color: var(--color-text-secondary); margin-bottom: 16px;">
-                    请输入您的新邮箱地址，验证码将发送到该邮箱。
-                </p>
-                <var-input placeholder="请输入新邮箱" v-model="newEmail" type="email" style="width: 100%;" />
-                <var-button type="primary" :loading="emailSending" :disabled="emailCountdown > 0 || !newEmail"
-                    @click="sendEmailCode" style="flex-shrink: 0; margin-top: 10px;" block>
-                    {{ emailCountdown > 0 ? `${emailCountdown}s` : '获取验证码' }}
-                </var-button>
-                <var-input placeholder="请输入6位验证码" v-model="emailCode" style="width: 100%;" maxlength="6" />
+    <!-- 修改邮箱：var-dialog + var-form（MD3 对话框，不再手写 var-dialog 内部结构） -->
+    <var-dialog v-model:show="showChangeEmailDialog" title="修改邮箱" :confirm-button="false" :cancel-button="false"
+        :close-on-click-overlay="false" width="min(480px, calc(100vw - 32px))">
+        <template #title>
+            <div class="md-dialog-title">
+                <my-icon icon="email-edit-outline" size="1.25em" class="md-dialog-title__icon" />
+                <span>修改邮箱</span>
             </div>
+        </template>
+        <div class="md-dialog-form">
+            <p class="dialog-hint">请输入新的邮箱地址，验证码将发送到该邮箱。</p>
+            <var-input v-model="newEmail" type="email" variant="outlined" placeholder="新邮箱地址" />
+            <var-button type="primary" block :loading="emailSending" :disabled="emailCountdown > 0 || !newEmail"
+                @click="sendEmailCode">
+                {{ emailCountdown > 0 ? `${emailCountdown}s 后可重新获取` : '获取验证码' }}
+            </var-button>
+            <var-input v-model="emailCode" variant="outlined" placeholder="6 位验证码" :maxlength="6" />
+        </div>
 
-            <div class="var-dialog__actions">
-                <var-button type="primary" @click="showChangeEmailDialog = false" text
-                    class="var--inline-flex var-dialog__button var-dialog__cancel-button">取消</var-button>
-                <var-button type="primary" @click="confirmChangeEmail" text :loading="emailChanging"
-                    class="var--inline-flex var-dialog__button var-dialog__confirm-button">
-                    确认修改
-                </var-button>
+        <template #actions="{ slotClass }">
+            <div :class="slotClass" class="md-dialog-actions">
+                <var-button text type="primary" @click="showChangeEmailDialog = false">取消</var-button>
+                <var-button type="primary" :loading="emailChanging" @click="confirmChangeEmail">确认修改</var-button>
+            </div>
+        </template>
+    </var-dialog>
+
+    <div class="user-info-page">
+        <div class="md-page-header">
+            <div class="md-page-heading">
+                <h1 class="md-page-title">个人信息</h1>
+                <p class="md-page-subtitle">修改后会同步到所有已接入 Ay 服务的应用</p>
             </div>
         </div>
-    </var-popup>
 
-    <div>
-        <h2>个人信息</h2>
-        <template v-if="user">
-            <div>
+        <var-progress v-if="!user" indeterminate />
 
-                <var-input placeholder="用户名" v-if="user.username" v-model="usernameInput" />
+        <div v-else class="info-form">
+            <p class="md-section__title">
+                <my-icon icon="account-circle-outline" size="1.2em" />
+                基本资料
+            </p>
 
-                <div v-if="user.avatar" class="avatar">
-                    <var-input placeholder="头像URL" v-if="user.avatar" v-model="avatarInput"
-                        style="margin-right: 25px;" />
-                    <var-avatar :src="user.avatar" color="transparent" style="flex-shrink: 0;" />
+            <div class="md-dialog-form">
+                <var-input v-if="user.username" v-model="usernameInput" variant="outlined" placeholder="用户名" />
+
+                <div v-if="user.avatar" class="avatar-row">
+                    <var-input v-model="avatarInput" variant="outlined" placeholder="头像 URL" class="avatar-input" />
+                    <var-avatar :src="user.avatar" :size="48" class="avatar-preview" />
                 </div>
 
-                <var-input placeholder="邮箱" v-if="user.email" v-model="emailInput" readonly>
+                <var-input v-if="user.email" v-model="emailInput" variant="outlined" placeholder="邮箱" readonly>
                     <template #append-icon>
-                        <var-button @click="showChangeEmailDialog = true" text>
+                        <var-button text @click="showChangeEmailDialog = true">
                             <my-icon icon="exchange" />
                         </var-button>
                     </template>
                 </var-input>
 
-                <var-input placeholder="UID" v-if="user.sub" v-model="uidInput" readonly>
+                <var-input v-if="user.sub" v-model="uidInput" variant="outlined" placeholder="UID" readonly>
                     <template #append-icon>
-                        <var-button @click="copyToClipboard(user.sub)" text>
+                        <var-button text @click="copyToClipboard(user.sub)">
                             <my-icon icon="content-copy" />
                         </var-button>
                     </template>
                 </var-input>
 
-                <var-select variant="outlined" v-if="user.gender !== undefined" v-model="genderInput"
-                    placeholder="请选择性别" :options="[
+                <var-select v-if="user.gender !== undefined" v-model="genderInput" variant="outlined" placeholder="性别"
+                    :options="[
                         { label: '保密', value: 'unknown' },
                         { label: '男', value: 'male' },
-                        { label: '女', value: 'female' }
+                        { label: '女', value: 'female' },
                     ]" />
 
-                <var-input placeholder="个人简介" v-if="user.description" v-model="descriptionInput" textarea
-                    :maxlength="150" variant="outlined" rows=6>
+                <var-input v-if="user.description" v-model="descriptionInput" textarea :maxlength="150"
+                    variant="outlined" :rows="4" placeholder="个人简介">
                     <template #append-icon>
-                        <div style="align-items: flex-start; height: 100%;">
-                            <var-button @click="pasteWithClipboard(descriptionInput)" text>
-                                <my-icon icon="content-paste" />
-                            </var-button>
-                        </div>
+                        <var-button text @click="pasteWithClipboard(descriptionInput)">
+                            <my-icon icon="content-paste" />
+                        </var-button>
                     </template>
                 </var-input>
 
-                <p v-if="user.created_at">注册时间：{{ formatTime(user.created_at) }}</p>
-                <var-button @click="handleSave" :loading="loading" :disabled="!isModified"
-                    style="float: inline-end;">保存</var-button>
+                <p v-if="user.created_at" class="md-hint">注册时间：{{ formatTime(user.created_at) }}</p>
             </div>
-        </template>
-        <var-progress v-else indeterminate />
+
+            <div class="info-actions">
+                <var-button type="primary" :loading="loading" :disabled="!isModified" @click="handleSave">
+                    保存修改
+                </var-button>
+            </div>
+        </div>
     </div>
 </template>
 <style scoped>
-.avatar {
-    align-items: center;
+.user-info-page {
+    padding-bottom: var(--md-space-8);
+}
+
+.info-form {
+    max-width: 720px;
+}
+
+/* 头像可能是透明底的 logo，白底才好看 */
+.avatar-preview {
+    background: #fff;
+    flex: 0 0 auto;
+}
+
+.avatar-row {
     display: flex;
-    justify-content: flex-start;
-}
-
-.var-input,
-.var-select {
-    margin-top: 15px;
-    margin-right: 10px;
-    width: 100%;
-}
-
-@media (min-width: 768px) {
-
-    .var-input,
-    .var-select {
-        width: 80%;
-    }
-}
-
-.var-space {
     align-items: center;
+    gap: var(--md-space-3);
+}
+
+.avatar-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.info-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--md-space-6);
+}
+
+.dialog-hint {
+    margin: 0;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--color-text-secondary);
 }
 </style>

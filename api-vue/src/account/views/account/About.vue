@@ -13,17 +13,16 @@ const buildTime = computed(() => {
     return raw ? formatTime(raw) : '未注入'
 })
 
-const items = [
+const items = computed(() => [
     { label: '应用名称', value: 'AyAccountCenter' },
     { label: '运行环境', value: isProd ? '生产' : '开发' },
     { label: '构建模式', value: mode },
     { label: '基础路径', value: baseUrl },
     { label: '目标网址', value: targetUrl },
-    { label: '构建时间', value: buildTime },
-]
+    { label: '构建时间', value: buildTime.value },
+])
 
-const links = [
-]
+const links = []
 
 function openLink(path) {
     window.open(`${targetUrl}${path}`)
@@ -32,32 +31,39 @@ function openLink(path) {
 
 <template>
     <div class="about-page">
-        <div class="about-header">
-            <h2>关于</h2>
+        <div class="md-page-header">
+            <div class="md-page-heading">
+                <h1 class="md-page-title">关于</h1>
+                <p class="md-page-subtitle">账号与授权管理中心</p>
+            </div>
         </div>
 
-        <var-card class="about-card var-elevation--2">
-            <div class="brand">
-                <div>
-                    <div class="brand-name">AyAccountCenter</div>
-                    <div class="brand-desc">账号与授权管理中心</div>
+        <var-card class="about-card">
+            <template #title="{ slotClass }">
+                <div :class="slotClass" class="md-card-header">
+                    <my-icon icon="account-box-outline" size="1.2em" />
+                    <span class="md-card-title">AyAccountCenter</span>
+                </div>
+            </template>
+
+            <div class="meta-list">
+                <div v-for="item in items" :key="item.label" class="meta-row">
+                    <span class="meta-row__label">{{ item.label }}</span>
+                    <span class="meta-row__value">{{ item.value }}</span>
                 </div>
             </div>
-
-            <var-divider />
-
-            <var-cell v-for="item in items" :key="item.label" :title="item.label">
-                <template #description>
-                    <span class="cell-value">{{ item.value }}</span>
-                </template>
-            </var-cell>
         </var-card>
 
-        <var-card class="about-card var-elevation--2" v-if="links.length > 0">
-            <div class="section-title">相关文档</div>
+        <var-card class="about-card" v-if="links.length > 0">
+            <template #title="{ slotClass }">
+                <div :class="slotClass" class="md-card-header">
+                    <my-icon icon="file-document-outline" size="1.2em" />
+                    <span class="md-card-title">相关文档</span>
+                </div>
+            </template>
             <var-cell v-for="link in links" :key="link.path" :title="link.label" :border="true" v-ripple
                 class="link-cell" @click="openLink(link.path)">
-                <template #right-icon>
+                <template #extra>
                     <my-icon icon="arrow-right" />
                 </template>
             </var-cell>
@@ -71,63 +77,58 @@ function openLink(path) {
 
 <style scoped>
 .about-page {
-    padding-bottom: 40px;
-}
-
-.about-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.about-header h2 {
-    margin: 0;
+    padding-bottom: var(--md-space-8);
 }
 
 .about-card {
-    margin-bottom: 16px;
+    margin-bottom: var(--md-space-4);
 }
 
-.brand {
-    margin-left: 8px;
+.meta-list {
     display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 8px 0;
+    flex-direction: column;
 }
 
-.brand-name {
-    font-size: 18px;
-    font-weight: 600;
+.meta-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--md-space-6);
+    padding: var(--md-space-3) 0;
+    border-bottom: 1px solid var(--color-outline);
 }
 
-.brand-desc {
+.meta-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.meta-row__label {
     font-size: 13px;
+    line-height: 20px;
     color: var(--color-text-secondary);
-    margin-top: 4px;
+    flex: 0 0 auto;
 }
 
-.section-title {
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-
-.cell-value {
-    color: var(--color-text-secondary);
+.meta-row__value {
     font-size: 13px;
+    line-height: 20px;
+    color: var(--color-text);
+    text-align: right;
+    word-break: break-all;
 }
 
 .link-cell {
-    user-select: none;
+    border-radius: var(--md-shape-sm);
     cursor: pointer;
 }
 
 .copyright {
+    margin-top: var(--md-space-6);
     text-align: center;
-    font-size: 14px;
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0.4px;
     color: var(--color-text-secondary);
-    margin-top: 24px;
 }
 </style>

@@ -2,57 +2,52 @@
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-
 </script>
 
 <template>
-    <div>
-        <div class="not-found-container">
-            <div class="not-found-content">
-                <h1 class="not-found-title">404</h1>
-                <p class="not-found-desc">页面不存在</p>
+    <div class="not-found-page">
+        <p class="not-found-code">404</p>
+        <h1 class="not-found-title">页面不存在</h1>
+        <p class="not-found-desc">你访问的页面不存在，或者链接已经失效。</p>
 
-                <var-button type="primary" block @click="router.push('/')">
-                    <span>返回主页</span>
-                </var-button>
-            </div>
-        </div>
+        <var-button type="primary" @click="router.push('/')">返回站点列表</var-button>
     </div>
 </template>
 
 <style scoped>
-.not-found-container {
-    flex: 1;
+.not-found-page {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 100%;
-    padding: 2rem;
-    box-sizing: border-box;
-}
-
-.not-found-content {
+    gap: var(--md-space-2);
+    min-height: calc(100vh - var(--md-app-bar-height) - var(--md-space-8));
+    padding: var(--md-space-8) var(--md-space-4);
     text-align: center;
 }
 
-.not-found-status {
-    font-size: 8rem;
-    font-weight: 900;
-    line-height: 1;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 0.5rem;
+.not-found-code {
+    margin: 0;
+    font-size: 96px;
+    line-height: 104px;
+    font-weight: 400;
+    letter-spacing: -1.5px;
+    color: var(--color-primary);
 }
 
 .not-found-title {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
+    margin: 0;
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 400;
+    color: var(--color-text);
 }
 
 .not-found-desc {
-    font-size: 1.1rem;
-    color: var(--color-text-disabled);
-    margin-bottom: 2rem;
+    margin: 0 0 var(--md-space-4);
+    font-size: 14px;
+    line-height: 20px;
+    letter-spacing: 0.25px;
+    color: var(--color-text-secondary);
 }
 </style>

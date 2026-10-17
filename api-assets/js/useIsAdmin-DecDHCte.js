@@ -1,1 +1,0 @@
-import{C as e,s as t}from"./runtime-core.esm-bundler-DIUDPsVO.js";function n(){let n=e(`user`);return t(()=>n?.value?.sub===1)}export{n as t};

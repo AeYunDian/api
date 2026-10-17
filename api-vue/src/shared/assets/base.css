@@ -1,28 +1,14 @@
-@import url("https://cdn.undz.cn/npm/typeface-roboto@1.1.13/index.css");
+/* MD3 的地基（字体、排版、形状、海拔、组件变量对齐）见 ./md.css。
+ * 本文件只放「站点级」主题令牌与壳层高度，避免与 md.css 重复声明。 */
+@import url("https://cdn.undz.cn/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Roboto+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap");
+
+/* 主内容区高度 = 视口 - 顶部应用栏（高度由 --md-app-bar-height 统一）。
+ * 全局只保留这一层滚动容器，页面内部不要再套滚动区，避免“分层滚动”。 */
 main {
-  height: calc(100vh - 54px);
+  height: calc(100vh - var(--md-app-bar-height, 54px));
+  overflow-y: auto;
 }
 
-body {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  margin: 0;
-  font-family:
-    "Roboto",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
-  transition:
-    background-color 0.25s,
-    color 0.25s;
-  color: var(--color-text);
-  background-color: var(--color-body);
-  color-scheme: var(--color-scheme);
-}
-html {
-  scroll-behavior: smooth;
-  scrollbar-gutter: stable;
-}
 /* ============================================================
  * 主题变量系统
  *
@@ -92,25 +78,25 @@ html.dark {
 
 /* ---------- 4. MD3 Light 独有 ---------- */
 html:not(.dark):not(.md2) {
-  --site-config-color-introduce-border: #6750a4;
-  --site-config-color-primary: #6750a4;
+  --site-config-color-introduce-border: #0061A4;
+  --site-config-color-primary: #0061A4;
   --site-config-color-link: #536525;
   --site-config-color-type: #536525;
-  --site-config-color-loading-bar: #6750a4;
-  --site-config-color-side-bar: #6750a4;
-  --site-config-color-side-bar-active-background: #e8def8;
-  --site-config-color-app-bar: #6750a4;
-  --site-config-color-mobile-cell-hover: #6750a4;
-  --site-config-color-pc-language-active: #6750a4;
-  --site-config-color-pc-language-active-background: #e8def8;
-  --site-config-color-mobile-language-active: #6750a4;
-  --site-config-color-mobile-language-active-background: #e8def8;
-  --site-config-color-pc-theme-active: #6750a4;
-  --site-config-color-pc-theme-active-background: #e8def8;
-  --site-config-color-mobile-theme-active: #6750a4;
-  --site-config-color-mobile-theme-active-background: #e8def8;
+  --site-config-color-loading-bar: #0061A4;
+  --site-config-color-side-bar: #0061A4;
+  --site-config-color-side-bar-active-background: #D1E4FF;
+  --site-config-color-app-bar: #0061A4;
+  --site-config-color-mobile-cell-hover: #0061A4;
+  --site-config-color-pc-language-active: #0061A4;
+  --site-config-color-pc-language-active-background: #D1E4FF;
+  --site-config-color-mobile-language-active: #0061A4;
+  --site-config-color-mobile-language-active-background: #D1E4FF;
+  --site-config-color-pc-theme-active: #0061A4;
+  --site-config-color-pc-theme-active-background: #D1E4FF;
+  --site-config-color-mobile-theme-active: #0061A4;
+  --site-config-color-mobile-theme-active-background: #D1E4FF;
   --site-config-color-mobile-body: #fef7ff;
-  --site-config-color-hl-group-b: #6750a4;
+  --site-config-color-hl-group-b: #0061A4;
   --site-config-color-hl-group-c: #7d5260;
   --site-config-color-hl-group-d: #b3261e;
   --site-config-color-hl-group-e: #7d5260;
@@ -154,24 +140,24 @@ html.md2:not(.dark) {
 html.dark:not(.md2) {
   --site-config-color-body: #050505;
   --site-config-color-shadow: #090909;
-  --site-config-color-primary: #d0bcff;
+  --site-config-color-primary: #9ECAFF;
   --site-config-color-link: #bacf83;
   --site-config-color-type: #bacf83;
-  --site-config-color-loading-bar: #d0bcff;
-  --site-config-color-side-bar: #d0bcff;
-  --site-config-color-side-bar-active-background: #4a4458;
+  --site-config-color-loading-bar: #9ECAFF;
+  --site-config-color-side-bar: #9ECAFF;
+  --site-config-color-side-bar-active-background: #00497D;
   --site-config-color-app-bar: #211f26;
-  --site-config-color-mobile-cell-hover: #d0bcff;
-  --site-config-color-pc-language-active: #d0bcff;
-  --site-config-color-pc-language-active-background: #4a4458;
-  --site-config-color-mobile-language-active: #d0bcff;
-  --site-config-color-mobile-language-active-background: #4a4458;
-  --site-config-color-pc-theme-active: #d0bcff;
-  --site-config-color-pc-theme-active-background: #4a4458;
-  --site-config-color-mobile-theme-active: #d0bcff;
-  --site-config-color-mobile-theme-active-background: #4a4458;
+  --site-config-color-mobile-cell-hover: #9ECAFF;
+  --site-config-color-pc-language-active: #9ECAFF;
+  --site-config-color-pc-language-active-background: #00497D;
+  --site-config-color-mobile-language-active: #9ECAFF;
+  --site-config-color-mobile-language-active-background: #00497D;
+  --site-config-color-pc-theme-active: #9ECAFF;
+  --site-config-color-pc-theme-active-background: #00497D;
+  --site-config-color-mobile-theme-active: #9ECAFF;
+  --site-config-color-mobile-theme-active-background: #00497D;
   --site-config-color-mobile-body: #141218;
-  --site-config-color-hl-group-b: #d0bcff;
+  --site-config-color-hl-group-b: #9ECAFF;
   --site-config-color-hl-group-c: #efb8c8;
   --site-config-color-hl-group-d: #f2b8b5;
   --site-config-color-hl-group-e: #efb8c8;

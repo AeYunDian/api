@@ -1,5 +1,5 @@
 import { fileURLToPath, URL } from "node:url";
-
+import fs from "fs";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import vueDevTools from "vite-plugin-vue-devtools";
@@ -11,12 +11,38 @@ import { visualizer } from "rollup-plugin-visualizer";
 import hljs from "highlight.js";
 import Markdown from "unplugin-vue-markdown/vite";
 
+/**
+ * Varlet 的 `Dialog` 导出是「函数式 API」：调用后返回 Promise，内部自己
+ * mountInstance 出一个只认 props、**不支持插槽**的弹窗；真正的组件是
+ * `Dialog.Component`（等价于内部导出的 `_DialogComponent`）。
+ *
+ * 而 VarletImportResolver 对 `<var-dialog>` 的处理是 `name.slice(3)` →
+ * 导入 `{ Dialog }`，于是 `<var-dialog>` 会被当成「函数式组件」渲染：
+ *   1. 每次渲染都返回一个 Promise，被 Vue 当作文本节点插入页面
+ *      → 页面上出现一堆 `[object Promise]`；
+ *   2. 那个函数顺手挂出一个空壳弹窗（没有插槽内容，只有 title/按钮）→
+ *      “对话框内容不渲染”的假象。
+ *
+ * 这里在 Varlet 解析器之前拦掉 `VarDialog`，显式指向组件本体。
+ */
+const VarletDialogComponentResolver = {
+  type: "component",
+  resolve: (name) => {
+    if (name !== "VarDialog") return;
+    return {
+      from: "@varlet/ui",
+      name: "_DialogComponent",
+      sideEffects: ["@varlet/ui/es/dialog/style/index.mjs"],
+    };
+  },
+};
+
 export default defineConfig({
   server: {
+    https: true,
     host: "0.0.0.0",
     port: 443,
     strictPort: true,
-    https: true,
     allowedHosts: [
       "mysites-dev.undz.cn",
       "online-dev.undz.cn",
@@ -74,7 +100,11 @@ export default defineConfig({
       brotliSize: true,
     }),
     components({
-      resolvers: [VarletImportResolver({ autoImport: true })],
+      // 顺序很重要：先拦 VarDialog，再交给 Varlet 官方解析器
+      resolvers: [
+        VarletDialogComponentResolver,
+        VarletImportResolver({ autoImport: true }),
+      ],
     }),
     autoImport({
       resolvers: [VarletImportResolver({ autoImport: true })],

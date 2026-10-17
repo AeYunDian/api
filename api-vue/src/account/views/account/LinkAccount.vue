@@ -105,6 +105,7 @@ async function handleUnbind(providerId) {
 
     const action = await Dialog({
         title: '确认解绑',
+        confirmButtonProps: { text: false, type: 'danger' },
         message: `确定要解除与“${provider.name}”的绑定吗？`
     });
     if (action !== 'confirm') return;
@@ -136,63 +137,98 @@ onMounted(async () => {
 
 <template>
     <var-pull-refresh v-model="refreshState" @refresh="onPullRefresh">
-        <div>
-            <h2>第三方账号绑定</h2>
-            <p style="color: var(--card-content-color); margin-bottom: 16px;">
-                绑定第三方账号后，您可以使用它们进行快速登录。
-            </p>
+        <div class="link-page">
+            <div class="md-page-header">
+                <div class="md-page-heading">
+                    <h1 class="md-page-title">第三方账号绑定</h1>
+                    <p class="md-page-subtitle">绑定第三方账号后，可以使用它们快速登录</p>
+                </div>
+            </div>
 
-            <var-progress v-if="loading" indeterminate />
-            <template v-else>
-                <var-list>
-                    <var-cell v-for="provider in supportedProviders" :key="provider.id" :border="true">
-                        <template #default>
-                            <div
-                                style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 4px 0;">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <var-avatar v-if="provider.icon" :src="provider.icon" size="32px"
-                                        color="transparent" style="flex-shrink: 0;" />
-                                    <div>
-                                        <div style="font-weight: 500;">{{ provider.name }}</div>
-                                        <div
-                                            style="font-size: 13px; color: var(--card-content-color); display: flex; align-items: center; word-break: keep-all;">
-                                            <template v-if="isBound(provider.id)">
-                                                <my-icon icon="check-circle-outline"
-                                                    style="margin-inline-end: 5px; color: var(--color-success);" />
-                                                已绑定
-                                                <span v-if="getBinding(provider.id)?.created_at"
-                                                    style="margin-inline-start: 10px;">绑定时间：{{
-                                                        formatTime(getBinding(provider.id)?.created_at) }}</span>
+            <var-progress v-if="loading && !supportedProviders.length" indeterminate />
 
-                                            </template>
-                                            <template v-else>
-                                                <my-icon icon="minus-circle"
-                                                    style="margin-inline-end: 5px; color: var(--color-danger);" />
-                                                未绑定
-                                            </template>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <var-button v-if="isBound(provider.id)" type="danger"
-                                        @click="handleUnbind(provider.id)">
-                                        解绑
-                                    </var-button>
-                                    <var-button v-else type="primary" @click="handleBind(provider.id)">
-                                        绑定
-                                    </var-button>
-                                </div>
-                            </div>
-                        </template>
-                    </var-cell>
-                </var-list>
-            </template>
+            <var-result v-else-if="!supportedProviders.length" type="empty" title="暂无可绑定的第三方账号"
+                description="当前没有可用的第三方登录渠道。" />
+
+            <div v-else class="link-list">
+                <p class="md-section__title">
+                    <my-icon icon="link-variant" size="1.2em" />
+                    登录渠道
+                </p>
+
+                <var-cell v-for="provider in supportedProviders" :key="provider.id" :title="provider.name"
+                    :border="true" class="link-cell">
+                    <template #icon>
+                        <span class="link-icon">
+                            <var-avatar v-if="provider.icon" :src="provider.icon" :size="32" class="link-avatar" />
+                            <my-icon v-else icon="account-circle" size="24px" />
+                        </span>
+                    </template>
+
+                    <template #description>
+                        <span v-if="isBound(provider.id)" class="link-status link-status--bound">
+                            <my-icon icon="check-circle-outline" size="1em" />
+                            已绑定
+                            <span v-if="getBinding(provider.id)?.created_at" class="link-time">
+                                · {{ formatTime(getBinding(provider.id)?.created_at) }}
+                            </span>
+                        </span>
+                        <span v-else class="link-status">
+                            <my-icon icon="minus-circle-outline" size="1em" />
+                            未绑定
+                        </span>
+                    </template>
+
+                    <template #extra>
+                        <var-button v-if="isBound(provider.id)" text type="danger" size="small"
+                            @click="handleUnbind(provider.id)">
+                            解绑
+                        </var-button>
+                        <var-button v-else type="primary" tonal size="small" @click="handleBind(provider.id)">
+                            绑定
+                        </var-button>
+                    </template>
+                </var-cell>
+            </div>
         </div>
     </var-pull-refresh>
 </template>
 
 <style scoped>
-.var-cell {
-    --cell-padding: 8px 16px;
+.link-page {
+    padding-bottom: var(--md-space-8);
+}
+
+.link-list {
+    max-width: 720px;
+}
+
+.link-avatar {
+    background: #fff;
+}
+
+.link-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: var(--md-space-3);
+}
+
+.link-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--md-space-1);
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0.4px;
+    color: var(--color-text-secondary);
+}
+
+.link-status--bound {
+    color: var(--color-success);
+}
+
+.link-time {
+    color: var(--color-text-secondary);
 }
 </style>

@@ -6,6 +6,13 @@ let intervalId = null
 const sdk = inject('sdk');
 const router = useRouter();
 const channel = inject('channel');
+
+const features = [
+    { icon: 'application-cog-outline', title: '应用管理', desc: '集中管理 OAuth 应用，创建密钥、配置回调地址并查看调用情况。' },
+    { icon: 'message-alert-outline', title: '反馈中心', desc: '提交问题或建议并全程追踪处理状态，管理员会及时回复。' },
+    { icon: 'tools', title: '开发者工具', desc: '提供完整的授权流程说明与调试工具，帮助应用快速接入。' },
+];
+
 async function checkAndRedirect() {
     try {
         const verifyRes = await sdk.verify()
@@ -62,194 +69,129 @@ function goAccountCenter() {
     window.location.href = `https://${domain}/${isHostShell() ? '?notinithostshell' : ''}`;
 }
 </script>
-<template>
 
-    <div class="bg-orbs">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="orb orb-3"></div>
-        <div class="orb orb-4"></div>
-    </div>
-    <div class="content">
-        <var-space>
-            <var-image width="85px" height="85px" fit="cover" radius="50%" src="/favicon.webp" />
-            <var-space direction="column" size="large" style="color: #fff; align-items: unset;">
-                <h5 class="content-title">Ay Console</h5>
-                <p class="content-subtitle">开发者控制台，统一管理应用与反馈</p>
-                <var-menu placement="bottom-end" style="width: 100%;" same-width>
-                    <var-button-group style="display: flex; width: 100%;">
-                        <var-button style="flex: 1;" @click.stop="login" block>
-                            <span>登录</span>
-                        </var-button>
-                        <var-button style="padding: 0 8px; flex-shrink: 0;">
-                            <var-icon name="menu-down" :size="24" />
+<template>
+    <div class="home-page">
+        <section class="home-hero">
+            <h1 class="home-title">Ay Console</h1>
+            <p class="home-subtitle">开发者控制台 · 统一管理应用与反馈</p>
+
+            <!-- MD3 split button：主操作是登录，次级入口收进右侧菜单。
+                 var-menu 是 inheritAttrs:false，class/style 不会落到它的根节点，
+                 所以宽度必须挂在外层 wrapper 上。 -->
+            <div class="home-login">
+                <var-menu placement="bottom-end" same-width>
+                    <var-button-group type="primary" size="large" class="home-login__group">
+                        <var-button class="home-login__main" @click.stop="login">登录 Ay 账号</var-button>
+                        <var-button class="home-login__chevron" aria-label="更多入口">
+                            <var-icon name="menu-down" :size="20" />
                         </var-button>
                     </var-button-group>
                     <template #menu>
-                        <var-cell ripple @click="goAccountCenter">前往 AyAccountCenter</var-cell>
+                        <var-cell ripple @click="goAccountCenter">前往账号中心</var-cell>
                     </template>
                 </var-menu>
-            </var-space>
-        </var-space>
-        <br />
-        <div class="feature">
-            <var-card title="应用管理" description="集中管理您的OAuth应用，快速创建并配置密钥与回调地址，实时查看应用调用数据，全面掌控授权服务。" />
-            <var-card title="反馈中心" description="遇到问题或有建议？提交反馈并全程追踪处理状态，管理员将及时回复，确保您的反馈得到有效解决。" />
-            <var-card title="开发者工具" description="提供详尽的认证对接指引与调试工具，助您快速理解OAuth授权流程，轻松高效集成并上线您的应用。" />
-        </div>
+            </div>
+        </section>
+
+        <section class="home-features">
+            <var-card v-for="item in features" :key="item.title" class="feature-card">
+                <template #title="{ slotClass }">
+                    <div :class="slotClass" class="md-card-header">
+                        <my-icon :icon="item.icon" size="1.25em" />
+                        <span class="md-card-title">{{ item.title }}</span>
+                    </div>
+                </template>
+                <p class="feature-desc">{{ item.desc }}</p>
+            </var-card>
+        </section>
     </div>
 </template>
 
 <style scoped>
-.feature {
+.home-page {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 15px;
-}
-
-.feature>div {
-    margin: calc(10px) 20px calc(10px) 0px !important;
-}
-
-.var-card {
-    max-width: 320px;
-}
-
-.var-space {
-    align-items: center;
-}
-
-.content-title {
-    margin: 0;
-    font-size: 30px;
-}
-
-.content-subtitle {
-    margin: 0;
-    font-size: 15px;
-}
-
-.content {
     flex-direction: column;
-    position: sticky;
-    position: -webkit-sticky;
     align-items: center;
     justify-content: center;
+    gap: var(--md-space-6);
+    min-height: 100%;
+    padding: var(--md-space-6) var(--md-space-4) var(--md-space-10);
+    box-sizing: border-box;
+}
+
+/* hero 必须自己撑满可用宽度：.home-page 是 align-items:center 的 flex 列，
+   flex item 会按内容收缩（≈标题宽度），导致里面 min(480px, 100%) 只能取到 ~220px。 */
+.home-hero {
     display: flex;
-    height: 100%;
-    overflow: hidden;
-    z-index: 1;
-}
-
-.bg-orbs {
-    position: fixed;
-    top: 0;
-    left: 0;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--md-space-2);
     width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 0;
+    max-width: 640px;
 }
 
-.orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(90px);
-    will-change: transform, opacity, width, height, top, left;
+.home-title {
+    margin: 0;
+    font-size: 40px;
+    line-height: 48px;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--color-text);
 }
 
-.orb-1 {
-    width: 35vmax;
-    height: 35vmax;
-    background: radial-gradient(circle, #a78bfa, #7c3aed);
-    animation: orbFly1 16s ease-in-out infinite alternate;
+.home-subtitle {
+    margin: 0;
+    font-size: 14px;
+    line-height: 20px;
+    letter-spacing: 0.25px;
+    color: var(--color-text-secondary);
 }
 
-.orb-2 {
-    width: 30vmax;
-    height: 30vmax;
-    background: radial-gradient(circle, #8b5cf6, #6d28d9);
-    animation: orbFly2 18s ease-in-out infinite alternate-reverse;
+/* MD3 split button 容器：var-menu 不接收外部 class，宽度只能加在这一层。
+ * 宽度给到 ~320 就够：hero 铺满后按钮再跟着 100% 就会变成一条长条。 */
+.home-login {
+    width: min(320px, 100%);
+    margin-top: var(--md-space-5);
 }
 
-.orb-3 {
-    width: 25vmax;
-    height: 25vmax;
-    background: radial-gradient(circle, #c084fc, #7c3aed);
-    animation: orbPulse 12s ease-in-out infinite alternate;
+.home-login .var-menu {
+    width: 100%;
+    display: flex;
 }
 
-.orb-4 {
-    width: 20vmax;
-    height: 20vmax;
-    background: radial-gradient(circle, #9a6cf7, #4c1d95);
-    animation: orbFly3 20s ease-in-out infinite alternate;
+.home-login__group {
+    display: flex;
+    width: 100%;
+}
+
+.home-login__group .var-button {
+    box-shadow: none;
+}
+
+.home-login__main {
+    flex: 1;
+}
+
+.home-login__chevron {
+    flex: 0 0 auto;
+    padding: 0 var(--md-space-3);
+}
+
+.home-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--md-space-3);
+    width: 100%;
+    max-width: var(--md-content-max-width);
 }
 
 
-@keyframes orbFly1 {
-    0% {
-        top: -15%;
-        left: -15%;
-        transform: rotate(0deg) scale(1);
-        opacity: 0.3;
-    }
-
-    100% {
-        top: 55%;
-        left: 55%;
-        transform: rotate(180deg) scale(1.6);
-        opacity: 0.8;
-    }
-}
-
-@keyframes orbFly2 {
-    0% {
-        bottom: -10%;
-        right: -10%;
-        transform: rotate(0deg) scale(1);
-        opacity: 0.25;
-    }
-
-    100% {
-        bottom: 50%;
-        right: 50%;
-        transform: rotate(-200deg) scale(1.8);
-        opacity: 0.7;
-    }
-}
-
-@keyframes orbPulse {
-    0% {
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
-        opacity: 0.2;
-    }
-
-    100% {
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(2.0) rotate(120deg);
-        opacity: 0.7;
-    }
-}
-
-@keyframes orbFly3 {
-    0% {
-        top: -5%;
-        right: -10%;
-        transform: rotate(0deg) scale(0.9);
-        opacity: 0.2;
-    }
-
-    100% {
-        top: 60%;
-        right: 50%;
-        transform: rotate(-150deg) scale(1.7);
-        opacity: 0.75;
-    }
+.feature-desc {
+    margin: 0;
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--color-on-surface-variant);
 }
 </style>

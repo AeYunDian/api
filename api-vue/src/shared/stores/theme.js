@@ -3,14 +3,20 @@ import { defineStore } from "pinia";
 import { StyleProvider, Themes } from "@varlet/ui";
 
 // 皮肤 × 明暗 → Varlet 主题对象
+//
+// 注意：@varlet/ui 3.x 只导出 md3Light / md3Dark / dark，已经移除了 md2Light /
+// md2Dark。若把 undefined 传给 StyleProvider，它会移除已注入的变量，
+// 导致暗色模式花色错乱。因此：
+//   - md3  : MD3 亮/暗语义色（Material You）
+//   - md2  : 亮色沿用 Varlet 默认变量（不注入主题，null），暗色使用内置 Themes.dark
 const THEME_MAP = {
   md3: {
     light: Themes.md3Light,
     dark: Themes.md3Dark,
   },
   md2: {
-    light: Themes.md2Light,
-    dark: Themes.md2Dark,
+    light: null,
+    dark: Themes.dark,
   },
 };
 

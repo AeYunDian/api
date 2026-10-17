@@ -10,10 +10,14 @@ const user = inject('user');
 const channel = inject('channel');
 const router = useRouter();
 const loading = ref(false);
+
 async function logout() {
     const action = await Dialog({
-        title: '确认',
-        message: '您确认要登出？'
+        title: '退出登录',
+        confirmButtonProps: { text: false, type: 'danger' },
+        message: '确定要退出当前账号吗？',
+        confirmButtonText: '退出',
+        cancelButtonText: '取消',
     });
     if (action === 'confirm') {
         try {
@@ -34,6 +38,7 @@ async function logout() {
 
     }
 }
+
 function maskEmail(email) {
     if (!email || typeof email !== 'string' || !email.includes('@')) {
         return email;
@@ -51,43 +56,119 @@ function maskEmail(email) {
 </script>
 
 <template>
-    <div>
-        <h2>账号概览</h2>
+    <div class="overview-page">
+        <div class="md-page-header">
+            <div class="md-page-heading">
+                <h1 class="md-page-title">账号概览</h1>
+                <p class="md-page-subtitle">你的账号信息与登录状态</p>
+            </div>
+        </div>
 
-        <template v-if="user">
-            <var-space style="align-items: center;" class="info-content">
-                <div v-if="user.avatar">
-                    <var-avatar :src="user.avatar" color="transparent" style="flex-shrink: 0;" />
+        <var-progress v-if="!user" indeterminate />
+
+        <div v-else class="overview">
+            <div class="profile-head">
+                    <var-avatar v-if="user.avatar" :src="user.avatar" :size="56" class="profile-avatar" />
+                    <div class="profile-text">
+                        <p class="profile-name">{{ user.username || '未命名用户' }}</p>
+                        <p v-if="user.email" class="profile-email">{{ maskEmail(user.email) }}</p>
+                    </div>
                 </div>
-                <div style="width: 100%;">
-                    <p v-if="user.username">用户名：{{ user?.username }}</p>
-                    <p v-if="user.email">邮箱：{{ maskEmail(user?.email) }}</p>
-                    <p v-if="user.description" class="description">简介：{{ user?.description }}</p>
-                    <p v-if="user.created_at">注册时间：{{ formatTime(user.created_at) }}</p>
+
+            <div class="meta-list">
+                <div v-if="user.description" class="meta-row">
+                    <span class="meta-row__label">个人简介</span>
+                    <span class="meta-row__value">{{ user.description }}</span>
                 </div>
+                <div v-if="user.created_at" class="meta-row">
+                    <span class="meta-row__label">注册时间</span>
+                    <span class="meta-row__value">{{ formatTime(user.created_at) }}</span>
+                </div>
+            </div>
 
-            </var-space>
-        </template>
-        <p v-else>加载中...</p>
-        <var-button @click="logout" style="float: inline-end;">退出登录</var-button>
-
+            <div class="overview-actions">
+                    <var-button type="danger" tonal @click="logout">退出登录</var-button>
+                </div>
+        </div>
     </div>
 </template>
+
 <style scoped>
-:deep(.info-content > :nth-child(2)) {
-    width: 80%;
+.overview-page {
+    padding-bottom: var(--md-space-8);
 }
 
-.description {
-    width: 100%;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+.overview {
+    max-width: 720px;
 }
 
-@media (min-width: 768px) {
-    .description {
-        width: 80%;
-    }
+.profile-avatar {
+    background: #fff;
+}
+
+.profile-head {
+    display: flex;
+    align-items: center;
+    gap: var(--md-space-3);
+}
+
+.profile-text {
+    min-width: 0;
+}
+
+.profile-name {
+    margin: 0;
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+.profile-email {
+    margin: 2px 0 0;
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--color-text-secondary);
+}
+
+.meta-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--md-space-2);
+}
+
+.meta-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--md-space-4);
+    padding-bottom: var(--md-space-2);
+    border-bottom: 1px solid var(--color-outline);
+}
+
+.meta-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.meta-row__label {
+    flex: 0 0 auto;
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--color-text-secondary);
+}
+
+.meta-row__value {
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--color-text);
+    text-align: right;
+    word-break: break-word;
+}
+
+.overview-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--md-space-6);
 }
 </style>

@@ -50,6 +50,11 @@ function openSite(site) {
     router.push(`/sites/${site.id}`)
 }
 
+function openConsole() {
+    const base = import.meta.env.PROD ? 'https://console.undz.cn' : 'https://console-dev.undz.cn'
+    window.open(`${base}/console-panel/analytics`, '_blank', 'noopener')
+}
+
 /**
  * 点登录：调 goLogin()，等 SDK 模态框关闭。
  * - 登录成功 → 立刻跳回 redirect（不用等轮询）
@@ -98,130 +103,123 @@ watch(
 </script>
 
 <template>
-    <div class="wrap">
-        <!-- 未登录 -->
-        <div v-if="!user" class="guest">
-            <h1>AySites</h1>
-            <p>登录后查看你的站点数据</p>
+    <div class="home-page">
+        <!-- 未登录：MD3 hero -->
+        <section v-if="!user" class="guest">
+            <h1 class="guest-title">AyAnalytics</h1>
+            <p class="guest-subtitle">登录后查看你的站点数据</p>
             <var-button type="primary" size="large" :loading="loggingIn" @click="handleLogin">
                 立即登录
             </var-button>
-        </div>
+        </section>
 
         <!-- 已登录 -->
         <template v-else>
-            <div class="page-header">
-                <h2>我的站点</h2>
-                <var-button @click="load" :loading="loading">刷新</var-button>
+            <div class="md-page-header">
+                <div class="md-page-heading">
+                    <h1 class="md-page-title">我的站点</h1>
+                    <p class="md-page-subtitle">
+                        {{ sites.length ? `共 ${sites.length} 个站点` : '还没有任何站点' }}
+                    </p>
+                </div>
+
+                <div class="md-page-actions">
+                    <var-tooltip content="刷新列表">
+                        <var-button round icon-container :loading="loading" @click="load">
+                            <my-icon icon="refresh" size="1em + 8px" />
+                        </var-button>
+                    </var-tooltip>
+                </div>
             </div>
 
-            <var-progress v-if="loading" indeterminate />
+            <var-progress v-if="loading && !sites.length" indeterminate />
 
-            <p v-else-if="!sites.length" class="empty">
-                还没有站点，请到
-                <a href="https://console.undz.cn/console-panel/analytics" target="_blank" rel="noopener">
-                    AyConsole
-                </a>
-                添加
-            </p>
+            <var-result v-else-if="!sites.length" type="empty" title="还没有站点"
+                description="站点需要在 AyConsole 的「网站分析」里创建，创建后这里会自动出现。">
+                <template #footer>
+                    <var-button type="primary" @click="openConsole">前往 AyConsole</var-button>
+                </template>
+            </var-result>
 
+            <!-- 站点卡片：MD3 filled card + level-1 海拔，整卡可点 -->
             <div v-else class="site-grid">
-                <div v-for="site in sites" :key="site.id" class="site-card" @click="openSite(site)">
-                    <div class="site-name">{{ site.name }}</div>
-                    <div class="site-domain">{{ site.domain }}</div>
-                </div>
+                <var-card v-for="site in sites" :key="site.id" class="site-card" hoverable
+                    @click="openSite(site)">
+                    <template #title="{ slotClass }">
+                        <div :class="slotClass" class="md-card-header">
+                            <my-icon icon="web" size="1.2em" />
+                            <span class="md-card-title">{{ site.name }}</span>
+                        </div>
+                    </template>
+                    <p class="site-domain">{{ site.domain }}</p>
+                </var-card>
             </div>
         </template>
     </div>
 </template>
 
 <style scoped>
-.wrap {
-    max-width: 1100px;
+.home-page {
+    max-width: var(--md-content-max-width);
     margin: 0 auto;
-    padding: 24px 20px;
+    padding: var(--md-space-6) var(--md-space-8);
+    padding-bottom: calc(var(--md-space-10) + 24px);
 }
 
 /* ── 未登录 ── */
 .guest {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--md-space-2);
+    min-height: 60vh;
     text-align: center;
-    padding: 90px 20px;
 }
 
-.guest h1 {
-    font-size: 30px;
-    margin: 0 0 10px;
+.guest-title {
+    margin: 0;
+    font-size: 36px;
+    line-height: 44px;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--color-text);
 }
 
-.guest p {
-    color: var(--color-text-secondary, #888);
-    margin: 0 0 24px;
-}
-
-.redirect-hint {
-    margin-top: 20px;
-    font-size: 12.5px;
-    opacity: 0.75;
-}
-
-.redirect-hint code {
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    padding: 2px 6px;
-    background: rgba(0, 0, 0, 0.06);
-    border-radius: 4px;
+.guest-subtitle {
+    margin: 0 0 var(--md-space-4);
+    font-size: 14px;
+    line-height: 20px;
+    letter-spacing: 0.25px;
+    color: var(--color-text-secondary);
 }
 
 /* ── 站点列表 ── */
-.page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.page-header h2 {
-    margin: 0;
-}
-
-.empty {
-    text-align: center;
-    padding: 60px 0;
-    color: var(--color-text-secondary, #888);
-}
-
-.empty a {
-    color: var(--color-primary, #5b54e8);
-    text-decoration: none;
-}
-
-.empty a:hover {
-    text-decoration: underline;
-}
-
 .site-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 12px;
+    gap: var(--md-space-3);
 }
 
 .site-card {
-    padding: 16px;
-    border-radius: 10px;
-    border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
-    background: var(--color-surface-container, #fff);
     cursor: pointer;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-
-.site-name {
-    font-weight: 600;
-    font-size: 15px;
-    margin-bottom: 4px;
 }
 
 .site-domain {
+    margin: 0;
     font-size: 13px;
-    color: var(--color-text-secondary, #888);
+    line-height: 20px;
+    color: var(--color-text-secondary);
     word-break: break-all;
+}
+
+@media (max-width: 640px) {
+    .home-page {
+        padding: var(--md-space-4);
+    }
+
+    .site-grid {
+        grid-template-columns: 1fr;
+    }
 }
 </style>

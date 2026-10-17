@@ -1,6 +1,7 @@
 // src/main.js
 import { createApp } from "vue";
 import { createPinia } from "pinia";
+import { Dialog } from "@varlet/ui";
 // 由于组件库交互事件使用 touch 事件进行开发，不支持桌面端的 mouse 事件，使用 @varlet/touch-emulator 将 touch -> mouse 从而实现桌面端适配。
 import "@varlet/touch-emulator";
 import MyIcon from "@/shared/MyIcon.vue";
@@ -9,6 +10,22 @@ import { head } from "@/shared/head.config";
 import { appInitConfig } from "@/shared/app-init.config";
 
 import "@/shared/style/base.css";
+// Material Design 3 设计层：必须在各应用组件样式之前加载，
+// 内部用 `html:root` 提高特异性，因此不受 Varlet 组件样式注入顺序影响。
+import "@/shared/assets/md.css";
+
+/**
+ * MD3 对话框按钮层级（用 Varlet 官方的 setDefaultOptions，不包壳）：
+ *   · 取消 = text 按钮（低强调）
+ *   · 确认 = filled 按钮（高强调）
+ * 危险操作（删除 / 退出 / 撤销）在调用处传
+ *   confirmButtonProps: { text: false, type: "danger" } 即可。
+ */
+Dialog.setDefaultOptions({
+  cancelButtonText: "取消",
+  cancelButtonProps: { text: true },
+  confirmButtonProps: { text: false },
+});
 
 const DEFAULT_APP = "default";
 

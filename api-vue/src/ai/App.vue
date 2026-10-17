@@ -1,11 +1,11 @@
 <script setup>
-import { onMounted, onUnmounted, provide, ref, computed } from 'vue'
+import { onMounted, onUnmounted, provide, ref } from 'vue'
 import { RouterView } from 'vue-router'
 import { initSdk, getSdk } from '@/shared/account-sdk'
 import { useRouter, useRoute } from 'vue-router'
 import { useThemeStore } from '@/shared/stores/theme'
-import { useWindowState } from '@/shared/composables/useWindowState';
-import { Snackbar, Dialog } from '@varlet/ui'
+import { Snackbar } from '@varlet/ui'
+import WindowControls from '@/shared/components/WindowControls.vue'
 import { useDevice } from "@/shared/composables/useDevice";
 const { mobileByWidth } = useDevice();
 import '@varlet/ui/es/snackbar/style';
@@ -18,8 +18,6 @@ const router = useRouter();
 const themeStore = useThemeStore();
 const channel = ref(null);
 const leftPopup = ref(false);
-
-const { isMaximized } = useWindowState();
 
 
 try {
@@ -68,72 +66,58 @@ onMounted(() => {
 onUnmounted(() => {
     channel.value?.close();
 });
-const isHostShell = computed(() => {
-    return typeof window.hostshell !== 'undefined' && typeof window.chrome !== 'undefined' && typeof window.chrome.webview !== 'undefined';
-});
-const minimizeWindow = () => {
-    if (typeof window.hostshell !== 'undefined' && typeof window.hostshell.windowState === 'string') {
-        window.hostshell.windowState = 'minimized';
-    }
-};
-const maximizeWindow = () => {
-    if (typeof window.hostshell !== 'undefined' && typeof window.hostshell.windowState === 'string') {
-        if (window.hostshell.windowState === 'maximized') {
-            window.hostshell.windowState = 'normal';
-        } else {
-            window.hostshell.windowState = 'maximized';
-        }
-    }
-};
-const closeWindow = async () => {
-    if (typeof window.hostshell !== 'undefined' && typeof window.hostshell.exit === 'function') {
-        const result = await Dialog(
-            {
-                title: '退出',
-                message: '确定要退出应用吗？',
-                confirmButtonText: '退出',
-                cancelButtonText: '取消',
-            });
-        if (result === 'confirm') {
-            window.hostshell.exit(0);
-        }
-
-    }
-};
 
 </script>
 
 <template>
-    <var-app-bar onmousedown="if (window.hostshell) window.hostshell.startDrag()" color="primary" text-color="#fff"
-        style="height: 54px;">
+    <!-- MD3 small top app bar：品牌主色底 + on-primary 前景色，高度由 --md-app-bar-height 统一 -->
+    <var-app-bar class="md-top-app-bar" color="var(--md-chrome-bg)" text-color="var(--md-chrome-fg)"
+        onmousedown="if (window.hostshell) window.hostshell.startDrag()">
         <template #left>
-            <div v-if="mobileByWidth && route.path.startsWith('/user-panel/')" @mousedown.stop><var-button
-                    @click="leftPopup = true;" @mousedown.stop text><my-icon icon="menu"
-                        size="1em + 8px" /></var-button></div>
-            <div style="margin-left: 15px; user-select: none;">
+            <div v-if="mobileByWidth && route.path.startsWith('/user-panel/')" @mousedown.stop>
+                <var-button text round @mousedown.stop @click="leftPopup = true">
+                    <my-icon icon="menu" size="1em + 8px" />
+                </var-button>
+            </div>
+            <div class="app-bar-brand" @mousedown.stop>
                 <span class="app-bar-title" @mousedown.stop>AyIntelligence</span>
             </div>
         </template>
         <template #right>
-            <var-button color="transparent" text-color="#fff" round text @click="toggleTheme" @mousedown.stop>
+            <var-button text round @click="toggleTheme" @mousedown.stop>
                 <var-icon :name="themeStore.currentTheme === 'light' ? 'weather-night' : 'white-balance-sunny'"
                     :size="24" />
             </var-button>
-            <var-button v-if="isHostShell" color="transparent" text-color="#fff" round text @mousedown.stop
-                @click.stop="minimizeWindow">
-                <my-icon icon="window-minimize" size="1em + 8px" />
-            </var-button>
-            <var-button v-if="isHostShell" color="transparent" text-color="#fff" round text @mousedown.stop
-                @click.stop="maximizeWindow">
-                <my-icon :icon="isMaximized ? 'window-restore' : 'window-maximize'" size="1em + 8px" />
-            </var-button>
-            <var-button v-if="isHostShell" color="transparent" text-color="#fff" round text @click.stop="closeWindow"
-                @mousedown.stop>
-                <my-icon icon="close" size="1em + 8px" />
-            </var-button>
+            <WindowControls />
         </template>
     </var-app-bar>
     <main>
-        <RouterView />
+        <!-- 内容面板：上方两个圆角常驻，滚动发生在面板内部 -->
+        <div class="app-panel">
+            <RouterView />
+        </div>
     </main>
 </template>
+
+<style scoped>
+.app-bar-brand {
+    display: inline-flex;
+    align-items: center;
+    height: 100%;
+    margin-left: var(--md-space-2);
+    user-select: none;
+}
+
+/* main 只负责 chrome 底色，内容是一块圆角面板（唯一滚动容器） */
+main {
+    height: calc(100vh - var(--md-app-bar-height, 64px));
+    overflow: hidden;
+}
+
+.app-panel {
+    height: 100%;
+    overflow-y: auto;
+    background: var(--md-panel-bg);
+    border-radius: var(--md-panel-radius) var(--md-panel-radius) 0 0;
+}
+</style>

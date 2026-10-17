@@ -1,9 +1,16 @@
 // views/UserPanel.vue
 <script setup>
-import { onMounted, onUnmounted, ref, provide, inject } from 'vue';
+import { onMounted, onUnmounted, ref, provide, inject, computed } from 'vue';
 import { isHostShell } from '@/shared/utils/device';
 import { useRouter, useRoute, RouterView } from 'vue-router';
 import { useDevice } from '@/shared/composables/useDevice';
+import { Dialog, Hover, Snackbar } from '@varlet/ui';
+import { formatTime } from '@/shared/utils/format';
+import '@varlet/ui/es/dialog/style';
+import '@varlet/ui/es/snackbar/style';
+
+/* 悬停指令：按需注册（v 开头的变量会被识别为局部指令） */
+const vHover = Hover;
 
 const { mobileByWidth } = useDevice();
 const router = useRouter();
@@ -101,6 +108,67 @@ const footerItems = [
     { path: '/about', title: '关于', icon: 'information' },
 ];
 
+/* ---------- 抽屉头部的账号信息 ---------- */
+
+const userRole = computed(() => {
+    if (!user.value) return '未登录';
+    return user.value.sub === 1 ? '超级管理员' : '普通用户';
+});
+
+/* ---------- 悬浮账号卡（桌面端 hover 抽屉头部弹出） ---------- */
+
+/** 头像遮罩的位移：v-hover 的函数形式只负责回报悬停状态，动画自己驱动 */
+const avatarMaskY = ref('100%');
+
+function handleAvatarHover(hovering) {
+    avatarMaskY.value = hovering ? '0' : '100%';
+}
+
+/** 复制 UID 到剪贴板 */
+async function copyUid() {
+    const uid = user.value?.sub;
+    if (uid == null) return;
+    try {
+        await navigator.clipboard.writeText(String(uid));
+        Snackbar.success('已复制 UID');
+    } catch {
+        Snackbar.error('复制失败，请手动输入');
+    }
+}
+
+function maskEmail(email) {
+    if (!email || typeof email !== 'string' || !email.includes('@')) return email;
+    const at = email.indexOf('@');
+    const name = email.slice(0, at);
+    const domain = email.slice(at);
+    if (name.length <= 3) return email;
+    return `${name.slice(0, 2)}****${name.slice(-1)}${domain}`;
+}
+
+function goUserInfo() {
+    leftPopup.value = false;
+    router.push('/user-panel/user-info');
+}
+
+async function logout() {
+    const action = await Dialog({
+        title: '退出登录',
+        message: '确定要退出当前账号吗？',
+        confirmButtonText: '退出',
+        confirmButtonProps: { text: false, type: 'danger' },
+    });
+    if (action !== 'confirm') return;
+
+    try {
+        await sdk.logout();
+        channel.value.postMessage('logout');
+        Snackbar.success({ content: '已登出', duration: 1000 });
+        router.push('/');
+    } catch (error) {
+        Dialog({ title: '操作失败', message: error.message });
+    }
+}
+
 /* ---------- 导航行为 ---------- */
 
 function isActive(item) {
@@ -127,73 +195,144 @@ function openConsole() {
 
 <template>
     <div class="user-layout" :class="{ 'is-mobile': mobileByWidth }">
-        <!-- 桌面端：常驻侧栏 -->
-        <aside v-if="!mobileByWidth" class="user-sidebar">
-            <nav class="user-nav">
-                <var-cell v-for="item in navItems" :key="item.path" :title="item.title" :border="true" v-ripple
-                    :class="{ active: isActive(item) }" @click="handleNav(item)">
-                    <template #icon>
-                        <div class="var-cell__icon">
-                            <div class="var-icon">
-                                <my-icon :icon="item.icon" />
+        <!-- 桌面端：常驻导航抽屉 -->
+        <aside v-if="!mobileByWidth" class="md-nav-drawer">
+            <!-- 悬停账号块：用 var-menu(trigger="hover") 弹出账号概览卡 -->
+            <var-menu trigger="hover" placement="right-start"
+                popover-class="md-account-popover">
+                <div class="md-nav-drawer__header">
+                    <var-avatar v-if="user?.avatar" :src="user.avatar" :size="40" class="md-nav-avatar" />
+                    <var-avatar v-else :size="40" class="md-nav-avatar">
+                        <my-icon icon="account-circle" size="28px" />
+                    </var-avatar>
+                    <div class="md-nav-drawer__account">
+                        <p class="md-nav-drawer__title">{{ user?.username || '未登录' }}</p>
+                        <p class="md-nav-drawer__subtitle">{{ userRole }}</p>
+                    </div>
+                </div>
+
+                <template #menu>
+                    <div class="md-account-card">
+                        <div class="md-account-card__head">
+                            <!-- 头像是可点的：v-hover 驱动遮罩上滑，浮出编辑图标 -->
+                            <div class="md-account-avatar" v-hover="handleAvatarHover" @click="goUserInfo"
+                                title="编辑个人信息">
+                                <var-avatar v-if="user?.avatar" :src="user.avatar" :size="56" />
+                                <var-avatar v-else :size="56">
+                                    <my-icon icon="account-circle" size="32px" />
+                                </var-avatar>
+                                <div class="md-account-avatar__mask"
+                                    :style="{ transform: `translateY(${avatarMaskY})` }">
+                                    <my-icon icon="pencil-outline" size="20px" />
+                                </div>
+                            </div>
+
+                            <div class="md-account-card__id">
+                                <p class="md-account-card__name">{{ user?.username || '未登录' }}</p>
+                                <p v-if="user?.email" class="md-account-card__email">
+                                    {{ maskEmail(user.email) }}
+                                </p>
+                                <p class="md-account-card__role">{{ userRole }}</p>
                             </div>
                         </div>
+
+                        <div v-if="user" class="md-account-card__rows">
+                            <div v-if="user?.sub != null" class="md-account-card__row">
+                                <span class="md-account-card__label">UID</span>
+                                <span class="md-account-card__value">
+                                    {{ user.sub }}
+                                    <var-button text round class="md-account-copy" aria-label="复制 UID"
+                                        @click="copyUid">
+                                        <my-icon icon="content-copy" size="16px" />
+                                    </var-button>
+                                </span>
+                            </div>
+                            <div v-if="user?.description" class="md-account-card__row">
+                                <span class="md-account-card__label">个人简介</span>
+                                <span class="md-account-card__value">{{ user.description }}</span>
+                            </div>
+                            <div v-if="user?.created_at" class="md-account-card__row">
+                                <span class="md-account-card__label">注册时间</span>
+                                <span class="md-account-card__value">{{ formatTime(user.created_at) }}</span>
+                            </div>
+                        </div>
+
+                        <div class="md-account-card__actions">
+                            <var-button text type="primary" @click="goUserInfo">个人信息</var-button>
+                            <var-button type="danger" tonal @click="logout">退出登录</var-button>
+                        </div>
+                    </div>
+                </template>
+            </var-menu>
+
+            <nav class="md-nav-list">
+                <var-cell v-for="item in navItems" :key="item.path" :title="item.title" class="md-nav-item"
+                    :class="{ 'md-nav-item--active': isActive(item) }" v-ripple @click="handleNav(item)">
+                    <template #icon>
+                        <span class="md-nav-icon">
+                            <my-icon :icon="item.icon" size="24px" />
+                        </span>
                     </template>
                 </var-cell>
             </nav>
-            <nav class="user-nav-footer">
-                <var-cell v-for="item in footerItems" :key="item.path" :title="item.title" :border="true" v-ripple
-                    @click="handleNav(item)">
+
+            <nav class="md-nav-list md-nav-list--footer">
+                <var-cell v-for="item in footerItems" :key="item.path" :title="item.title" class="md-nav-item"
+                    :class="{ 'md-nav-item--active': isActive(item) }" v-ripple @click="handleNav(item)">
                     <template #icon>
-                        <div class="var-cell__icon">
-                            <div class="var-icon">
-                                <my-icon :icon="item.icon" />
-                            </div>
-                        </div>
+                        <span class="md-nav-icon">
+                            <my-icon :icon="item.icon" size="24px" />
+                        </span>
                     </template>
                 </var-cell>
             </nav>
         </aside>
 
-        <!-- 主内容 -->
         <div class="user-main">
             <div class="user-content">
                 <router-view v-if="user" />
-                <div v-else class="loading-placeholder">加载中...</div>
+                <div v-else class="md-empty">
+                    <var-loading type="circle" />
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- 移动端：左侧抽屉 -->
-    <var-popup v-if="mobileByWidth" position="left" v-model:show="leftPopup"
-        style="display: flex;flex-direction: column;flex-shrink: 0;height: 100%;">
-        <div class="left-popup">
-            <div class="user-sidebar">
-                <div class="user-nav">
-                    <var-cell v-for="item in navItems" :key="item.path" :title="item.title" :border="true" v-ripple
-                        :class="{ active: isActive(item) }" @click="handleNav(item)">
-                        <template #icon>
-                            <div class="var-cell__icon">
-                                <div class="var-icon">
-                                    <my-icon :icon="item.icon" />
-                                </div>
-                            </div>
-                        </template>
-                    </var-cell>
+    <!-- 移动端：var-popup(position="left") 一次搞定遮罩 / 动画 / ESC / 滚动锁定 -->
+    <var-popup v-if="mobileByWidth" v-model:show="leftPopup" position="left" teleport="body" class="md-nav-popup">
+        <div class="md-nav-drawer md-nav-drawer--popup">
+            <div class="md-nav-drawer__header">
+                <var-avatar v-if="user?.avatar" :src="user.avatar" :size="40" class="md-nav-avatar" />
+                <var-avatar v-else :size="40" class="md-nav-avatar">
+                    <my-icon icon="account-circle" size="28px" />
+                </var-avatar>
+                <div class="md-nav-drawer__account">
+                    <p class="md-nav-drawer__title">{{ user?.username || '未登录' }}</p>
+                    <p class="md-nav-drawer__subtitle">{{ userRole }}</p>
                 </div>
-                <nav class="user-nav-footer">
-                    <var-cell v-for="item in footerItems" :key="item.path" :title="item.title" :border="true" v-ripple
-                        @click="handleNav(item)">
-                        <template #icon>
-                            <div class="var-cell__icon">
-                                <div class="var-icon">
-                                    <my-icon :icon="item.icon" />
-                                </div>
-                            </div>
-                        </template>
-                    </var-cell>
-                </nav>
             </div>
+
+            <nav class="md-nav-list">
+                <var-cell v-for="item in navItems" :key="item.path" :title="item.title" class="md-nav-item"
+                    :class="{ 'md-nav-item--active': isActive(item) }" v-ripple @click="handleNav(item)">
+                    <template #icon>
+                        <span class="md-nav-icon">
+                            <my-icon :icon="item.icon" size="24px" />
+                        </span>
+                    </template>
+                </var-cell>
+            </nav>
+
+            <nav class="md-nav-list md-nav-list--footer">
+                <var-cell v-for="item in footerItems" :key="item.path" :title="item.title" class="md-nav-item"
+                    :class="{ 'md-nav-item--active': isActive(item) }" v-ripple @click="handleNav(item)">
+                    <template #icon>
+                        <span class="md-nav-icon">
+                            <my-icon :icon="item.icon" size="24px" />
+                        </span>
+                    </template>
+                </var-cell>
+            </nav>
         </div>
     </var-popup>
 </template>
@@ -201,6 +340,7 @@ function openConsole() {
 <style scoped>
 .user-layout {
     display: flex;
+    align-items: stretch;
     height: 100%;
     width: 100%;
 }
@@ -209,84 +349,47 @@ function openConsole() {
     display: block;
 }
 
-/* 桌面端侧栏：flex 纵向，footer 撑到底 */
-.user-sidebar {
-    display: flex;
-    flex-direction: column;
-    width: 220px;
-    flex-shrink: 0;
-    border-right: 1px solid var(--cell-border-color);
-    padding: 10px 5px;
-    overflow-y: auto;
+/* 弹层内的抽屉：宽度由 CSS 控制，内容与桌面端一致 */
+.md-nav-drawer--popup {
+    width: min(84vw, 300px);
+    height: 100%;
 }
 
-/* 主导航占据剩余空间 */
-.user-nav {
-    flex: 1;
+/* 底色统一在 shared/assets/md.css 里定义（图片头像走白底），这里只管布局 */
+.md-nav-avatar {
+    flex: 0 0 auto;
 }
 
-/* 底部固定区 */
-.user-nav-footer {
-    flex-shrink: 0;
-    margin-top: 8px;
+.md-nav-drawer__account {
+    min-width: 0;
 }
 
-/* 主内容区 */
+.md-nav-drawer__account .md-nav-drawer__title,
+.md-nav-drawer__account .md-nav-drawer__subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 主内容区：固定的圆角面板（圆角常驻），滚动发生在面板内部 */
 .user-main {
     flex: 1;
     min-width: 0;
     height: 100%;
     overflow-y: auto;
+    background: var(--md-panel-bg);
+    border-radius: var(--md-panel-radius) var(--md-panel-radius) 0 0;
 }
 
 .user-content {
-    max-width: 1100px;
+    max-width: var(--md-content-max-width);
     margin: 0 auto;
-    padding: 1.25rem 32px;
+    padding: var(--md-space-6) var(--md-space-8);
 }
 
 /* 移动端内容更窄一点，符合阅读习惯 */
 .user-layout.is-mobile .user-content {
     max-width: 800px;
-    padding: 1rem 16px;
-}
-
-/* 移动端抽屉 */
-.left-popup {
-    display: flex;
-    height: 100%;
-    margin: 15px 15px 5px 15px;
-    min-width: 200px;
-    width: 23vh;
-}
-
-/* 只在侧栏内改 var-cell，避免污染其他组件 */
-.user-sidebar .var-cell {
-    user-select: none;
-    cursor: pointer;
-    transition: background .2s, color .2s;
-}
-
-.user-sidebar .var-cell.active {
-    color: var(--site-config-color-side-bar) !important;
-    background: var(--site-config-color-side-bar-active-background) !important;
-}
-
-/* 移动端抽屉 cell 复用同一套交互 */
-.left-popup .var-cell {
-    user-select: none;
-    cursor: pointer;
-    transition: background .2s, color .2s;
-}
-
-.left-popup .var-cell.active {
-    color: var(--site-config-color-side-bar) !important;
-    background: var(--site-config-color-side-bar-active-background) !important;
-}
-
-.loading-placeholder {
-    text-align: center;
-    padding: 40px;
-    color: var(--color-text-secondary);
+    padding: var(--md-space-4);
 }
 </style>

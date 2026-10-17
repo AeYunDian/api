@@ -58,20 +58,21 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <var-app-bar onmousedown="if (window.hostshell) window.hostshell.startDrag()" color="primary" text-color="#fff"
-        style="height: 54px;">
+    <!-- MD3 top app bar：与导航抽屉同色的 chrome 底色，两者连成一片；高度由 --md-app-bar-height 统一 -->
+    <var-app-bar class="md-top-app-bar" color="var(--md-chrome-bg)" text-color="var(--md-chrome-fg)"
+        onmousedown="if (window.hostshell) window.hostshell.startDrag()">
         <template #left>
             <div v-if="mobileByWidth && route.path.startsWith('/console-panel/')" @mousedown.stop>
-                <var-button text @mousedown.stop @click="leftPopup = true">
+                <var-button text round @mousedown.stop @click="leftPopup = true">
                     <my-icon icon="menu" size="1em + 8px" />
                 </var-button>
             </div>
-            <div style="margin-left: 15px; user-select: none;" @click="router.push('/')" @mousedown.stop>
+            <div class="app-bar-brand" @click="router.push('/')" @mousedown.stop>
                 <span class="app-bar-title" @mousedown.stop>AyConsole</span>
             </div>
         </template>
         <template #right>
-            <var-button color="transparent" text-color="#fff" round text @click="toggleTheme" @mousedown.stop>
+            <var-button text round @click="toggleTheme" @mousedown.stop>
                 <var-icon :name="themeStore.currentTheme === 'light' ? 'weather-night' : 'white-balance-sunny'"
                     :size="24" />
             </var-button>
@@ -82,3 +83,15 @@ onUnmounted(() => {
         <RouterView />
     </main>
 </template>
+
+<style scoped>
+.app-bar-brand {
+    display: inline-flex;
+    align-items: center;
+    height: 100%;
+    margin-left: var(--md-space-2);
+    cursor: pointer;
+    user-select: none;
+}
+
+</style>

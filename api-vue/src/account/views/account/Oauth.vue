@@ -15,6 +15,7 @@ const loading = ref(false);
 async function handleRevokeAll() {
     const action = await Dialog({
         title: '确认',
+        confirmButtonProps: { text: false, type: 'danger' },
         message: '确定要撤销所有第三方应用的授权吗？'
     });
     if (action === 'confirm') {
@@ -45,6 +46,7 @@ async function fetchApps() {
 async function handleRevoke(clientId, appName) {
     const action = await Dialog({
         title: '确认撤销',
+        confirmButtonProps: { text: false, type: 'danger' },
         message: `确定要撤销 "${appName}" 的授权吗？撤销后该应用将无法访问您的账号信息。`
     });
     if (action !== 'confirm') return;
@@ -89,40 +91,114 @@ function translateScope(scope) {
 
 <template>
     <var-pull-refresh v-model="refreshState" @refresh="onPullRefresh">
-        <div style="margin-bottom: 20px;">
-            <h2 style="margin-bottom: 10px;">授权管理</h2>
-            <var-progress v-if="loading" indeterminate style="margin-bottom: 20px;" />
-            <template v-else>
-                <var-list v-if="apps.length">
-                    <var-button @click="handleRevokeAll" block type="danger" style="margin-bottom: 5px;"
-                        size="small">撤销全部授权</var-button>
-                    <var-card v-for="app in apps" :key="app.client_id" style="margin-bottom: 16px;">
-                        <div>
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <h3>{{ app.name }}</h3>
-                                <var-button type="danger" @click="handleRevoke(app.client_id, app.name)"
-                                    :size="mobileByWidth ? 'small' : 'normal'">
-                                    撤销授权
-                                </var-button>
-                            </div>
-                            <div style="font-size: 14px; color: var(--color-text-secondary);">
-                                <p>授权范围: {{ translateScope(app.scope) }}</p>
-                                <p>授权时间: {{ app.authorized_at ? formatTime(app.authorized_at * 1000) : '未知'
-                                    }}</p>
-                                <p>登录设备数: {{ app.token_count }}</p>
-                            </div>
-                        </div>
-                    </var-card>
-                </var-list>
-                <div v-else style="text-align: center; ">
-                    <p style="color: var(--color-text-disabled);">
-                        暂无第三方应用授权
-
+        <div class="oauth-page">
+            <div class="md-page-header">
+                <div class="md-page-heading">
+                    <h1 class="md-page-title">授权管理</h1>
+                    <p class="md-page-subtitle">
+                        {{ apps.length ? `已授权 ${apps.length} 个第三方应用` : '还没有第三方应用获得授权' }}
                     </p>
-                    <var-button @click="fetchApps">刷新</var-button>
                 </div>
 
-            </template>
+                <div class="md-page-actions" v-if="apps.length">
+                    <var-button type="danger" tonal size="small" @click="handleRevokeAll">
+                        撤销全部授权
+                    </var-button>
+                </div>
+            </div>
+
+            <var-progress v-if="loading && !apps.length" indeterminate />
+
+            <var-result v-else-if="!apps.length" type="empty" title="暂无第三方应用授权"
+                description="当你在第三方应用中使用 Ay 账号登录后，授权记录会显示在这里。">
+                <template #footer>
+                    <var-button type="primary" @click="fetchApps">刷新</var-button>
+                </template>
+            </var-result>
+
+            <div v-else class="md-card-list">
+                <var-card v-for="app in apps" :key="app.client_id" class="app-card">
+                    <template #title="{ slotClass }">
+                        <div :class="slotClass" class="md-card-header">
+                            <my-icon icon="application-outline" size="1.1em" />
+                            <span class="md-card-title">{{ app.name }}</span>
+                        </div>
+                    </template>
+
+                    <div class="app-fields">
+                        <div class="app-field">
+                            <span class="app-field__label">授权范围</span>
+                            <span class="app-field__value">{{ translateScope(app.scope) }}</span>
+                        </div>
+                        <div class="app-field">
+                            <span class="app-field__label">授权时间</span>
+                            <span class="app-field__value">
+                                {{ app.authorized_at ? formatTime(app.authorized_at * 1000) : '未知' }}
+                            </span>
+                        </div>
+                        <div class="app-field">
+                            <span class="app-field__label">登录设备数</span>
+                            <span class="app-field__value">{{ app.token_count }}</span>
+                        </div>
+                    </div>
+
+                    <template #extra>
+                        <div class="app-actions">
+                            <var-button text type="danger" :size="mobileByWidth ? 'small' : 'normal'"
+                                @click="handleRevoke(app.client_id, app.name)">
+                                撤销授权
+                            </var-button>
+                        </div>
+                    </template>
+                </var-card>
+            </div>
         </div>
     </var-pull-refresh>
 </template>
+
+<style scoped>
+.oauth-page {
+    padding-bottom: var(--md-space-8);
+}
+
+
+.app-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--md-space-3);
+}
+
+.app-field {
+    display: grid;
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: var(--md-space-3);
+    align-items: baseline;
+}
+
+.app-field__label {
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0.4px;
+    color: var(--color-text-secondary);
+}
+
+.app-field__value {
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--color-text);
+    word-break: break-all;
+}
+
+.app-actions {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+}
+
+@media (max-width: 640px) {
+    .app-field {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
+}
+</style>

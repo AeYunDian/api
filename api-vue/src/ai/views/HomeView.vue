@@ -74,7 +74,6 @@ function goConsole() {
     </div>
     <div class="content">
         <var-space>
-            <var-image width="85px" height="85px" fit="cover" radius="50%" src="/favicon.webp" />
             <var-space direction="column" size="large" style="color: #fff; align-items: unset;">
                 <h5 class="content-title">Ay Account Center</h5>
                 <p class="content-subtitle">提供一站式服务，守护账号安全</p>

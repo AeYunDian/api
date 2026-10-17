@@ -552,7 +552,7 @@ onMounted(() => {
     font-size: 2.5rem;
     margin: 0 0 1rem;
     font-weight: 700;
-    background: linear-gradient(135deg, #6750a4, #2196f3);
+    background: linear-gradient(135deg, #0061A4, #2196f3);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -590,7 +590,7 @@ onMounted(() => {
 }
 
 .coming-soon__hint a {
-    color: var(--color-primary, #6750a4);
+    color: var(--color-primary, #0061A4);
     text-decoration: none;
 }
 

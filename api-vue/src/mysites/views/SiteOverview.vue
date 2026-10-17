@@ -414,10 +414,12 @@ function tipStyle() {
             <!-- 头部 -->
             <div class="page-header">
                 <div class="header-left">
-                    <var-button text class="back-btn" @click="goBack">←</var-button>
+                    <var-button round icon-container class="back-btn" @click="goBack">
+                        <my-icon icon="arrow-left" size="1em + 8px" />
+                    </var-button>
                     <div class="title-block">
-                        <h2>{{ stats?.site?.name || '站点数据' }}</h2>
-                        <p class="domain">
+                        <h2 class="md-page-title">{{ stats?.site?.name || '站点数据' }}</h2>
+                        <p class="domain md-page-subtitle">
                             {{ stats?.site?.domain || '' }}
                             <span v-if="lastUpdated" class="updated">
                                 · {{ fmtUpdated(lastUpdated) }} 更新
@@ -427,14 +429,21 @@ function tipStyle() {
                 </div>
 
                 <div class="header-right">
-                    <div class="range-tabs">
-                        <var-button v-for="r in RANGES" :key="r.id" size="small"
-                            :type="range === r.id ? 'primary' : 'default'" @click="range = r.id">
-                            {{ r.label }}
+                    <!-- MD3 一级选项卡做时间范围切换 -->
+                    <var-tabs v-model:active="range" class="range-tabs">
+                        <var-tab v-for="r in RANGES" :key="r.id" :name="r.id">{{ r.label }}</var-tab>
+                    </var-tabs>
+
+                    <var-tooltip content="刷新数据">
+                        <var-button round icon-container @click="refresh">
+                            <my-icon icon="refresh" size="1em + 8px" />
                         </var-button>
-                    </div>
-                    <var-button size="small" @click="refresh">刷新</var-button>
-                    <var-button size="small" @click="printPage">打印</var-button>
+                    </var-tooltip>
+                    <var-tooltip content="打印 / 导出 PDF">
+                        <var-button round icon-container @click="printPage">
+                            <my-icon icon="printer-outline" size="1em + 8px" />
+                        </var-button>
+                    </var-tooltip>
                 </div>
             </div>
 
@@ -510,7 +519,7 @@ function tipStyle() {
                             <g class="grid">
                                 <g v-for="(t, i) in chart.xTicks" :key="'x' + i">
                                     <text :x="t.x" :y="chart.H - 10" text-anchor="middle" class="tick-label">{{ t.label
-                                        }}</text>
+                                    }}</text>
                                 </g>
                             </g>
 
@@ -817,10 +826,11 @@ function tipStyle() {
     min-width: 0;
 }
 
+/* 尺寸交给 md.css 的 40dp 圆形图标按钮规则；
+ * 不要再写 padding / width —— 原来给文字按钮写的 `padding: 0 10px`
+ * 会把只装图标的圆按钮压成 44×24 的扁椭圆。 */
 .back-btn {
-    font-size: 20px;
-    padding: 0 10px;
-    min-width: 0;
+    flex-shrink: 0;
 }
 
 .title-block {
@@ -1247,6 +1257,213 @@ function tipStyle() {
 
     .today-number {
         font-size: 40px;
+    }
+}
+
+/* ============================================================================
+ * MD3 视觉补丁（追加在文件末尾，靠后的同特异性规则覆盖上面的旧样式）
+ * - 卡片/指标块统一 12dp 圆角 + level-1 海拔 + 容器色
+ * - 标题层级、数字用 tabular-nums，状态色改用语义 token（不再硬编码 #12a594）
+ * ========================================================================== */
+
+.wrap {
+    max-width: var(--md-content-max-width);
+    padding: var(--md-space-6) var(--md-space-8);
+}
+
+.page-header {
+    align-items: center;
+    gap: var(--md-space-4);
+    margin-bottom: var(--md-space-6);
+}
+
+.title-block h2 {
+    margin: 0;
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--color-text);
+}
+
+.title-block .domain {
+    margin: var(--md-space-1) 0 0;
+    font-size: 14px;
+    line-height: 20px;
+    letter-spacing: 0.25px;
+    color: var(--color-text-secondary);
+}
+
+.updated {
+    color: var(--color-text-secondary);
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--md-space-2);
+}
+
+/* MD3 tabs：去掉默认底色，与图标按钮并排 */
+.range-tabs {
+    background: transparent;
+    flex-wrap: nowrap;
+}
+
+/* ── 关键数字：MD3 metric tile ── */
+.metrics {
+    gap: var(--md-space-3);
+    margin-bottom: var(--md-space-4);
+}
+
+.metric {
+    background: var(--color-surface-container-low);
+    border-radius: var(--md-shape-md);
+    padding: var(--md-space-4);
+    gap: var(--md-space-1);
+    box-shadow: var(--md-elevation-1);
+}
+
+.metric-label {
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0.4px;
+}
+
+.metric-value {
+    font-size: 26px;
+    line-height: 32px;
+    font-weight: 500;
+    letter-spacing: 0;
+}
+
+.metric-value.small {
+    font-size: 16px;
+    line-height: 24px;
+}
+
+/* 在线状态用语义色，不再写死青色 */
+.metric-value.live {
+    color: var(--color-success);
+}
+
+.metric-value .dot {
+    background: var(--color-success);
+}
+
+/* ── 卡片 ── */
+.card {
+    background: var(--color-surface-container-low);
+    border-radius: var(--md-shape-md);
+    padding: var(--md-space-5);
+    margin-bottom: var(--md-space-4);
+    box-shadow: var(--md-elevation-1);
+}
+
+.card h3 {
+    margin: 0 0 var(--md-space-3);
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 500;
+    letter-spacing: 0.15px;
+    color: var(--color-text);
+}
+
+.card-head {
+    margin-bottom: var(--md-space-3);
+}
+
+.card-head h3 {
+    margin: 0;
+}
+
+/* 变化率用容器色 chip */
+.delta {
+    border-radius: var(--md-shape-full);
+    padding: 2px 10px;
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.delta.up {
+    color: var(--color-on-success-container);
+    background: var(--color-success-container);
+}
+
+.delta.down {
+    color: var(--color-on-danger-container);
+    background: var(--color-danger-container);
+}
+
+/* ── 实时在线 ── */
+.live-indicator {
+    color: var(--color-success);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.live-indicator i {
+    background: var(--color-success);
+}
+
+.bars .bar {
+    background: var(--color-primary);
+    border-radius: var(--md-shape-xs) var(--md-shape-xs) 0 0;
+}
+
+.recent-row {
+    border-bottom: 1px solid var(--color-outline);
+}
+
+.recent-path {
+    color: var(--color-text);
+}
+
+/* ── Breakdown 进度条 ── */
+.bd-bar-wrap {
+    background: var(--color-surface-container-highest);
+    border-radius: var(--md-shape-full);
+}
+
+.bd-bar {
+    background: var(--color-primary);
+    border-radius: var(--md-shape-full);
+}
+
+.bd-num {
+    color: var(--color-text);
+}
+
+/* ── 空态 ── */
+.empty-page {
+    padding: var(--md-space-10) var(--md-space-4);
+}
+
+.empty-page h2 {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 400;
+    color: var(--color-text);
+}
+
+.today-number {
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text);
+}
+
+/* 顶部加载条跟随 64dp 顶栏 */
+.top-progress {
+    top: var(--md-app-bar-height);
+}
+
+@media (max-width: 640px) {
+    .wrap {
+        padding: var(--md-space-4);
+    }
+
+    .header-right {
+        flex-wrap: wrap;
+        gap: var(--md-space-1);
     }
 }
 </style>

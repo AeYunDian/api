@@ -38,6 +38,7 @@ export function useHostShell() {
     ) {
       const result = await Dialog({
         title: "退出",
+        confirmButtonProps: { text: false, type: 'danger' },
         message: "确定要退出应用吗？",
         confirmButtonText: "退出",
         cancelButtonText: "取消",

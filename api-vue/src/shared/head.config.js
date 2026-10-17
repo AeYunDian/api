@@ -31,6 +31,7 @@ export const head = [
       href: "https://cdn.undz.cn/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap",
     },
   },
+
   {
     apps: ["*"],
     tag: "link",

@@ -41,6 +41,7 @@ export function useFeedbackList() {
   async function handleDelete(feedbackId) {
     const action = await Dialog({
       title: "确认删除",
+      confirmButtonProps: { text: false, type: 'danger' },
       message: "确定要删除这条反馈吗？",
       confirmButtonText: "确认删除",
       cancelButtonText: "取消",

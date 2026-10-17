@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router';
 import { getDeviceCount, revokeAllDevices } from '@/account/utils/api';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
+import '@varlet/ui/es/form/style';
 
 const router = useRouter();
 const sdk = inject('sdk');
@@ -33,15 +34,21 @@ onMounted(async () => {
 
 async function handleRevokeAll() {
     const action = await Dialog({
-        title: '确认',
+        title: '登出所有设备',
+        confirmButtonProps: { text: false, type: 'danger' },
         dialogStyle: { whiteSpace: 'pre-line' },
-        message: '此操作将登出所有设备（包括当前设备）以及授权的应用，如果您想登出授权的应用，请前往授权管理页面。\n\n确认继续？'
+        message: '此操作将登出所有设备（包括当前设备）以及授权的应用。\n如需单独管理授权应用，请前往「授权管理」。\n\n确认继续？',
+        confirmButtonText: '继续',
+        cancelButtonText: '取消',
     });
 
     if (action !== 'confirm') return;
     const confirm2 = await Dialog({
-        title: '确认',
-        message: '您确认要继续吗？'
+        title: '再次确认',
+        confirmButtonProps: { text: false, type: 'danger' },
+        message: '确定要立即登出全部设备吗？',
+        confirmButtonText: '登出',
+        cancelButtonText: '取消',
     });
     if (confirm2 !== 'confirm') return;
     try {
@@ -70,8 +77,10 @@ async function handleChangePassword() {
     }
 
     const action = await Dialog({
-        title: '确认',
-        message: '您确认要继续吗？'
+        title: '修改密码',
+        message: '修改后需要使用新密码重新登录，确认继续？',
+        confirmButtonText: '修改',
+        cancelButtonText: '取消',
     });
     if (action === 'confirm') {
         passwordLoading.value = true;
@@ -105,45 +114,109 @@ async function onPullRefresh() {
 
 <template>
     <var-pull-refresh v-model="refreshState" @refresh="onPullRefresh">
-        <div>
-            <h2>安全中心</h2>
+        <div class="security-page">
+            <div class="md-page-header">
+                <div class="md-page-heading">
+                    <h1 class="md-page-title">安全中心</h1>
+                    <p class="md-page-subtitle">管理登录设备与账号密码</p>
+                </div>
+            </div>
 
-            <var-card title="设备管理" class="var-elevation--3">
+            <var-card class="security-card">
+                <template #title="{ slotClass }">
+                    <div :class="slotClass" class="md-card-header">
+                        <my-icon icon="devices" size="1.2em" />
+                        <span class="md-card-title">设备管理</span>
+                    </div>
+                </template>
+
                 <var-progress v-if="deviceCountLoading || refreshState" indeterminate />
-                <p v-else-if="deviceCount === -1">加载失败</p>
-                <p v-else>当前已在 <span style="font-size: calc(1em + 3px);">{{ deviceCount }}</span> 台设备上登录</p>
-                <var-button type="danger" @click="handleRevokeAll">登出所有设备</var-button>
-                <p style="display: flex; align-items: flex-start; gap: 5px;">
-                    <my-icon icon="about" style="flex-shrink: 0; margin-top: 2px;" size="1em + 3px" />
-                    <span style="flex: 1; word-break: break-word;">
-                        注意：其他设备最长需要 10 分钟才会完全失效，请知悉。
-                    </span>
+                <p v-else-if="deviceCount === -1" class="md-hint">设备数量加载失败</p>
+                <p v-else class="device-count">
+                    当前已在 <strong>{{ deviceCount }}</strong> 台设备上登录
                 </p>
+
+                <div class="device-actions">
+                    <span class="md-hint device-note">
+                        <my-icon icon="information-outline" size="1em" />
+                        其他设备最长需要 10 分钟才会完全失效
+                    </span>
+                    <var-button type="danger" @click="handleRevokeAll">登出所有设备</var-button>
+                </div>
             </var-card>
 
-            <var-card title="修改密码" style="margin-top: 20px; margin-bottom: 10px;" class="var-elevation--3">
-                <var-form ref="passwordForm" @submit="handleChangePassword">
-                    <var-input type="password" placeholder="请输入旧密码" v-model="oldPassword"
+            <var-card class="security-card">
+                <template #title="{ slotClass }">
+                    <div :class="slotClass" class="md-card-header">
+                        <my-icon icon="lock-reset" size="1.2em" />
+                        <span class="md-card-title">修改密码</span>
+                    </div>
+                </template>
+
+                <var-form class="md-dialog-form" scroll-to-error="start" @submit="handleChangePassword">
+                    <var-input type="password" variant="outlined" placeholder="旧密码" v-model="oldPassword"
                         :rules="[v => !!v || '请填写旧密码']" />
-                    <var-input type="password" placeholder="请输入新密码（至少6位）" v-model="newPassword" :rules="[
+                    <var-input type="password" variant="outlined" placeholder="新密码（至少 6 位）" v-model="newPassword" :rules="[
                         v => !!v || '请填写新密码',
                         v => v.length >= 6 || '密码至少6位'
                     ]" />
-                    <var-input type="password" placeholder="请再次输入新密码" v-model="confirmPassword" :rules="[
+                    <var-input type="password" variant="outlined" placeholder="再次输入新密码" v-model="confirmPassword" :rules="[
                         v => !!v || '请再次输入新密码',
                         v => v === newPassword || '两次密码不一致'
                     ]" />
-                    <var-button type="warning" native-type="submit" :loading="passwordLoading"
-                        style="float: inline-end; margin-top: 10px;">修改密码</var-button>
+
+                    <div class="form-actions">
+                        <var-button type="primary" native-type="submit" :loading="passwordLoading">
+                            修改密码
+                        </var-button>
+                    </div>
                 </var-form>
             </var-card>
-
         </div>
     </var-pull-refresh>
 </template>
+
 <style scoped>
-.var-input,
-.var-button {
-    margin-top: 10px;
+.security-page {
+    padding-bottom: var(--md-space-8);
+}
+
+.security-card {
+    margin-bottom: var(--md-space-4);
+}
+
+.device-count {
+    margin: 0;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--color-text);
+}
+
+.device-count strong {
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 500;
+    color: var(--color-primary);
+}
+
+.device-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--md-space-4);
+    flex-wrap: wrap;
+    margin-top: var(--md-space-4);
+}
+
+.device-note {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--md-space-1);
+    margin: 0;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
 }
 </style>

@@ -6,6 +6,10 @@ import { useIsAdmin } from '@/console/composables/useIsAdmin'
 import { formatTime } from '@/shared/utils/format'
 import '@varlet/ui/es/dialog/style'
 import '@varlet/ui/es/snackbar/style'
+import '@varlet/ui/es/uploader/style'
+import '@varlet/ui/es/date-input/style'
+import '@varlet/ui/es/breadcrumbs/style'
+import '@varlet/ui/es/fab/style'
 
 /* ───────────── 上下文 ───────────── */
 
@@ -14,9 +18,7 @@ const router = useRouter()
 const user = inject('user')
 const isAdmin = useIsAdmin()
 
-const BASE = import.meta.env.PROD
-    ? 'https://console.undz.cn'
-    : 'https://console-dev.undz.cn'
+const BASE = 'https://console.undz.cn'
 
 const PUBLIC_BASE = 'https://files.undz.cn'
 const ROUTE_PREFIX = '/console-panel/file-manager'
@@ -57,6 +59,10 @@ const showUploadDialog = ref(false)
 const showEditDialog = ref(false)
 const uploading = ref(false)
 const updating = ref(false)
+
+/* var-uploader 的受控文件列表（VarFile[]） */
+const uploadFiles = ref([])
+const editFiles = ref([])
 
 const uploadForm = ref(emptyUploadForm())
 const editForm = ref(emptyEditForm())
@@ -179,17 +185,22 @@ function navigateTo(urlPath) {
 
 function openUpload() {
     uploadForm.value = emptyUploadForm()
+    uploadFiles.value = []
     showUploadDialog.value = true
 }
 
-function onUploadFileChange(e) {
-    const file = e.target.files && e.target.files[0]
-    if (!file) return
-    uploadForm.value.file = file
+/* var-uploader 读取完文件后回调（替代原生的 <input type="file">） */
+function onUploadFileRead(file) {
+    uploadForm.value.file = file.file
     uploadForm.value.fileName = file.name
     if (!uploadForm.value.name) {
         uploadForm.value.name = file.name
     }
+}
+
+function onUploadFileRemove() {
+    uploadForm.value.file = null
+    uploadForm.value.fileName = ''
 }
 
 function composeUploadPath() {
@@ -275,14 +286,18 @@ function openEdit(file) {
             ? toDatetimeLocal(file.expiration_at)
             : '',
     }
+    editFiles.value = []
     showEditDialog.value = true
 }
 
-function onEditFileChange(e) {
-    const file = e.target.files && e.target.files[0]
-    if (!file) return
-    editForm.value.file = file
+function onEditFileRead(file) {
+    editForm.value.file = file.file
     editForm.value.fileName = file.name
+}
+
+function onEditFileRemove() {
+    editForm.value.file = null
+    editForm.value.fileName = ''
 }
 
 async function handleEdit() {
@@ -332,12 +347,15 @@ async function handleEdit() {
     }
 }
 
+/**
+ * Unix 秒 → var-date-input 期望的 `YYYY-MM-DD HH:mm`（注意不是 ISO 的 T 分隔）
+ */
 function toDatetimeLocal(unixSec) {
     const d = new Date(unixSec * 1000)
     const pad = (n) => String(n).padStart(2, '0')
     return (
         `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-        `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+        ` ${pad(d.getHours())}:${pad(d.getMinutes())}`
     )
 }
 
@@ -346,6 +364,7 @@ function toDatetimeLocal(unixSec) {
 async function handleDeleteFile(file) {
     const action = await Dialog({
         title: '确认删除',
+        confirmButtonProps: { text: false, type: 'danger' },
         message: `确定删除 "${file.path}" 吗？`,
         confirmButtonText: '删除',
         cancelButtonText: '取消',
@@ -369,6 +388,7 @@ async function handleDeleteFile(file) {
 async function handleDeleteDir(dir) {
     const action = await Dialog({
         title: '确认删除目录',
+        confirmButtonProps: { text: false, type: 'danger' },
         message: `删除 "${dir.name}" 及其下 ${dir.count} 个文件？`,
         confirmButtonText: '删除',
         cancelButtonText: '取消',
@@ -432,6 +452,13 @@ function baseName(p) {
     return parts[parts.length - 1] || p
 }
 
+/* 面包屑下方的副标题：当前目录 + 条目统计 */
+const pageSubtitle = computed(() => {
+    if (!isAdmin.value) return '文件管理器只对超级管理员开放'
+    if (loading.value && !allFiles.value.length) return '正在读取目录…'
+    return `${currentPath.value} · ${entries.value.dirs.length} 个目录 / ${entries.value.files.length} 个文件`
+})
+
 /* ───────────── 生命周期 ───────────── */
 
 watch(
@@ -450,507 +477,322 @@ onMounted(() => {
 <template>
     <var-pull-refresh v-model="refreshing" @refresh="refresh">
         <!-- 无权限 -->
-        <div v-if="!isAdmin" class="no-access">
-            <h2>仅管理员可访问</h2>
-            <p>文件管理器只对超级管理员开放。</p>
-        </div>
+        <var-result v-if="!isAdmin" type="warning" title="仅管理员可访问" description="文件管理器只对超级管理员开放。" />
 
-        <div v-else class="fm-wrap">
-            <!-- 头部 -->
-            <div class="page-header">
-                <h2>文件管理器</h2>
-                <div class="header-actions">
-                    <var-button size="small" @click="refresh" :loading="refreshing">
-                        刷新
-                    </var-button>
-                    <var-button type="primary" size="small" @click="openUpload">
-                        上传文件
-                    </var-button>
+        <div v-else class="fm-page">
+            <!-- MD3 page header -->
+            <div class="md-page-header">
+                <div class="md-page-heading">
+                    <h1 class="md-page-title">文件管理器</h1>
+                    <p class="md-page-subtitle">{{ pageSubtitle }}</p>
+                </div>
+                <div class="md-page-actions">
+                    <var-tooltip content="刷新当前目录">
+                        <var-button round icon-container @click="refresh" :loading="refreshing">
+                            <my-icon icon="refresh" size="1em + 8px" />
+                        </var-button>
+                    </var-tooltip>
                 </div>
             </div>
 
-            <!-- 面包屑 -->
-            <div class="breadcrumb">
-                <template v-for="(b, i) in breadcrumbs" :key="b.path || 'root'">
-                    <span v-if="i > 0" class="crumb-sep">/</span>
-                    <span class="crumb" :class="{ current: i === breadcrumbs.length - 1 }"
-                        @click="i === breadcrumbs.length - 1 ? null : navigateTo(b.path)">
-                        {{ b.name }}
-                    </span>
-                </template>
-            </div>
+            <!-- MD3 面包屑：使用 Varlet Breadcrumbs，而不是手写 span 路径 -->
+            <var-breadcrumbs class="fm-breadcrumbs" separator="/">
+                <var-breadcrumb v-for="(b, i) in breadcrumbs" :key="b.path || 'root'"
+                    @click="i < breadcrumbs.length - 1 && navigateTo(b.path)">
+                    {{ b.name }}
+                </var-breadcrumb>
+            </var-breadcrumbs>
 
             <var-progress v-if="loading" indeterminate />
 
             <!-- 错误 -->
-            <div v-else-if="errorMsg" class="empty-block">
-                <p class="empty-text">{{ errorMsg }}</p>
-                <var-button type="primary" @click="loadFiles">重试</var-button>
-            </div>
+            <var-result v-else-if="errorMsg" type="error" title="加载失败" :description="errorMsg">
+                <template #footer>
+                    <var-button type="primary" @click="loadFiles">重试</var-button>
+                </template>
+            </var-result>
 
             <!-- 空 -->
-            <div v-else-if="!entries.dirs.length && !entries.files.length" class="empty-block">
-                <p class="empty-text">此目录为空</p>
-                <var-button type="primary" @click="openUpload">上传第一个文件</var-button>
-            </div>
+            <var-result v-else-if="!entries.dirs.length && !entries.files.length" type="empty" title="此目录为空"
+                description="点击右下角的浮动按钮上传第一个文件。">
+                <template #footer>
+                    <var-button type="primary" @click="openUpload">上传文件</var-button>
+                </template>
+            </var-result>
 
-            <!-- 列表 -->
-            <div v-else class="file-list">
-                <!-- 目录 -->
-                <div v-for="dir in entries.dirs" :key="'d-' + dir.urlPath" class="file-row dir-row"
-                    @click="navigateTo(dir.urlPath)">
-                    <div class="file-icon dir-icon">
-                        <my-icon icon="folder-outline" size="1.2em" />
-                    </div>
-                    <div class="file-main">
-                        <div class="file-name">{{ dir.name }}</div>
-                        <div class="file-meta">
-                            <span>{{ dir.count }} 个文件</span>
-                        </div>
-                    </div>
-                    <div class="file-actions" @click.stop>
-                        <var-button text size="small" type="danger" @click="handleDeleteDir(dir)">
+            <!-- 列表：目录与文件都用 var-cell（MD3 list item） -->
+            <div v-else class="fm-list">
+                <var-cell v-for="dir in entries.dirs" :key="'d-' + dir.urlPath" :title="dir.name" :border="true"
+                    class="fm-row fm-row--dir" v-ripple @click="navigateTo(dir.urlPath)">
+                    <template #icon>
+                        <my-icon icon="folder-outline" size="1.3em" class="fm-icon fm-icon--dir" />
+                    </template>
+                    <template #description>
+                        <span class="fm-dir-count">{{ dir.count }} 个文件</span>
+                    </template>
+                    <template #extra>
+                        <var-button text type="danger" size="small" @click.stop="handleDeleteDir(dir)">
                             删除
                         </var-button>
-                    </div>
-                </div>
+                    </template>
+                </var-cell>
 
-                <!-- 文件 -->
-                <div v-for="file in entries.files" :key="'f-' + file.path" class="file-row">
-                    <div class="file-icon">
-                        <my-icon icon="file-outline" size="1.2em" />
-                    </div>
-                    <div class="file-main">
-                        <div class="file-name" :title="file.path">
-                            {{ baseName(file.path) }}
-                        </div>
-                        <div class="file-meta">
+                <var-cell v-for="file in entries.files" :key="'f-' + file.path" :title="baseName(file.path)"
+                    :border="true" class="fm-row">
+                    <template #icon>
+                        <my-icon icon="file-outline" size="1.3em" class="fm-icon" />
+                    </template>
+                    <template #description>
+                        <div class="fm-meta">
                             <span>{{ formatBytes(file.size) }}</span>
-                            <span v-if="file.need_password" class="tag tag-lock">
+                            <span v-if="file.need_password" class="fm-tag fm-tag--lock">
                                 <my-icon icon="lock-outline" size="10px" />
                                 密码
                             </span>
-                            <span v-if="file.expiration_at" class="tag tag-exp" :title="fmtTime(file.expiration_at)">
+                            <span v-if="file.expiration_at" class="fm-tag fm-tag--exp"
+                                :title="fmtTime(file.expiration_at)">
                                 至 {{ fmtTime(file.expiration_at) }}
                             </span>
-                            <span class="tag tag-code" @click="copyPublicUrl(file)" title="点击复制公开链接">
+                            <span class="fm-tag fm-tag--code" @click="copyPublicUrl(file)" title="点击复制公开链接">
                                 {{ file.code }}
                             </span>
                         </div>
-                    </div>
-                    <div class="file-actions">
-                        <var-button text size="small" @click="downloadFile(file)">
-                            下载
-                        </var-button>
-                        <var-button text size="small" @click="openEdit(file)">
-                            编辑
-                        </var-button>
-                        <var-button text size="small" type="danger" @click="handleDeleteFile(file)">
-                            删除
-                        </var-button>
-                    </div>
-                </div>
+                    </template>
+                    <template #extra>
+                        <div class="fm-actions">
+                            <var-button text size="small" @click="downloadFile(file)">下载</var-button>
+                            <var-button text size="small" @click="openEdit(file)">编辑</var-button>
+                            <var-button text type="danger" size="small" @click="handleDeleteFile(file)">删除</var-button>
+                        </div>
+                    </template>
+                </var-cell>
             </div>
         </div>
     </var-pull-refresh>
 
-    <!-- ─── 上传对话框 ─── -->
-    <var-popup v-model:show="showUploadDialog" class="var-dialog__popup" var-dialog-cover>
-        <div class="var--box var-dialog">
-            <div class="var-dialog__title">上传文件</div>
-            <div class="dialog-message">
-                <div class="field">
-                    <label class="field-label">选择文件</label>
-                    <input type="file" class="native-input" @change="onUploadFileChange" />
-                    <div v-if="uploadForm.fileName" class="file-picked">
-                        已选择：{{ uploadForm.fileName }}
-                    </div>
-                </div>
+    <!-- MD3 FAB：上传入口 -->
+    <var-fab class="fm-fab" type="primary" position="right-bottom" inactive-icon="plus" :elevation="3"
+        :disabled="!isAdmin" @click="openUpload" />
 
-                <div class="field">
-                    <label class="field-label">文件名</label>
-                    <var-input v-model="uploadForm.name" placeholder="例如 setup.exe" />
-                    <div class="hint">
-                        将上传到 <code>{{ composeUploadPath() || currentPath + '...' }}</code>
-                    </div>
-                </div>
-
-                <div class="field">
-                    <label class="field-label">公开访问短码（可选）</label>
-                    <var-input v-model="uploadForm.code" placeholder="留空自动生成" />
-                    <div class="hint">4-128 位，只允许 A-Z a-z 0-9 _ -</div>
-                </div>
-
-                <div class="field">
-                    <var-checkbox v-model="uploadForm.needPassword">
-                        设置访问密码
-                    </var-checkbox>
-                </div>
-
-                <div v-if="uploadForm.needPassword" class="field">
-                    <label class="field-label">访问密码</label>
-                    <var-input v-model="uploadForm.password" type="password" placeholder="下载时需要输入" />
-                </div>
-
-                <div class="field">
-                    <label class="field-label">过期时间（可选）</label>
-                    <input v-model="uploadForm.expirationat" type="datetime-local" class="native-input" />
-                    <div class="hint">留空表示永久有效</div>
-                </div>
+    <!-- ─── 上传对话框：var-dialog + var-uploader + var-date-input ─── -->
+    <var-dialog v-model:show="showUploadDialog" title="上传文件" :confirm-button="false" :cancel-button="false"
+        :close-on-click-overlay="false" width="min(560px, calc(100vw - 32px))">
+        <template #title>
+            <div class="md-dialog-title">
+                <my-icon icon="cloud-upload-outline" size="1.25em" class="md-dialog-title__icon" />
+                <span>上传文件</span>
             </div>
-            <div class="var-dialog__actions">
-                <var-button text type="primary" class="var--inline-flex var-dialog__button"
-                    @click="showUploadDialog = false">
-                    取消
-                </var-button>
-                <var-button text type="primary" class="var--inline-flex var-dialog__button" :loading="uploading"
-                    @click="handleUpload">
-                    上传
-                </var-button>
+        </template>
+        <div class="md-dialog-form">
+            <div class="fm-field">
+                <label class="fm-field__label">选择文件</label>
+                <var-uploader v-model="uploadFiles" accept="*/*" :maxlength="1" :previewed="false" :elevation="false"
+                    @after-read="onUploadFileRead" @remove="onUploadFileRemove" />
             </div>
+
+            <var-input v-model="uploadForm.name" variant="outlined" placeholder="文件名，例如 setup.exe" />
+            <p class="md-hint">
+                将上传到 <code>{{ composeUploadPath() || currentPath + '...' }}</code>
+            </p>
+
+            <var-input v-model="uploadForm.code" variant="outlined" placeholder="公开访问短码（可选，留空自动生成）" />
+            <p class="md-hint">短码 4-128 位，只允许 A-Z a-z 0-9 _ -</p>
+
+            <var-checkbox v-model="uploadForm.needPassword">设置访问密码</var-checkbox>
+            <var-input v-if="uploadForm.needPassword" v-model="uploadForm.password" type="password" variant="outlined"
+                placeholder="访问密码（下载时需要输入）" />
+
+            <var-date-input v-model="uploadForm.expirationat" type="datetime" :use-seconds="false" clearable
+                variant="outlined" placeholder="过期时间（可选，留空表示永久有效）" />
         </div>
-    </var-popup>
+
+        <template #actions="{ slotClass }">
+            <div :class="slotClass" class="md-dialog-actions">
+                <var-button text type="primary" @click="showUploadDialog = false">取消</var-button>
+                <var-button type="primary" :loading="uploading" @click="handleUpload">上传</var-button>
+            </div>
+        </template>
+    </var-dialog>
 
     <!-- ─── 编辑对话框 ─── -->
-    <var-popup v-model:show="showEditDialog" class="var-dialog__popup" var-dialog-cover>
-        <div class="var--box var-dialog">
-            <div class="var-dialog__title">编辑文件</div>
-            <div class="dialog-message">
-                <div class="field">
-                    <label class="field-label">路径</label>
-                    <div class="readonly-field">{{ editForm.path }}</div>
-                </div>
-
-                <div class="field">
-                    <label class="field-label">重新选择文件（必选）</label>
-                    <input type="file" class="native-input" @change="onEditFileChange" />
-                    <div v-if="editForm.fileName" class="file-picked">
-                        已选择：{{ editForm.fileName }}
-                    </div>
-                    <div class="hint warn">
-                        接口限制：编辑会重写存储对象，必须重新选择文件。
-                    </div>
-                </div>
-
-                <div class="field">
-                    <label class="field-label">公开访问短码</label>
-                    <var-input v-model="editForm.code" placeholder="留空保持原值" />
-                </div>
-
-                <div class="field">
-                    <var-checkbox v-model="editForm.needPassword">
-                        设置访问密码
-                    </var-checkbox>
-                </div>
-
-                <div v-if="editForm.needPassword" class="field">
-                    <label class="field-label">访问密码</label>
-                    <var-input v-model="editForm.password" type="password" placeholder="留空则不修改" />
-                </div>
-
-                <div class="field">
-                    <label class="field-label">过期时间</label>
-                    <input v-model="editForm.expirationat" type="datetime-local" class="native-input" />
-                    <div class="hint">清空表示永久有效</div>
-                </div>
+    <var-dialog v-model:show="showEditDialog" title="编辑文件" :confirm-button="false" :cancel-button="false"
+        :close-on-click-overlay="false" width="min(560px, calc(100vw - 32px))">
+        <template #title>
+            <div class="md-dialog-title">
+                <my-icon icon="pencil-outline" size="1.25em" class="md-dialog-title__icon" />
+                <span>编辑文件</span>
             </div>
-            <div class="var-dialog__actions">
-                <var-button text type="primary" class="var--inline-flex var-dialog__button"
-                    @click="showEditDialog = false">
-                    取消
-                </var-button>
-                <var-button text type="primary" class="var--inline-flex var-dialog__button" :loading="updating"
-                    @click="handleEdit">
-                    保存
-                </var-button>
+        </template>
+        <div class="md-dialog-form">
+            <div class="fm-field">
+                <label class="fm-field__label">存储路径</label>
+                <pre class="fm-readonly md-mono">{{ editForm.path }}</pre>
             </div>
+
+            <div class="fm-field">
+                <label class="fm-field__label">重新选择文件（必选）</label>
+                <var-uploader v-model="editFiles" accept="*/*" :maxlength="1" :previewed="false" :elevation="false"
+                    @after-read="onEditFileRead" @remove="onEditFileRemove" />
+                <p class="md-hint">
+                    接口限制：编辑会重写存储对象，必须重新选择文件。
+                </p>
+            </div>
+
+            <var-input v-model="editForm.code" variant="outlined" placeholder="公开访问短码（留空保持原值）" />
+
+            <var-checkbox v-model="editForm.needPassword">设置访问密码</var-checkbox>
+            <var-input v-if="editForm.needPassword" v-model="editForm.password" type="password" variant="outlined"
+                placeholder="访问密码（留空则不修改）" />
+
+            <var-date-input v-model="editForm.expirationat" type="datetime" :use-seconds="false" clearable
+                variant="outlined" placeholder="过期时间（清空表示永久有效）" />
         </div>
-    </var-popup>
+
+        <template #actions="{ slotClass }">
+            <div :class="slotClass" class="md-dialog-actions">
+                <var-button text type="primary" @click="showEditDialog = false">取消</var-button>
+                <var-button type="primary" :loading="updating" @click="handleEdit">保存</var-button>
+            </div>
+        </template>
+    </var-dialog>
 </template>
 
 <style scoped>
-/* ── 无权限 ── */
-.no-access {
-    text-align: center;
-    padding: 90px 20px;
-    color: var(--color-text-secondary, #888);
+.fm-page {
+    padding-bottom: var(--md-space-4);
 }
 
-.no-access h2 {
-    margin: 0 0 8px;
-    font-size: 20px;
-    color: var(--color-text, #222);
-}
-
-/* ── 头部 ── */
-.page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.page-header h2 {
-    margin: 0;
-}
-
-.header-actions {
-    display: flex;
-    gap: 8px;
-}
-
-/* ── 面包屑 ── */
-.breadcrumb {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px;
-    padding: 10px 12px;
-    background: var(--color-surface-container, #f5f5f8);
-    border-radius: 8px;
+/* 面包屑：MD3 次级信息条（内部使用 Varlet Breadcrumbs） */
+.fm-breadcrumbs {
+    margin-bottom: var(--md-space-3);
+    padding: var(--md-space-2) var(--md-space-3);
+    border-radius: var(--md-shape-sm);
+    background: var(--color-surface-container-low);
+    font-family: var(--md-font-mono);
     font-size: 13px;
-    margin-bottom: 12px;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
     word-break: break-all;
 }
 
-.crumb {
-    color: var(--color-primary, #5b54e8);
-    cursor: pointer;
-    user-select: none;
-}
-
-.crumb:hover {
-    text-decoration: underline;
-}
-
-.crumb.current {
-    color: var(--color-text, #222);
-    cursor: default;
-}
-
-.crumb.current:hover {
-    text-decoration: none;
-}
-
-.crumb-sep {
-    color: var(--color-text-secondary, #888);
-}
-
-/* ── 空态 ── */
-.empty-block {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--color-text-secondary, #888);
-}
-
-.empty-text {
-    margin: 0 0 16px;
-}
-
-/* ── 文件列表 ── */
-.file-list {
+/* 列表：目录与文件统一为 var-cell（MD3 list item） */
+.fm-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 2px;
 }
 
-.file-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    background: var(--color-surface-container, #f5f5f8);
-    border: 1px solid transparent;
-    border-radius: 8px;
-    transition: border-color 0.15s;
+.fm-row {
+    border-radius: var(--md-shape-sm);
 }
 
-.file-row:hover {
-    border-color: var(--color-outline-variant, rgba(0, 0, 0, 0.08));
-}
-
-.dir-row {
+.fm-row--dir {
     cursor: pointer;
 }
 
-.dir-row:hover {
-    background: var(--color-surface-container-high, #eee);
+.fm-row--dir:hover {
+    background: var(--color-surface-container);
 }
 
-.file-icon {
-    flex: none;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    background: var(--color-surface, #fff);
-    color: var(--color-primary, #5b54e8);
+.fm-icon {
+    margin-right: var(--md-space-3);
+    color: var(--color-primary);
 }
 
-.dir-icon {
-    color: #f5b400;
+.fm-icon--dir {
+    color: var(--color-warning);
 }
 
-.file-main {
-    flex: 1;
-    min-width: 0;
+.fm-dir-count {
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    color: var(--color-text-secondary);
 }
 
-.file-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text, #222);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.file-meta {
+.fm-meta {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 4px;
+    gap: var(--md-space-2);
     font-size: 12px;
-    color: var(--color-text-secondary, #888);
+    color: var(--color-text-secondary);
 }
 
-.tag {
+.fm-tag {
     display: inline-flex;
     align-items: center;
     gap: 3px;
     padding: 1px 6px;
-    border-radius: 4px;
+    border-radius: var(--md-shape-xs);
     font-size: 11px;
-    line-height: 1.6;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-}
-
-.tag-lock {
-    background: rgba(245, 180, 0, 0.15);
-    color: #b8860b;
-}
-
-.tag-exp {
-    background: rgba(91, 84, 232, 0.12);
-    color: var(--color-primary, #5b54e8);
-}
-
-.tag-code {
-    background: rgba(0, 0, 0, 0.06);
-    color: var(--color-text-secondary, #666);
-    cursor: pointer;
+    line-height: 16px;
+    font-family: var(--md-font-mono);
     user-select: none;
 }
 
-.tag-code:hover {
-    background: rgba(91, 84, 232, 0.12);
-    color: var(--color-primary, #5b54e8);
+.fm-tag--lock {
+    background: var(--color-warning-container);
+    color: var(--color-on-warning-container);
 }
 
-.file-actions {
+.fm-tag--exp {
+    background: var(--color-primary-container);
+    color: var(--color-on-primary-container);
+}
+
+.fm-tag--code {
+    background: var(--color-surface-container-high);
+    color: var(--color-on-surface-variant);
+    cursor: pointer;
+}
+
+.fm-tag--code:hover {
+    background: var(--color-primary-container);
+    color: var(--color-on-primary-container);
+}
+
+.fm-actions {
     display: flex;
+    align-items: center;
     gap: 2px;
     flex-shrink: 0;
 }
 
-/* ── 对话框 ── */
-.dialog-message {
-    padding: 0 24px 16px;
+/* 对话框内的字段 */
+.fm-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--md-space-2);
 }
 
-.field {
-    margin-bottom: 14px;
-}
-
-.field-label {
-    display: block;
-    font-size: 12.5px;
+.fm-field__label {
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0.5px;
     font-weight: 500;
-    color: var(--color-text-secondary, #666);
-    margin-bottom: 6px;
+    color: var(--color-text-secondary);
 }
 
-.hint {
-    font-size: 12px;
-    color: var(--color-text-secondary, #888);
-    margin-top: 4px;
-}
-
-.hint.warn {
-    color: #c4553d;
-}
-
-.hint code {
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    padding: 1px 5px;
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 3px;
-    font-size: 11.5px;
-    word-break: break-all;
-}
-
-.readonly-field {
-    font-family: ui-monospace, Menlo, Consolas, monospace;
+.fm-readonly {
+    margin: 0;
+    padding: var(--md-space-2) var(--md-space-3);
+    border-radius: var(--md-shape-sm);
+    background: var(--color-surface-container-high);
     font-size: 13px;
-    padding: 8px 12px;
-    background: var(--color-surface-container, #f5f5f8);
-    border-radius: 6px;
-    word-break: break-all;
-    color: var(--color-text, #222);
-}
-
-.native-input {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.2));
-    border-radius: 6px;
-    background: var(--color-surface, #fff);
-    color: var(--color-text, #222);
-    font-size: 13px;
-    font-family: inherit;
-    outline: none;
-    box-sizing: border-box;
-}
-
-.native-input:focus {
-    border-color: var(--color-primary, #5b54e8);
-}
-
-.file-picked {
-    font-size: 12px;
-    color: var(--color-primary, #5b54e8);
-    margin-top: 4px;
+    line-height: 20px;
+    color: var(--color-text);
     word-break: break-all;
 }
 
-/* ── 移动端 ── */
+.fm-fab {
+    z-index: 92;
+}
+
 @media (max-width: 640px) {
-    .file-row {
-        padding: 10px;
-        gap: 8px;
-    }
-
-    .file-icon {
-        width: 28px;
-        height: 28px;
-    }
-
-    .file-actions {
+    .fm-actions {
         gap: 0;
     }
 
-    .file-actions .var-button {
+    .fm-actions .var-button {
         padding: 0 4px;
-    }
-
-    .file-actions .var-button :deep(.var-button__content) {
-        font-size: 12px;
     }
 }
 </style>
