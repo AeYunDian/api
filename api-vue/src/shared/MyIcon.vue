@@ -32,7 +32,7 @@ const fullIcon = computed(() => {
     return `${props.defaultPrefix}:${iconStr}`
 })
 const computedSize = computed(() => {
-    if (/[\+\-\*\/]/.test(props.size)) {
+    if (/[+*/-]/.test(props.size)) {
         return `calc(${props.size})`
     }
     return props.size

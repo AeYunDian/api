@@ -73,6 +73,7 @@ function goAccountCenter() {
 <template>
     <div class="home-page">
         <section class="home-hero">
+
             <h1 class="home-title">Ay Console</h1>
             <p class="home-subtitle">开发者控制台 · 统一管理应用与反馈</p>
 

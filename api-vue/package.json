@@ -6,7 +6,9 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix"
     },
     "dependencies": {
         "@varlet/touch-emulator": "^3.20.6",
@@ -18,12 +20,16 @@
         "vue-router": "^5.2.0"
     },
     "devDependencies": {
+        "@eslint/js": "^9.39.5",
         "@iconify/vue": "^5.0.1",
         "@varlet/import-resolver": "^3.20.6",
         "@vitejs/plugin-basic-ssl": "^2.3.0",
         "@vitejs/plugin-legacy": "^8.2.3",
         "@vitejs/plugin-vue": "^6.0.8",
         "autoprefixer": "^10.6.1",
+        "eslint": "^9.39.5",
+        "eslint-plugin-vue": "^10.11.1",
+        "globals": "^16.5.0",
         "highlight.js": "^11.12.0",
         "postcss": "^8.5.28",
         "rollup-plugin-visualizer": "^7.1.1",

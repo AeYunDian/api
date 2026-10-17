@@ -36,3 +36,14 @@ npm run dev
 ```sh
 npm run build
 ```
+
+### Lint
+
+```sh
+npm run lint
+npm run lint:fix
+```
+
+ESLint 9 flat config 在 `eslint.config.js`：`eslint:recommended` + `eslint-plugin-vue` 的
+`flat/essential`，只检查真实错误，不强制引号/分号/缩进等格式。生成产物（`public/`、
+`auto-imports.d.ts`、`components.d.ts`、`stats.html`）不参与检查。

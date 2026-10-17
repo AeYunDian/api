@@ -1,5 +1,4 @@
 import { fileURLToPath, URL } from "node:url";
-import fs from "fs";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import vueDevTools from "vite-plugin-vue-devtools";
@@ -115,43 +114,28 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        entryFileNames: "js/[name]-[hash].js",
-        chunkFileNames: "js/[name]-[hash].js",
-        assetFileNames: (assetInfo) => {
-          const name = assetInfo.name || "";
-          if (name.endsWith(".css")) return "css/[name]-[hash][extname]";
-          if (/\.(png|jpe?g|gif|svg|webp|ico)$/.test(name))
-            return "images/[name]-[hash][extname]";
-          if (/\.(woff2?|eot|ttf|otf)$/.test(name))
-            return "fonts/[name]-[hash][extname]";
-          return "assets/[name]-[hash][extname]";
+        entryFileNames: "js/[hash].js",
+        chunkFileNames: (chunkInfo) => {
+          if (chunkInfo.name.startsWith("vendor-")) {
+            return "vendor/[hash].js";
+          }
+          return "js/[hash].js";
         },
-
-        // manualChunks(id) {
-        //     if (id.includes('@vue') || id.includes('vue-router') || id.includes('pinia')) {
-        //         if (id.includes('@vue')) return 'vendor-vue';
-        //         if (id.includes('vue-router')) return 'vendor-router';
-        //         if (id.includes('pinia')) return 'vendor-pinia';
-        //     }
-
-        //     if (id.includes('@varlet/shared') || id.includes('@varlet/use')) {
-        //         return 'vendor-varlet-libs';
-        //     }
-
-        //     if (id.includes('dayjs')) return 'vendor-dayjs';
-        //     if (id.includes('@popperjs') || id.includes('popper.js')) return 'vendor-popper';
-        //     if (id.includes('rattail') || id.includes('js-cookie')) return 'vendor-varlet-libs'; // 归入 Varlet 公共
-
-        //     const varletMatch = id.match(/\/@varlet\/ui\/es\/([^/]+)/);
-        //     if (varletMatch) {
-        //         const dir = varletMatch[1];
-        //         const commonDirs = ['utils', 'locale', 'context', 'hooks', 'styles', 'themes', 'constants'];
-        //         if (commonDirs.includes(dir)) {
-        //             return 'vendor-varlet-common';
-        //         }
-        //         return `varlet-${dir}`;
-        //     }
-        // }
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            const parts = id.toString().split("node_modules/")[1].split("/");
+            const pkgName = parts[0].startsWith("@")
+              ? `${parts[0]}/${parts[1]}`
+              : parts[0];
+            return `vendor-${pkgName.replace("@", "")}`;
+          }
+        },
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name && assetInfo.name.endsWith(".css")) {
+            return "css/[hash].css";
+          }
+          return "[ext]/[hash].[ext]";
+        },
       },
     },
   },

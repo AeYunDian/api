@@ -71,7 +71,9 @@ const snippetQuery = computed(() => {
         MYSITES_BASE +
         '/analytics.js?token=' +
         snippetSite.value.token +
-        '"><\/script>'
+        '">' +
+        '</scr' +
+        'ipt>'
     )
 })
 
@@ -82,7 +84,9 @@ const snippetDataAttr = computed(() => {
         MYSITES_BASE +
         '/analytics.js" data-token="' +
         snippetSite.value.token +
-        '"><\/script>'
+        '">' +
+        '</scr' +
+        'ipt>'
     )
 })
 

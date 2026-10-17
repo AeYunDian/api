@@ -1,0 +1,1 @@
+import{t as e}from"./Dix_id-Q.js";function t(t,n,r){return e(t,`Varlet [${n}]: ${r}`)}function n(e,t){console.error(`Varlet [${e}]: ${t}`)}var r=e=>e?/^(http)|(\.*\/)/.test(e):!1;export{n,r,t};
