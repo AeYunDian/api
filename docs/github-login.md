@@ -112,6 +112,7 @@ GitHub 授权成功
 
 > `/login/beta/` 的 GitHub 按钮会带 `beta: true`；SDK 构造函数也会读
 > `localStorage.BETA_LOGIN` 作为兜底，所以 console 应用不重新构建也能进入测试版。
+> 绑定（`mode=bind`）不要求 beta，已登录用户可在「关联账号」页直接绑定。
 
 ### 4.1 Beta 开关
 
