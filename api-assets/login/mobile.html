@@ -10,6 +10,7 @@
     <script async src="./toast.js"></script>
     <script defer src="./mobile/basicui.js"></script>
     <script defer src="./userinput.js"></script>
+    <script defer src="./github-entry.js"></script>
     <link rel="preconnect" href="https://cdn.undz.cn">
     <link
         href="https://cdn.undz.cn/css2?family=Roboto:wght@400;700&family=Noto+Sans+HK:wght@400;700&family=Noto+Sans+SC:wght@400;700&family=Noto+Sans+TC:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap"
@@ -138,6 +139,24 @@
                                     stroke-linecap="round" stroke-linejoin="round"></path>
                             </svg>
                             <span data-i18n="btn.login.oauth.yzhyzxy">使用 Yzhyzxy 账号登录</span>
+                        </button>
+                    </div>
+                    <div class="oauth-provider-btn" id="githubProviderBtn"
+                        style="text-align: center; margin-top: 8px; display: none;">
+                        <button type="button" id="oauthGithubBtn" style="
+        background: none;
+        border: none;
+        color: #24292f;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 8px 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    ">
+                            <img class="logo-svg" src="/github.svg" width="24" height="24" alt="GitHub"
+                                style="height: 24px; width: 24px;" />
+                            <span data-i18n="btn.login.oauth.github">使用 GitHub 账号登录</span>
                         </button>
                     </div>
                 </form>

@@ -3,14 +3,14 @@
 
 let sdkInstance = null;
 
-export function initSdk(appId, i18n = "zh-cn", options = {}) {
+export function initSdk(appId, i18n = "zh-cn") {
   if (typeof window === "undefined" || !window.AyAccount) {
     throw new Error(
       "[SDK] AyAccountSDK not loaded. Please include the script tag first.",
     );
   }
   if (!sdkInstance) {
-    sdkInstance = new window.AyAccount({ appId, i18n, ...options });
+    sdkInstance = new window.AyAccount({ appId, i18n });
   }
   return sdkInstance;
 }

@@ -110,23 +110,16 @@ GitHub 授权成功
 
 `mode=bind` 用于设置页绑定：要求当前已登录，且该 GitHub 未绑定其他账号。
 
-> `/login/beta/` 的 GitHub 按钮会带 `beta: true`；SDK 构造函数也会读
-> `localStorage.BETA_LOGIN` 作为兜底，所以 console 应用不重新构建也能进入测试版。
-> 绑定（`mode=bind`）不要求 beta，已登录用户可在「关联账号」页直接绑定。
+### 4.1 正式入口
 
-### 4.1 Beta 开关
+GitHub 已从 beta 转正：
 
-GitHub 入口目前只出现在测试版登录页：
+- `/login/` 和 `/login/mobile` 直接显示 GitHub 按钮（`github-entry.js`）；
+- SDK 固定加载 `/login/`，不再读取 `beta` / `BETA_LOGIN`；
+- 后端 `/start` 不再要求 `beta=1`；
+- `/login/beta/` 已废弃，可删除。
 
-| 层 | 开关 |
-|---|---|
-| 前端 SDK 初始化 | `new AyAccount({ appId, beta: true })` |
-| SDK 加载的 iframe | `/login/beta/`（beta 为真）或 `/login/`（默认） |
-| 测试页 | `/login/beta/` 是 `/login/` 的副本，额外有 GitHub 按钮 |
-| 后端 | `/start` 需要 `beta=1` 或 `env.GITHUB_OAUTH_BETA === "true"` |
-| Console 应用 | `localStorage.BETA_LOGIN === 'true'` 时 `initSdk(..., { beta: true })` |
-
-稳定后把 `/login/beta/` 的 GitHub 按钮合并回 `/login/`，再把 SDK 的 beta 分支去掉即可。
+绑定（`mode=bind`）不要求 beta，已登录用户可在「关联账号」页直接绑定。
 
 ---
 
@@ -139,7 +132,7 @@ GitHub 入口目前只出现在测试版登录页：
 | 1066 | `GITHUB_UPSTREAM_ERROR` | 502 | GitHub 上游失败 |
 | 1067 | `GITHUB_EMAIL_UNAVAILABLE` | 400 | 拿不到已验证邮箱 |
 | 1068 | `GITHUB_EMAIL_REGISTERED` | 409 | 该 GitHub 邮箱已注册 |
-| 1069 | `GITHUB_BETA_DISABLED` | 403 | 未开启 beta |
+| 1069 | `GITHUB_BETA_DISABLED` | 403 | 已废弃（beta 转正前使用） |
 | 1070 | `GITHUB_NOT_CONFIGURED` | 503 | 缺少 AppID/Secret/回调配置 |
 | 1071 | `GITHUB_PENDING_INVALID` | 401 | 注册中间页 token 无效/过期 |
 | 1072 | `GITHUB_ALREADY_BOUND` | 409 | 该 GitHub 已绑定其他账号 |
@@ -182,11 +175,10 @@ GitHub 入口目前只出现在测试版登录页：
 | `services/account/ayOnline.js` | 挂载 `handleGithubAuth` |
 | `shared/error-codes.js` | 新增 1064–1072 |
 | `public/oauth2/github_register.html` | 注册中间页 |
-| `public/login/beta/` | `/login/` 的测试版副本，含 GitHub 入口 |
-| `public/lib/account-sdk.js` | 构造参数 `beta`、GitHub provider、beta 页面路径 |
+| `public/login/github-entry.js` | 正式版登录页的 GitHub 入口 |
+| `public/login/beta/` | 已废弃，可删除 |
+| `public/lib/account-sdk.js` | GitHub provider（已移除 beta 分支） |
 | `public/lib/account-sdk.min.js` | 由 SDK 源码重新生成 |
-| `src/shared/account-sdk.js` | `initSdk` 支持第三个参数 |
-| `src/console/App.vue` | 读取 `localStorage.BETA_LOGIN` 传 `{ beta: true }` |
 | `src/account/views/account/LinkAccount.vue` | 关联账号页增加 GitHub 入口 |
 | `src/account/utils/api.js` | GitHub 的绑定链接使用 `mode=bind` |
 | `wrangler secret` | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITHUB_REDIRECT_URI` |

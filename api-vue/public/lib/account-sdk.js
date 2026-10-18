@@ -44,9 +44,7 @@ const URLPATH = {
     LOGIN_YZH_OAUTH: "/api/auth/yzhyzxy/start?mode=login",
     LOGIN_GITHUB_OAUTH: "/api/auth/github/start?mode=login",
     MOBILE: "/login/mobile",
-    MOBILE_BETA: "/login/beta/",
     DESKTOP: "/login/",
-    DESKTOP_BETA: "/login/beta/",
     REGISTER: "?tab=register",
     LOGIN: "?tab=login",
   },
@@ -121,7 +119,7 @@ const BUILTIN_TRANSLATIONS = {
     cookie_policy: "《Cookie 政策》",
     terms: "《服务条款》",
     "btn.login.oauth.yzhyzxy": "使用 Yzhyzxy 账号登入",
-    "btn.login.oauth.github": "使用 GitHub 账号登入（Beta）",
+    "btn.login.oauth.github": "使用 GitHub 账号登入",
     "privacy_policy.link": "https://go.undz.cn/privacy/zh-cn",
     "cookie_policy.link": "https://go.undz.cn/cookies/zh-cn",
     "terms.link": "https://go.undz.cn/terms/zh-cn",
@@ -227,7 +225,7 @@ const BUILTIN_TRANSLATIONS = {
     "btn.haveQuestion": "FAQ",
     loading: "Loading...",
     "btn.login.oauth.yzhyzxy": "Login with Yzhyzxy account",
-    "btn.login.oauth.github": "Login with GitHub (Beta)",
+    "btn.login.oauth.github": "Login with GitHub",
     "agreement.and1": ", ",
     "agreement.and2": "and",
     "link.faq": "https://online.undz.cn/login/faq/en-us",
@@ -335,7 +333,7 @@ const BUILTIN_TRANSLATIONS = {
     "login.password": "密碼",
     "btn.login": "登錄",
     "btn.login.oauth.yzhyzxy": "使用 Yzhyzxy 賬號登錄",
-    "btn.login.oauth.github": "使用 GitHub 賬號登錄（Beta）",
+    "btn.login.oauth.github": "使用 GitHub 賬號登錄",
     "btn.haveQuestion": "常見問題",
     loading: "載入中...",
     "agreement.and1": "、",
@@ -569,22 +567,7 @@ class AyAccount {
   constructor(config) {
     if (!config) throw new Error("[AyAccountSDK] config is required");
 
-    let beta = config.beta === true;
-    try {
-      if (
-        !beta &&
-        typeof localStorage !== "undefined" &&
-        localStorage.getItem("BETA_LOGIN") === "true"
-      ) {
-        beta = true;
-      }
-    } catch {
-      /* localStorage 不可用时忽略 */
-    }
-    const priv = {
-      appId: config.appId || "default",
-      beta,
-    };
+    const priv = { appId: config.appId || "default" };
     privateData.set(this, priv);
 
     this._iframe = null;
@@ -901,16 +884,13 @@ class AyAccount {
       iframe.textContent = "";
 
       // 根据模式设置不同的 URL 参数
-      const priv = privateData.get(this);
-      const beta = priv.beta === true;
-      const pagePath = isMobile()
-        ? beta
-          ? URLPATH.MODALPAGE.MOBILE_BETA
+      const baseUrl = isMobile()
+        ? PRODUCE
+          ? `${URLPATH.BASE}${URLPATH.MODALPAGE.MOBILE}`
           : URLPATH.MODALPAGE.MOBILE
-        : beta
-          ? URLPATH.MODALPAGE.DESKTOP_BETA
+        : PRODUCE
+          ? `${URLPATH.BASE}${URLPATH.MODALPAGE.DESKTOP}`
           : URLPATH.MODALPAGE.DESKTOP;
-      const baseUrl = PRODUCE ? `${URLPATH.BASE}${pagePath}` : pagePath;
       iframe.src =
         mode === "register"
           ? `${baseUrl}${URLPATH.MODALPAGE.REGISTER}`
@@ -982,10 +962,8 @@ class AyAccount {
                 data.provider === "yzhyzxy" ||
                 data.provider === "github"
               ) {
-                // 调用弹窗登录方法；github 目前只在 beta 页面出现
-                this.#_loginWithOAuthPopup(data.provider, {
-                  beta: data.beta === true,
-                })
+                // 调用弹窗登录方法
+                this.#_loginWithOAuthPopup(data.provider)
                   .then((result) => {
                     userInfo = result;
                     iframe.contentWindow.postMessage(
@@ -1137,7 +1115,7 @@ class AyAccount {
       "*",
     );
   }
-  async #_loginWithOAuthPopup(provider, options = {}) {
+  async #_loginWithOAuthPopup(provider) {
     const self = this;
 
     const endpoints = {
@@ -1148,10 +1126,7 @@ class AyAccount {
       throw new Error("Unsupported provider");
     }
 
-    let endpoint = endpoints[provider];
-    if (provider === "github" && options.beta) {
-      endpoint += "&beta=1";
-    }
+    const endpoint = endpoints[provider];
 
     return new Promise((resolve, reject) => {
       fetch(`${URLPATH.BASE}${endpoint}`, {

@@ -1,0 +1,63 @@
+* {
+  border-width: 0;
+  border-style: solid;
+  border-color: currentColor;
+}
+.ay-icon__image--loading {
+  animation: spin 2s linear infinite;
+  width: 20px;
+  height: 20px;
+  margin-right: 4px;
+  vertical-align: middle;
+  overflow-clip-margin: content-box;
+  overflow: clip;
+}
+.ay-icon__image--error {
+  width: 20px;
+  height: 20px;
+  margin-right: 4px;
+  vertical-align: middle;
+  overflow-clip-margin: content-box;
+  overflow: clip;
+  filter: invert(1);
+  /* 图标是黑的，反转成白色 */
+}
+i.ay-icon {
+  position: relative;
+  display: inline-block;
+}
+div.ay-toast__text {
+  margin-top: 0;
+}
+.ay-popup.ay-toast {
+  top: 50%;
+  left: 0;
+  right: 0;
+  max-height: 100%;
+  position: fixed;
+  transition: none !important;
+  padding: 12px 20px;
+  width: fit-content; /* 自适应内容 */
+  min-width: 130px; /* 最小宽度 */
+  max-width: 80%; /* 最大宽度限制 */
+  box-sizing: border-box; /* padding 计入宽度内 */
+  flex-shrink: 0; /* 防止被压缩 */
+  flex-direction: row;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.6;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+  border-radius: 8px;
+  margin: 0 auto;
+}
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}

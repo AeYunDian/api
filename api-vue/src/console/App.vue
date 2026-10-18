@@ -18,18 +18,8 @@ const themeStore = useThemeStore()
 const channel = ref(null)
 const leftPopup = ref(false)
 
-let sdkOptions = {}
 try {
-    // 测试开关：控制台手动执行 localStorage.setItem('BETA_LOGIN', 'true') 后刷新
-    if (localStorage.getItem('BETA_LOGIN') === 'true') {
-        sdkOptions = { beta: true }
-    }
-} catch (error) {
-    console.warn('读取 BETA_LOGIN 失败', error)
-}
-
-try {
-    initSdk(import.meta.env.VITE_CONSOLE_APP_ID, 'zh-cn', sdkOptions)
+    initSdk(import.meta.env.VITE_CONSOLE_APP_ID, 'zh-cn')
 } catch (error) {
     console.error('SDK 初始化失败', error)
 }

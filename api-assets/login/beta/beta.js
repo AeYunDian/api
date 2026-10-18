@@ -1,4 +1,5 @@
 // /login/beta/beta.js —— 测试版登录页的 GitHub 入口
+// 只在 /login/beta/ 下加载；正式版 /login/ 不引用本文件。
 (function () {
     "use strict";
 
@@ -27,6 +28,7 @@
         if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
     }
 
+    // SDK 的 configWindow 可能比 DOMContentLoaded 更早到，先挂监听
     window.addEventListener("message", function (event) {
         if (event.source !== window.parent) return;
         var data = event.data;

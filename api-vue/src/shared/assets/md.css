@@ -54,16 +54,16 @@
 
   /* 海拔（MD3 elevation level 0-5） */
   --md-elevation-0: none;
-  --md-elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.3),
-    0 1px 3px 1px rgba(0, 0, 0, 0.15);
-  --md-elevation-2: 0 1px 2px 0 rgba(0, 0, 0, 0.3),
-    0 2px 6px 2px rgba(0, 0, 0, 0.15);
-  --md-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15),
-    0 1px 3px 0 rgba(0, 0, 0, 0.3);
-  --md-elevation-4: 0 6px 10px 4px rgba(0, 0, 0, 0.15),
-    0 2px 3px 0 rgba(0, 0, 0, 0.3);
-  --md-elevation-5: 0 8px 12px 6px rgba(0, 0, 0, 0.15),
-    0 4px 4px 0 rgba(0, 0, 0, 0.3);
+  --md-elevation-1:
+    0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --md-elevation-2:
+    0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --md-elevation-3:
+    0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  --md-elevation-4:
+    0 6px 10px 4px rgba(0, 0, 0, 0.15), 0 2px 3px 0 rgba(0, 0, 0, 0.3);
+  --md-elevation-5:
+    0 8px 12px 6px rgba(0, 0, 0, 0.15), 0 4px 4px 0 rgba(0, 0, 0, 0.3);
 
   /* 动效（MD3 easing / duration） */
   --md-ease-standard: cubic-bezier(0.2, 0, 0, 1);
@@ -80,10 +80,12 @@
   /* 字体栈：Google Sans Mono → Roboto → Noto Sans → 系统字体。
    * Google Sans Mono 不是公开可分发的 webfont，只有本机装了才会命中；
    * 没装时自然回退到 Roboto（已在 base.css 里通过 CDN 引入）。 */
-  --md-font-family: "Google Sans Mono", "Roboto", "Noto Sans", system-ui,
-    -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
-  --md-font-mono: "Google Sans Mono", "Roboto Mono", ui-monospace,
-    SFMono-Regular, Menlo, Consolas, monospace;
+  --md-font-family:
+    "Google Sans Mono", "Roboto", "Noto Sans", system-ui, -apple-system,
+    "Segoe UI", "Microsoft YaHei", sans-serif;
+  --md-font-mono:
+    "Google Sans Mono", "Roboto Mono", ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
 
   /* 兼容别名：工程内长期使用的变量名，统一指向 MD3 语义色 */
   --color-text-secondary: var(--color-on-surface-variant, rgba(0, 0, 0, 0.6));
@@ -116,16 +118,16 @@ html.dark {
 
 /* 暗色下 MD3 海拔需要更大的阴影不透明度才可见 */
 html.dark {
-  --md-elevation-1: 0 1px 3px 1px rgba(0, 0, 0, 0.55),
-    0 1px 2px 0 rgba(0, 0, 0, 0.7);
-  --md-elevation-2: 0 2px 6px 2px rgba(0, 0, 0, 0.55),
-    0 1px 2px 0 rgba(0, 0, 0, 0.7);
-  --md-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.55),
-    0 1px 3px 0 rgba(0, 0, 0, 0.7);
-  --md-elevation-4: 0 6px 10px 4px rgba(0, 0, 0, 0.55),
-    0 2px 3px 0 rgba(0, 0, 0, 0.7);
-  --md-elevation-5: 0 8px 12px 6px rgba(0, 0, 0, 0.55),
-    0 4px 4px 0 rgba(0, 0, 0, 0.7);
+  --md-elevation-1:
+    0 1px 3px 1px rgba(0, 0, 0, 0.55), 0 1px 2px 0 rgba(0, 0, 0, 0.7);
+  --md-elevation-2:
+    0 2px 6px 2px rgba(0, 0, 0, 0.55), 0 1px 2px 0 rgba(0, 0, 0, 0.7);
+  --md-elevation-3:
+    0 4px 8px 3px rgba(0, 0, 0, 0.55), 0 1px 3px 0 rgba(0, 0, 0, 0.7);
+  --md-elevation-4:
+    0 6px 10px 4px rgba(0, 0, 0, 0.55), 0 2px 3px 0 rgba(0, 0, 0, 0.7);
+  --md-elevation-5:
+    0 8px 12px 6px rgba(0, 0, 0, 0.55), 0 4px 4px 0 rgba(0, 0, 0, 0.7);
 }
 
 /* ---------- 1b. Material You 蓝色调（Monet 取色，seed ≈ #0061A4） ----------
@@ -234,7 +236,10 @@ html:root:root {
   /* --- 卡片：MD3 elevated card（12dp 圆角 / 低饱和表面 / level 1 海拔） --- */
   --card-border-radius: var(--md-shape-md);
   --card-background: var(--color-surface-container-low, var(--color-body));
-  --card-surface-low-background: var(--color-surface-container-low, var(--color-body));
+  --card-surface-low-background: var(
+    --color-surface-container-low,
+    var(--color-body)
+  );
   --card-title-color: var(--color-text);
   --card-title-font-size: 16px;
   --card-title-padding: 0 var(--md-space-4);
@@ -459,7 +464,8 @@ body {
   color-scheme: var(--color-scheme);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color var(--md-duration-medium),
+  transition:
+    background-color var(--md-duration-medium),
     color var(--md-duration-medium);
 }
 
@@ -567,11 +573,6 @@ pre {
 ::selection {
   background: var(--color-primary-container);
   color: var(--color-on-primary-container);
-}
-
-:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
 }
 
 /* 细滚动条，贴合 MD3 的低干扰观感 */
@@ -823,7 +824,8 @@ html .var-avatar:has(> img) {
   border-radius: var(--md-shape-full);
   cursor: pointer;
   user-select: none;
-  transition: background-color var(--md-duration-short) var(--md-ease-standard),
+  transition:
+    background-color var(--md-duration-short) var(--md-ease-standard),
     color var(--md-duration-short) var(--md-ease-standard);
 }
 

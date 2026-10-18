@@ -3,7 +3,6 @@
 //   - 已绑定：直接登录
 //   - 未绑定：跳 /oauth2/github_register 中间页，询问是否注册
 //            用户确认后 POST /register 创建 AyAccount 并绑定
-// 该功能目前是 beta：/start 需要 beta=1 或 env.GITHUB_OAUTH_BETA === "true"。
 
 import { checkAuth, signAccessToken } from "../auth/jwt.js";
 import { getKv } from "../auth/kv.js";
@@ -329,21 +328,6 @@ export async function handleGithubAuth({
   /* ---------- 发起授权 ---------- */
   if (path === "/api/auth/github/start" && method === "GET") {
     const mode = url.searchParams.get("mode") === "bind" ? "bind" : "login";
-    // 绑定是已登录用户的主动操作，不强制 beta；登录入口仍受 beta 控制
-    const beta =
-      mode === "bind" ||
-      url.searchParams.get("beta") === "1" ||
-      env.GITHUB_OAUTH_BETA === "true";
-    if (!beta) {
-      return jsonResponse(
-        {
-          error_code: ERROR_CODES.GITHUB_BETA_DISABLED,
-          error: "GitHub login is not enabled",
-        },
-        403,
-        cors,
-      );
-    }
     if (
       !env.GITHUB_CLIENT_ID ||
       !env.GITHUB_CLIENT_SECRET ||
@@ -362,7 +346,7 @@ export async function handleGithubAuth({
     const state = generateToken();
     await getKv().put(
       `github_state:${state}`,
-      JSON.stringify({ mode, beta: true }),
+      JSON.stringify({ mode }),
       { expirationTtl: 600 },
     );
 
