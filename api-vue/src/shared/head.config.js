@@ -1,6 +1,4 @@
 // src/shared/head.config.js
-import { isMobileByUA } from "./utils/device";
-
 export const head = [
   // =========== 挂载前 ============
 
@@ -9,7 +7,8 @@ export const head = [
     apps: ["*"],
     phase: "beforeLoadModule",
     tag: "script",
-    attrs: { src: "/lib/account-sdk.min.js", id: "account-sdk", async: true },
+    // TODO: account-sdk.min.js 重新生成后改回 min 版本
+    attrs: { src: "/lib/account-sdk.js", id: "account-sdk", async: true },
   },
   {
     apps: ["analytics"],

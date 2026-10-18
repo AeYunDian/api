@@ -314,9 +314,8 @@ onMounted(() => {
         :disabled="!user" @click="openRegisterDialog" />
 
     <!-- 注册客户端：var-dialog + var-form（不再手写 dialog 结构） -->
-    <var-dialog v-model:show="showRegisterDialog" title="注册 OAuth 客户端" :confirm-button="false"
-        :cancel-button="false" :close-on-click-overlay="false" width="min(520px, calc(100vw - 32px))"
-        @closed="resetForm">
+    <var-dialog v-model:show="showRegisterDialog" title="注册 OAuth 客户端" :confirm-button="false" :cancel-button="false"
+        :close-on-click-overlay="false" width="min(520px, calc(100vw - 32px))" @closed="resetForm">
         <template #title>
             <div class="md-dialog-title">
                 <my-icon icon="account-plus-outline" size="1.25em" class="md-dialog-title__icon" />
@@ -346,8 +345,8 @@ onMounted(() => {
     </var-dialog>
 
     <!-- 转移客户端：var-dialog + var-select -->
-    <var-dialog v-model:show="showTransferDialog" title="转移 OAuth 客户端" :confirm-button="false"
-        :cancel-button="false" width="min(480px, calc(100vw - 32px))" @closed="resetForm">
+    <var-dialog v-model:show="showTransferDialog" title="转移 OAuth 客户端" :confirm-button="false" :cancel-button="false"
+        width="min(480px, calc(100vw - 32px))" @closed="resetForm">
         <template #title>
             <div class="md-dialog-title">
                 <my-icon icon="swap-horizontal" size="1.25em" class="md-dialog-title__icon" />
@@ -385,14 +384,14 @@ onMounted(() => {
             </div>
         </template>
         <div class="doc-list">
-            <var-cell title="《OAuth 应用接入文档 第二版》" description="推荐阅读，包含完整的授权码流程说明" :border="true"
-                v-ripple class="doc-cell" @click="openPath('/doc/oauth2.v2')">
+            <var-cell title="《OAuth 应用接入文档 第二版》" description="推荐阅读，包含完整的授权码流程说明" :border="true" v-ripple
+                class="doc-cell" @click="openPath('/doc/oauth2.v2')">
                 <template #extra>
                     <my-icon icon="open-in-new" />
                 </template>
             </var-cell>
-            <var-cell title="《第一到第二版的更新摘要》" description="从旧版迁移需要关注的变更点" :border="true" v-ripple
-                class="doc-cell" @click="openPath('/doc/oauth2.v1tov2')">
+            <var-cell title="《第一到第二版的更新摘要》" description="从旧版迁移需要关注的变更点" :border="true" v-ripple class="doc-cell"
+                @click="openPath('/doc/oauth2.v1tov2')">
                 <template #extra>
                     <my-icon icon="open-in-new" />
                 </template>
@@ -416,9 +415,6 @@ onMounted(() => {
     margin-top: var(--md-space-2);
 }
 
-.client-card {
-    /* MD3 filled card：用容器色分层，不再叠加阴影 */
-}
 
 .client-fields {
     display: flex;

@@ -61,6 +61,8 @@ npx wrangler deploy --dry-run --outdir ../.dryrun-check
 | `MAIL_SEND_DOMAIN` / `MAIL_API_KEY` | 是 | 发验证码用的邮件服务 |
 | `GTCODEMAP` / `GTCODE` | 是 | GeeTest：`{captcha_id: private_key}` 的 JSON、`[register_id, login_id]` 的 JSON |
 | `YZHYZXY_CLIENT_ID` / `YZHYZXY_CLIENT_SECRET` | 第三方登录用 | Yzhyzxy OAuth |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITHUB_REDIRECT_URI` | GitHub 登录用 | OAuth App 凭证；未配置时 `/api/auth/github/start` 返回 1070 |
+| `GITHUB_OAUTH_BETA` | 可选 | `"true"` 时允许不带 `beta=1` 发起 GitHub 登录；默认只允许 beta |
 | `CHAT_OAUTH_CLIENT_SECRET` | 聊天室用 | 聊天室换取/撤销 token |
 | `ADMIN_TOKEN` | 可选 | `uniAPI` 的 `X-Admin-Token`；不配则相关接口放行 |
 | `SHORTLINK_BLOCKED_HOSTS` | 可选 | 短链目标域名黑名单，逗号分隔 |

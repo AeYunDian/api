@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html style="background-color: transparent" lang="" class="is-in-iframe iframe-level-1 theme-passport">
+
+<head>
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" type="text/css" href="../login.css" />
+    <link rel="stylesheet" type="text/css" href="../toast.css" />
+    <link rel="stylesheet" type="text/css" href="../header-title.css" />
+    <script defer src="../header-title.js"></script>
+    <script async src="../toast.js"></script>
+    <script defer src="../basicui.js"></script>
+    <script defer src="../userinput.js"></script>
+    <script defer src="./beta.js"></script>
+    <link rel="preconnect" href="https://cdn.undz.cn">
+    <link
+        href="https://cdn.undz.cn/css2?family=Roboto:wght@400;700&family=Noto+Sans+HK:wght@400;700&family=Noto+Sans+SC:wght@400;700&family=Noto+Sans+TC:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
+    <meta charset="utf-8" />
+    <meta name="renderer" content="webkit" />
+    <meta name="force-rendering" content="webkit" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title data-i18n="title.login">登录（测试版）</title>
+</head>
+
+<body style="background-color: transparent; overflow: hidden; color-scheme: light" class="">
+    <div class="app" style="color-scheme: light">
+        <div class="outcard">
+            <div class="login-page">
+                <div alt="" class="card-close"></div>
+                <div class="card-header">
+                    <span class="card-header-title">A</span>
+                    <span class="card-header-title">y</span>
+                    <span class="card-header-title">A</span>
+                    <span class="card-header-title">c</span>
+                    <span class="card-header-title">c</span>
+                    <span class="card-header-title">o</span>
+                    <span class="card-header-title">u</span>
+                    <span class="card-header-title">n</span>
+                    <span class="card-header-title">t</span>
+                </div>
+                <div class="tabs">
+                    <div class="nav-warp">
+                        <div class="navlist">
+                            <div class="login nav-item active" data-i18n="nav.login">
+                                &nbsp;登录&nbsp;
+                            </div>
+                            <div class="register nav-item" style="margin-left: 72px" data-i18n="nav.reg">
+                                &nbsp;注册&nbsp;
+                            </div>
+                            <div class="active-bar" style="width: 64px"></div>
+                        </div>
+                    </div>
+                </div>
+                <form class="register-form form">
+                    <div class="regUsername input">
+                        <input type="text" placeholder="用户名" data-i18n-placeholder="reg.username" id="regUsername"
+                            autocomplete="name" />
+                    </div>
+                    <div class="regEmail input">
+                        <input type="email" placeholder="邮箱" data-i18n-placeholder="reg.email" id="regEmail"
+                            autocomplete="email" />
+                    </div>
+                    <div class="regEmailCode input">
+                        <input type="password" placeholder="验证码" data-i18n-placeholder="reg.emailCode" id="regEmailCode"
+                            autocapitalize="off" />
+                        <button type="button" class="getEmailCode">获取</button>
+                    </div>
+                    <div class="regPassword input">
+                        <input type="password" placeholder="密码" id="regPassword" data-i18n-placeholder="reg.password"
+                            autocomplete="new-password" />
+                    </div>
+                    <div class="regPasswordConfirm input">
+                        <input type="password" placeholder="请再次输入密码" data-i18n-placeholder="reg.passwordConfirm"
+                            autocomplete="off" id="regPasswordConfirm" />
+                    </div>
+                    <div class="regAgreement">
+                        <span class="checkbox"></span>
+                        <span class="checkbox-label"><span data-i18n="agreement.prefix">我已阅读并同意</span>
+                            <a href="https://undz.cn/privacy_policy/zh-cn.html" target="_blank"
+                                data-i18n-href="privacy_policy.link" data-i18n="privacy_policy">《隐私政策》</a><span
+                                data-i18n="agreement.and1">、</span><a href="https://undz.cn/cookie_policy/zh-cn.html"
+                                target="_blank" data-i18n-href="cookie_policy.link" data-i18n="cookie_policy">《Cookie
+                                政策》</a><span data-i18n="agreement.and2">和</span><a
+                                href="https://undz.cn/terms/zh-cn.html" target="_blank" data-i18n-href="terms.link"
+                                data-i18n="terms">《服务条款》</a></span>
+                    </div>
+                    <div class="reg">
+                        <button type="submit" class="regBtn button">
+                            <span data-i18n="btn.reg">注册</span>
+                        </button>
+                    </div>
+                </form>
+                <form class="login-form form active-form">
+                    <div class="loginUsernameOrEmail input">
+                        <input type="text" data-i18n-placeholder="login.usernameoremail" placeholder="用户名/邮箱"
+                            id="loginUsernameOrEmail" autocomplete="username" />
+                    </div>
+                    <div class="loginPassword input">
+                        <input type="password" placeholder="密码" id="loginPassword"
+                            data-i18n-placeholder="login.password" autocomplete="current-password" />
+                    </div>
+                    <div class="loginAgreement">
+                        <span class="checkbox"></span>
+                        <span class="checkbox-label"><span data-i18n="agreement.prefix">我已阅读并同意</span>
+                            <a href="https://undz.cn/privacy_policy/zh-cn.html" target="_blank"
+                                data-i18n-href="privacy_policy.link" data-i18n="privacy_policy">《隐私政策》</a><span
+                                data-i18n="agreement.and1">、</span><a href="https://undz.cn/cookie_policy/zh-cn.html"
+                                target="_blank" data-i18n-href="cookie_policy.link" data-i18n="cookie_policy">《Cookie
+                                政策》</a><span data-i18n="agreement.and2">和</span><a
+                                href="https://undz.cn/terms/zh-cn.html" target="_blank" data-i18n-href="terms.link"
+                                data-i18n="terms">《服务条款》</a></span>
+                    </div>
+                    <div class="login">
+                        <button type="submit" class="loginBtn button">
+                            <span data-i18n="btn.login">登录</span>
+                        </button>
+                    </div>
+                    <div class="oauth-provider-btn" style="text-align: center; margin-top: 16px; display: none;">
+                        <button type="button" id="oauthYzhyzxyBtn" style="
+        background: none;
+        border: none;
+        color: #00b2fe;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 8px 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    ">
+                            <svg class="logo-svg" width="28" height="28" viewBox="0 0 28 28" fill="none"
+                                style="height: 25px;">
+                                <rect width="28" height="28" rx="6" fill="#000"></rect>
+                                <path d="M8 9L14 15L20 9M14 15L14 20" stroke="#fff" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                            <span data-i18n="btn.login.oauth.yzhyzxy">使用 Yzhyzxy 账号登入</span>
+                        </button>
+                    </div>
+                    <div class="oauth-provider-btn" id="githubProviderBtn"
+                        style="text-align: center; margin-top: 8px; display: none;">
+                        <button type="button" id="oauthGithubBtn" style="
+        background: none;
+        border: none;
+        color: #24292f;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 8px 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    ">
+                            <img class="logo-svg" src="/github.svg" width="24" height="24" alt="GitHub"
+                                style="height: 24px; width: 24px;" />
+                            <span data-i18n="btn.login.oauth.github">使用 GitHub 账号登入（Beta）</span>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="haveQuestionBox">
+                    <a href="javascript:void(0);" class="haveQuestion" data-i18n="btn.haveQuestion">遇到问题</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div role="dialog" tabindex="0" class="ay-popup ay-toast service-loading" style="display: none">
+        <i class="ay-icon"><img class="ay-icon__image ay-icon__image--loading"
+                src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" /></i>
+        <i class="ay-icon"><img class="ay-icon__image ay-icon__image--error" style="display: none"
+                src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" /></i>
+        <div class="ay-toast__text">加载中...</div>
+    </div>
+    <script>
+        window.addEventListener("load", async function () {
+            window.parent.postMessage(JSON.stringify({ action: "isReady" }), "*");
+            await translatePage().catch((err) =>
+                console.warn("Translation error:", err),
+            );
+            document.querySelector(".app").classList.add("show");
+        });
+    </script>
+</body>
+
+</html>

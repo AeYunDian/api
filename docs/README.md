@@ -24,6 +24,10 @@
 
 | 文档 | 内容 |
 |---|---|
+| [github-login.md](github-login.md) | GitHub 登录接入方案（无备案、无审核，最轻） |
+| [microsoft-login.md](microsoft-login.md) | Microsoft 登录接入方案（需 Azure 账号，无备案、无审核） |
+| [qq-login.md](qq-login.md) | QQ 登录/注册接入方案（个人开发者可用，需要 ICP 备案） |
+| [wechat-login.md](wechat-login.md) | 微信登录/注册接入方案（个人开发者：个人主体小程序 + 扫码登录） |
 | [chat-v2.md](chat-v2.md) | 新版聊天服务设计稿（**未实施**，仅备案） |
 | [MD3-改造说明.md](MD3-改造说明.md) | 前端 Material Design 3 改造记录 |
 

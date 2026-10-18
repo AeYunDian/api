@@ -148,6 +148,35 @@ export const USERNAME_ALREADY_EXISTS = 1042;
 /** 修改邮箱缺少验证码与凭证（原 1007 的场景之一） */
 export const EMAIL_CHANGE_CODE_REQUIRED = 1043;
 
+// ---------- GitHub 登录（1064-1072，账号段） ----------
+
+/** GitHub OAuth state 无效或已过期 */
+export const GITHUB_STATE_INVALID = 1064;
+
+/** GitHub 授权 code 无效或已使用 */
+export const GITHUB_CODE_INVALID = 1065;
+
+/** GitHub 上游接口失败 */
+export const GITHUB_UPSTREAM_ERROR = 1066;
+
+/** 拿不到 GitHub 已验证邮箱 */
+export const GITHUB_EMAIL_UNAVAILABLE = 1067;
+
+/** 该 GitHub 邮箱已注册 AyAccount */
+export const GITHUB_EMAIL_REGISTERED = 1068;
+
+/** GitHub 登录仍处于 beta，未开启 */
+export const GITHUB_BETA_DISABLED = 1069;
+
+/** 服务端未配置 GitHub OAuth 凭证 */
+export const GITHUB_NOT_CONFIGURED = 1070;
+
+/** GitHub 注册中间页 token 无效或已过期 */
+export const GITHUB_PENDING_INVALID = 1071;
+
+/** 该 GitHub 已绑定其他账号 */
+export const GITHUB_ALREADY_BOUND = 1072;
+
 // ---------- 短链接（1100-1199，console.undz.cn） ----------
 
 /** 已达单用户短链数量上限（普通用户 100 条，管理员不限） */
@@ -228,6 +257,15 @@ export const ERROR_CODES = Object.freeze({
   EMAIL_ALREADY_EXISTS,
   USERNAME_ALREADY_EXISTS,
   EMAIL_CHANGE_CODE_REQUIRED,
+  GITHUB_STATE_INVALID,
+  GITHUB_CODE_INVALID,
+  GITHUB_UPSTREAM_ERROR,
+  GITHUB_EMAIL_UNAVAILABLE,
+  GITHUB_EMAIL_REGISTERED,
+  GITHUB_BETA_DISABLED,
+  GITHUB_NOT_CONFIGURED,
+  GITHUB_PENDING_INVALID,
+  GITHUB_ALREADY_BOUND,
   LINK_LIMIT_REACHED,
   LINK_INVALID_TARGET,
   LINK_CODE_TAKEN,
@@ -277,6 +315,15 @@ export const ERROR_MESSAGES = Object.freeze({
   [EMAIL_ALREADY_EXISTS]: "Email already exists",
   [USERNAME_ALREADY_EXISTS]: "Username already exists",
   [EMAIL_CHANGE_CODE_REQUIRED]: "Email change requires verification code and token",
+  [GITHUB_STATE_INVALID]: "GitHub login state is invalid or expired",
+  [GITHUB_CODE_INVALID]: "GitHub authorization code is invalid or already used",
+  [GITHUB_UPSTREAM_ERROR]: "GitHub upstream request failed",
+  [GITHUB_EMAIL_UNAVAILABLE]: "No verified email available from GitHub",
+  [GITHUB_EMAIL_REGISTERED]: "This GitHub email is already registered",
+  [GITHUB_BETA_DISABLED]: "GitHub login is not enabled",
+  [GITHUB_NOT_CONFIGURED]: "GitHub OAuth is not configured",
+  [GITHUB_PENDING_INVALID]: "GitHub registration session is invalid or expired",
+  [GITHUB_ALREADY_BOUND]: "This GitHub account is already bound to another user",
   [LINK_LIMIT_REACHED]: "Short link limit reached",
   [LINK_INVALID_TARGET]: "Invalid target URL",
   [LINK_CODE_TAKEN]: "Short code already taken",
@@ -302,6 +349,9 @@ export const ERROR_STATUS = Object.freeze({
   1025: 400, 1026: 400, 1029: 400,
   // 1040 暂维持 500：SDK 版本闸门原来就返回 500，改状态码会影响既有客户端。
   1040: 500, 1041: 409, 1042: 409, 1043: 400,
+  // GitHub 登录（1064-1072）
+  1064: 400, 1065: 400, 1066: 502, 1067: 400, 1068: 409,
+  1069: 403, 1070: 503, 1071: 401, 1072: 409,
   // 短链接（1100-1199）
   1100: 403, 1101: 400, 1102: 409, 1103: 400, 1104: 404, 1105: 410,
   1106: 401, 1107: 403, 1108: 403, 1109: 403, 1110: 429, 1111: 400,

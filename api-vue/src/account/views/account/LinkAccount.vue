@@ -13,7 +13,7 @@ const loading = ref(false);
 const bindings = ref([]);
 const supportedProviders = ref([
     { id: 'yzhyzxy', name: 'Yzhyzxy', icon: '/yzhyzxy.svg' },
-    // { id: 'github', name: 'GitHub', icon: '/github.svg' },
+    { id: 'github', name: 'GitHub', icon: '/github.svg' },
     // { id: 'google', name: 'Google', icon: '/google.svg' },
 ]);
 

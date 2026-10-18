@@ -96,8 +96,10 @@ export function unbindProvider(provider) {
  * @returns {Promise<string>} 授权 URL
  */
 export async function getBindUrl(provider, mode = 'register') {
+    // GitHub 的绑定走 mode=bind（后端复用同一套 callback）
+    const effectiveMode = provider === 'github' ? 'bind' : mode;
     const response = await fetch(
-        `${BASE_URL}/api/auth/${provider}/start?mode=${mode}`,
+        `${BASE_URL}/api/auth/${provider}/start?mode=${effectiveMode}`,
         {
             credentials: 'include',
         }

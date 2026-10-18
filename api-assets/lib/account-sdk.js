@@ -5,13 +5,13 @@
  * @copyright 2026 AeYunDian. All rights reserved.
  * @license MIT
  */
-"v2.1.0 AyAccountSDK";
+"v2.2.0 AyAccountSDK";
 "use strict";
 if (typeof window === "undefined") {
   throw new Error("AyAccountSDK requires browser environment");
 }
 
-const VERSION = "2.1.0";
+const VERSION = "2.2.0";
 const PRODUCE = true;
 
 // ---------- 本地南瓜种植基地 ----------//
@@ -42,8 +42,11 @@ const URLPATH = {
   },
   MODALPAGE: {
     LOGIN_YZH_OAUTH: "/api/auth/yzhyzxy/start?mode=login",
+    LOGIN_GITHUB_OAUTH: "/api/auth/github/start?mode=login",
     MOBILE: "/login/mobile",
+    MOBILE_BETA: "/login/beta/",
     DESKTOP: "/login/",
+    DESKTOP_BETA: "/login/beta/",
     REGISTER: "?tab=register",
     LOGIN: "?tab=login",
   },
@@ -118,6 +121,7 @@ const BUILTIN_TRANSLATIONS = {
     cookie_policy: "《Cookie 政策》",
     terms: "《服务条款》",
     "btn.login.oauth.yzhyzxy": "使用 Yzhyzxy 账号登入",
+    "btn.login.oauth.github": "使用 GitHub 账号登入（Beta）",
     "privacy_policy.link": "https://go.undz.cn/privacy/zh-cn",
     "cookie_policy.link": "https://go.undz.cn/cookies/zh-cn",
     "terms.link": "https://go.undz.cn/terms/zh-cn",
@@ -223,6 +227,7 @@ const BUILTIN_TRANSLATIONS = {
     "btn.haveQuestion": "FAQ",
     loading: "Loading...",
     "btn.login.oauth.yzhyzxy": "Login with Yzhyzxy account",
+    "btn.login.oauth.github": "Login with GitHub (Beta)",
     "agreement.and1": ", ",
     "agreement.and2": "and",
     "link.faq": "https://online.undz.cn/login/faq/en-us",
@@ -330,6 +335,7 @@ const BUILTIN_TRANSLATIONS = {
     "login.password": "密碼",
     "btn.login": "登錄",
     "btn.login.oauth.yzhyzxy": "使用 Yzhyzxy 賬號登錄",
+    "btn.login.oauth.github": "使用 GitHub 賬號登錄（Beta）",
     "btn.haveQuestion": "常見問題",
     loading: "載入中...",
     "agreement.and1": "、",
@@ -563,7 +569,22 @@ class AyAccount {
   constructor(config) {
     if (!config) throw new Error("[AyAccountSDK] config is required");
 
-    const priv = { appId: config.appId || "default" };
+    let beta = config.beta === true;
+    try {
+      if (
+        !beta &&
+        typeof localStorage !== "undefined" &&
+        localStorage.getItem("BETA_LOGIN") === "true"
+      ) {
+        beta = true;
+      }
+    } catch {
+      /* localStorage 不可用时忽略 */
+    }
+    const priv = {
+      appId: config.appId || "default",
+      beta,
+    };
     privateData.set(this, priv);
 
     this._iframe = null;
@@ -880,13 +901,16 @@ class AyAccount {
       iframe.textContent = "";
 
       // 根据模式设置不同的 URL 参数
-      const baseUrl = isMobile()
-        ? PRODUCE
-          ? `${URLPATH.BASE}${URLPATH.MODALPAGE.MOBILE}`
+      const priv = privateData.get(this);
+      const beta = priv.beta === true;
+      const pagePath = isMobile()
+        ? beta
+          ? URLPATH.MODALPAGE.MOBILE_BETA
           : URLPATH.MODALPAGE.MOBILE
-        : PRODUCE
-          ? `${URLPATH.BASE}${URLPATH.MODALPAGE.DESKTOP}`
+        : beta
+          ? URLPATH.MODALPAGE.DESKTOP_BETA
           : URLPATH.MODALPAGE.DESKTOP;
+      const baseUrl = PRODUCE ? `${URLPATH.BASE}${pagePath}` : pagePath;
       iframe.src =
         mode === "register"
           ? `${baseUrl}${URLPATH.MODALPAGE.REGISTER}`
@@ -954,9 +978,14 @@ class AyAccount {
               resolve(userInfo);
               break;
             case "oauth_login":
-              if (data.provider === "yzhyzxy") {
-                // 调用弹窗登录方法
-                this.#_loginWithOAuthPopup("yzhyzxy")
+              if (
+                data.provider === "yzhyzxy" ||
+                data.provider === "github"
+              ) {
+                // 调用弹窗登录方法；github 目前只在 beta 页面出现
+                this.#_loginWithOAuthPopup(data.provider, {
+                  beta: data.beta === true,
+                })
                   .then((result) => {
                     userInfo = result;
                     iframe.contentWindow.postMessage(
@@ -1108,15 +1137,24 @@ class AyAccount {
       "*",
     );
   }
-  async #_loginWithOAuthPopup(provider) {
+  async #_loginWithOAuthPopup(provider, options = {}) {
     const self = this;
 
-    if (provider !== "yzhyzxy") {
+    const endpoints = {
+      yzhyzxy: URLPATH.MODALPAGE.LOGIN_YZH_OAUTH,
+      github: URLPATH.MODALPAGE.LOGIN_GITHUB_OAUTH,
+    };
+    if (!endpoints[provider]) {
       throw new Error("Unsupported provider");
     }
 
+    let endpoint = endpoints[provider];
+    if (provider === "github" && options.beta) {
+      endpoint += "&beta=1";
+    }
+
     return new Promise((resolve, reject) => {
-      fetch(`${URLPATH.BASE}${URLPATH.MODALPAGE.LOGIN_YZH_OAUTH}`, {
+      fetch(`${URLPATH.BASE}${endpoint}`, {
         credentials: "include",
       })
         .then((res) => {
@@ -1133,7 +1171,7 @@ class AyAccount {
           const top = (screen.availHeight - height) / 2;
           const popup = window.open(
             data.url,
-            "yzhyzxy_login",
+            `${provider}_login`,
             `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`,
           );
 
@@ -1150,7 +1188,7 @@ class AyAccount {
               }
               if (
                 event.data.action === "login_success" &&
-                event.data.provider === "yzhyzxy"
+                event.data.provider === provider
               ) {
                 resolve({
                   action: "login",

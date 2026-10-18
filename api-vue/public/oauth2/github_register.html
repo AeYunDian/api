@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用 GitHub 注册 AyAccount - AyOauth2Center</title>
+    <style>
+        @import url('https://cdn.undz.cn/css2?family=Roboto:wght@400;500;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #F4F2F9;
+            color-scheme: light;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .card {
+            background: #FEF7FF;
+            border-radius: 28px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05), 0 12px 24px rgba(103, 80, 164, 0.10);
+            max-width: 480px;
+            width: 100%;
+            padding: 36px 32px 28px;
+            border: 1px solid #EADDF2;
+        }
+
+        .icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 16px;
+            border-radius: 50%;
+            background: #F6EDFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon img {
+            width: 30px;
+            height: 30px;
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+            text-align: center;
+            margin-bottom: 6px;
+            color: #1D1B20;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            line-height: 1.6;
+            text-align: center;
+            color: #49454F;
+            margin-bottom: 22px;
+        }
+
+        .profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            background: #F3EDF7;
+            border: 1px solid #EADDF2;
+            border-radius: 16px;
+            margin-bottom: 18px;
+        }
+
+        .profile img {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #E6E0E9;
+        }
+
+        .profile-info {
+            min-width: 0;
+        }
+
+        .profile-login {
+            font-size: 15px;
+            font-weight: 500;
+            color: #1D1B20;
+            word-break: break-all;
+        }
+
+        .profile-email {
+            font-size: 12px;
+            color: #49454F;
+            margin-top: 2px;
+            word-break: break-all;
+        }
+
+        .field {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 13px;
+            padding: 10px 0;
+            border-top: 1px solid #EADDF2;
+        }
+
+        .field span:first-child {
+            color: #79747E;
+            flex: none;
+        }
+
+        .field span:last-child {
+            color: #1D1B20;
+            text-align: right;
+            word-break: break-all;
+        }
+
+        .field code {
+            font-family: 'Roboto Mono', monospace;
+            background: #E6E0E9;
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-size: 12px;
+            color: #21005D;
+        }
+
+        .alert {
+            display: none;
+            margin: 16px 0 4px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: #FCE8E6;
+            border: 1px solid #F5C6CB;
+            color: #B3261E;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        button {
+            width: 100%;
+            border: none;
+            border-radius: 100px;
+            padding: 12px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.4px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .primary {
+            background: #6750A4;
+            color: #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .primary:hover {
+            background: #4F378A;
+        }
+
+        .primary:disabled {
+            background: #CAC4D0;
+            color: #79747E;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .text {
+            background: transparent;
+            color: #6750A4;
+        }
+
+        .text:hover {
+            background: rgba(103, 80, 164, 0.08);
+        }
+
+        .hint {
+            margin-top: 14px;
+            font-size: 11px;
+            line-height: 1.6;
+            text-align: center;
+            color: #79747E;
+        }
+
+        .hint a {
+            color: #6750A4;
+            text-decoration: none;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 13px;
+            color: #79747E;
+            padding: 20px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="icon">
+            <img src="/github.svg" alt="GitHub" />
+        </div>
+        <h1>注册 AyAccount</h1>
+        <p class="subtitle">该 GitHub 账号还没有绑定 AyAccount，是否用它注册一个新账号？</p>
+
+        <div id="loading" class="loading">正在读取 GitHub 信息…</div>
+
+        <div id="content" style="display: none;">
+            <div class="profile">
+                <img id="avatar" alt="" />
+                <div class="profile-info">
+                    <div id="login" class="profile-login"></div>
+                    <div id="email" class="profile-email"></div>
+                </div>
+            </div>
+
+            <div class="field">
+                <span>将创建的用户名</span>
+                <span><code id="username"></code></span>
+            </div>
+
+            <div id="alert" class="alert"></div>
+
+            <form id="registerForm" method="POST" action="/api/auth/github/register">
+                <input type="hidden" id="token" name="token" />
+                <div class="actions">
+                    <button id="submitBtn" type="submit" class="primary">注册并登录</button>
+                    <button id="cancelBtn" type="button" class="text">取消</button>
+                </div>
+            </form>
+
+            <p class="hint">
+                注册即表示同意
+                <a href="https://undz.cn/terms/zh-cn.html" target="_blank">《服务条款》</a>
+                和
+                <a href="https://undz.cn/privacy_policy/zh-cn.html" target="_blank">《隐私政策》</a>。
+                注册后可用该 GitHub 账号登录，也可以稍后设置独立密码。
+            </p>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var params = new URLSearchParams(window.location.search);
+            var token = params.get('token') || '';
+            var loading = document.getElementById('loading');
+            var content = document.getElementById('content');
+            var alertBox = document.getElementById('alert');
+            var submitBtn = document.getElementById('submitBtn');
+            var cancelBtn = document.getElementById('cancelBtn');
+
+            function closeWith(message) {
+                try {
+                    if (window.opener) {
+                        window.opener.postMessage({
+                            action: 'login_fail',
+                            provider: 'github',
+                            message: message || '用户取消注册'
+                        }, '*');
+                    }
+                } catch (e) { }
+                window.close();
+            }
+
+            function showAlert(message) {
+                alertBox.textContent = message;
+                alertBox.classList.add('show');
+            }
+
+            cancelBtn.addEventListener('click', function () {
+                closeWith('用户取消注册');
+            });
+
+            if (!token) {
+                loading.textContent = '缺少注册凭证，请重新使用 GitHub 登录';
+                return;
+            }
+
+            fetch('/api/auth/github/pending?token=' + encodeURIComponent(token))
+                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+                .then(function (result) {
+                    if (!result.ok) {
+                        loading.textContent = result.data.error || '注册会话已过期，请重新登录';
+                        return;
+                    }
+
+                    var data = result.data;
+                    document.getElementById('login').textContent = '@' + data.login;
+                    document.getElementById('email').textContent = data.email;
+                    document.getElementById('username').textContent = data.proposed_username;
+                    document.getElementById('token').value = token;
+
+                    var avatar = document.getElementById('avatar');
+                    if (data.avatar && /^https:\/\//i.test(data.avatar)) {
+                        avatar.src = data.avatar;
+                    } else {
+                        avatar.style.display = 'none';
+                    }
+
+                    if (data.email_exists) {
+                        showAlert('该 GitHub 邮箱已经注册过 AyAccount。请先登录原账号，在「账号设置 → 关联账号」中绑定 GitHub。');
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = '邮箱已注册';
+                    }
+
+                    loading.style.display = 'none';
+                    content.style.display = 'block';
+                })
+                .catch(function () {
+                    loading.textContent = '网络异常，请关闭窗口后重试';
+                });
+        })();
+    </script>
+</body>
+
+</html>
