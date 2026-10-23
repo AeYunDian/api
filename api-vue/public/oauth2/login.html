@@ -4,13 +4,238 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登录 - AyOauth2Center</title>
+    <title>登录 - AyAccount</title>
+    <link rel="stylesheet" type="text/css" href="./header-title.css" />
+    <script defer src="./header-title.js"></script>
     <script src="/lib/account-sdk.min.js"></script>
+    <style>
+        .progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            overflow: hidden;
+        }
+
+        .progress>div {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background-color: #0067b8;
+            opacity: 0;
+            animation: progressDot 2s infinite;
+        }
+
+        .progress>div:nth-child(1) {
+            animation-delay: .05s;
+        }
+
+        .progress>div:nth-child(2) {
+            animation-delay: .20s;
+        }
+
+        .progress>div:nth-child(3) {
+            animation-delay: .35s;
+        }
+
+        .progress>div:nth-child(4) {
+            animation-delay: .50s;
+        }
+
+        .progress>div:nth-child(5) {
+            animation-delay: .65s;
+        }
+
+        @keyframes progressDot {
+
+            0%,
+            20% {
+                left: 0;
+                opacity: 0;
+                animation-timing-function: ease-out;
+            }
+
+            25% {
+                opacity: 1;
+            }
+
+            35% {
+                left: 45%;
+                animation-timing-function: linear;
+            }
+
+            65% {
+                left: 60%;
+                animation-timing-function: ease-in;
+            }
+
+            75% {
+                opacity: 1;
+            }
+
+            80%,
+            100% {
+                left: 100%;
+                opacity: 0;
+            }
+        }
+
+        .progress[data-use-css-animation="false"]>div,
+        .progress.is-static>div {
+            animation: none;
+            opacity: .6;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            border-radius: 0;
+            background-color: #0067b8;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .progress>div {
+                animation: none;
+                opacity: .6;
+                left: 0;
+                width: 100%;
+                height: 5px;
+                border-radius: 0;
+            }
+        }
+
+        @media (forced-colors: active) {
+            .progress>div {
+                background-color: CanvasText;
+            }
+        }
+
+        .pagination-view {
+            position: relative;
+            overflow: hidden;
+            min-height: 206px;
+            /* 提升合成层，动画更流畅 */
+            will-change: transform, opacity;
+        }
+
+        .pagination-view>.step1,
+        .pagination-view>.step2,
+        .pagination-view>.step3,
+        .pagination-view>.errorPage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .pagination-view.animate {
+            animation-duration: .25s;
+            animation-timing-function: cubic-bezier(.5, 0, .5, 1);
+            animation-fill-mode: both;
+        }
+
+        .pagination-view.slide-out-next {
+            animation-name: hide-to-left;
+        }
+
+        .pagination-view.slide-in-next {
+            animation-name: show-from-right;
+        }
+
+        .pagination-view.slide-out-back {
+            animation-name: hide-to-right;
+        }
+
+        .pagination-view.slide-in-back {
+            animation-name: show-from-left;
+        }
+
+        /* 使用 100% 代替 200px，配合 transform 性能更佳 */
+        @keyframes hide-to-left {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+        }
+
+        @keyframes show-from-right {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes hide-to-right {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        @keyframes show-from-left {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .pagination-view.animate {
+                animation: none;
+            }
+        }
+
+        /* 渲染新视图前的短暂隐藏，避免闪一帧 */
+        .pagination-view.zero-opacity {
+            opacity: 0;
+        }
+
+        /* 降级：减少动态 / 不支持动画时直接切 */
+        @media (prefers-reduced-motion: reduce) {
+            .pagination-view.animate {
+                animation: none;
+            }
+        }
+    </style>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            font-family: "Segoe UI", "Helvetica Neue", "Lucida Grande", "Roboto", "Ebrima", "Nirmala UI", "Gadugi", "Segoe Xbox Symbol", "Segoe UI Symbol", "Meiryo UI", "Khmer UI", "Tunga", "Lao UI", "Raavi", "Iskoola Pota", "Latha", "Leelawadee", "Microsoft YaHei UI", "Microsoft JhengHei UI", "Malgun Gothic", "Estrangelo Edessa", "Microsoft Himalaya", "Microsoft New Tai Lue", "Microsoft PhagsPa", "Microsoft Tai Le", "Microsoft Yi Baiti", "Mongolian Baiti", "MV Boli", "Myanmar Text", "Cambria Math";
+        }
+
+        p {
+            font-size: 15px;
+            line-height: 20px;
+            font-weight: 400;
+            font-size: .9375rem;
+            line-height: 1.25rem;
+            padding-bottom: .227px;
+            padding-top: .227px;
         }
 
         body {
@@ -23,226 +248,459 @@
             min-height: 100vh;
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            color: rgba(255, 255, 255, 0.85);
+            background-image: url("./background_eae2dd7e.svg");
         }
 
-        .md3-card {
-            background: #FEF7FF;
-            border-radius: 28px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05), 0 12px 24px rgba(103, 80, 164, 0.10);
-            max-width: 520px;
+        .pageTitle {
+            color: #1b1b1b;
+            font-size: 1.5rem;
+            font-weight: 600;
+            padding: 0;
+            margin-top: 16px;
+            margin-bottom: 12px;
+        }
+
+        .pageDescription {
+            margin-bottom: 12px;
+            margin-top: 0;
+        }
+
+        .card {
+            animation: fadeIn .3s ease-in;
+            -webkit-animation: fadeIn .3s ease-in;
+
+            margin-left: auto;
+            margin-right: auto;
+            position: relative;
+            max-width: calc(100% - 40px);
+
+            width: 440px;
+            padding: 44px;
+            background-color: #fff;
+            -webkit-box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            -moz-box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            min-width: 320px;
+            min-height: 338px;
+            overflow: hidden;
+        }
+
+        .step2 {
             width: 100%;
-            padding: 48px 40px 32px;
-            text-align: center;
-            border: 1px solid #EADDF2;
+            height: 100%;
         }
 
-        .md3-title {
-            font-size: 24px;
-            font-weight: 500;
-            letter-spacing: 0.2px;
-            color: #1D1B20;
-            margin-bottom: 8px;
+        /* 内联登录 iframe：外层卡片让位，交给内层登录卡自己决定宽高 */
+        body.login-mode .card {
+            width: min(500px, calc(100vw - 24px));
+            max-width: none;
+            min-width: 0;
+            min-height: 0;
+            padding: 0;
+            background: transparent;
+            box-shadow: none;
+            overflow: visible;
+            animation: none;
         }
 
-        .md3-subtitle {
-            font-size: 14px;
-            font-weight: 400;
-            letter-spacing: 0.25px;
-            line-height: 1.6;
-            color: #49454F;
-            margin-bottom: 24px;
+        body.login-mode .card .step2 {
+            width: 100%;
+            height: auto;
         }
 
-        .md3-icon-wrapper svg {
-            width: 48px;
-            height: 48px;
+        body.login-mode .card .step2>div {
+            min-height: 600px;
         }
 
-        .md3-btn {
-            background: #6750A4;
-            color: #FFFFFF;
-            border: none;
-            padding: 12px 32px;
-            border-radius: 100px;
-            font-family: 'Roboto', sans-serif;
-            font-size: 14px;
-            font-weight: 500;
-            letter-spacing: 0.5px;
-            cursor: pointer;
-            transition: background 0.2s ease, box-shadow 0.2s ease;
-            text-decoration: none;
-            display: inline-block;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-        }
-
-        .md3-btn:hover {
-            background: #4F378A;
-            box-shadow: 0 2px 6px rgba(103, 80, 164, 0.3);
-        }
-
-        .fade-out {
-            animation: indicator-fade-out 0.25s;
-        }
-
-        @keyframes indicator-fade-out {
+        @keyframes fadeIn {
             0% {
-                transform: scaleY(1);
-                opacity: 1;
-
+                opacity: 0;
             }
 
             100% {
-                transform: scaleY(0);
-                opacity: 0.3;
+                opacity: 1;
+            }
+        }
+
+        /* ===== 移动端适配 ===== */
+        @media (max-width: 600px) {
+            body {
+                /* 移动端去掉背景图，改用纯白或浅灰 */
+                background-image: none !important;
+                background-color: #ffffff !important;
+                align-items: flex-start !important;
+                /* 取消垂直居中，从顶部开始 */
+            }
+
+            /* 普通状态（加载中）：撑满屏幕 */
+            .card {
+                width: 100vw !important;
+                max-width: 100vw !important;
+                min-height: 100vh !important;
+                min-height: 100dvh !important;
+                /* 适配手机浏览器地址栏收缩 */
+                padding: 24px !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+            }
+
+            .pageTitle {
+                font-size: 1.25rem !important;
+                margin-top: 16px !important;
+            }
+
+            /* 登录模式（显示 iframe）：去掉所有外部留白和阴影 */
+            body.login-mode {
+                background-color: #ffffff !important;
+            }
+
+            body.login-mode .card {
+                width: 100vw !important;
+                max-width: 100vw !important;
+                min-height: 100vh !important;
+                min-height: 100dvh !important;
+                padding: 0 !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+            }
+
+            /* 让 iframe 容器撑满全屏 */
+            body.login-mode .card .step2>div {
+                min-height: 100vh !important;
+                min-height: 100dvh !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+            }
+
+            /* 移动端下，让整个滑动容器也撑满 */
+            .pagination-view {
+                min-height: calc(100vh - 24px) !important;
+                min-height: calc(100dvh - 24px) !important;
+            }
+
+            body.login-mode .pagination-view {
+                min-height: 100vh !important;
+                min-height: 100dvh !important;
             }
         }
     </style>
 </head>
 
 <body>
-    <div class="md3-card">
-        <div class="md3-icon-wrapper loading-icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="10" stroke="#EADDF2" stroke-width="2.5" fill="none" />
-                <circle cx="12" cy="12" r="10" stroke="#6750A4" stroke-width="2.5" fill="none" stroke-linecap="round"
-                    stroke-dasharray="30 80">
-                    <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s"
-                        repeatCount="indefinite" />
-                </circle>
-            </svg>
+    <div class="card">
+        <div class="progress" role="progressbar">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
         </div>
-        <div class="md3-icon-wrapper error-icon" style="display: none;">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"
-                    fill="#6750A4" />
-            </svg>
+        <div class="header">
+            <span class="header-title">A</span>
+            <span class="header-title">y</span>
+            <span class="header-title">A</span>
+            <span class="header-title">c</span>
+            <span class="header-title">c</span>
+            <span class="header-title">o</span>
+            <span class="header-title">u</span>
+            <span class="header-title">n</span>
+            <span class="header-title">t</span>
         </div>
-        <h1 class="md3-title">加载中...</h1>
-        <p class="md3-subtitle">正在加载资源</p>
-        <a href="javascript:window.location.reload();" class="md3-btn" style="display: none;">重试</a>
+        <div class="pagination-view">
+            <div class="step1">
+                <div class="pageTitle">登录</div>
+                <p class="pageDescription">正在尝试使你登录。</p>
+            </div>
+            <div class="step2 loginContainer">
+
+            </div>
+
+            <div class="step3">
+                <div class="pageTitle">登录成功</div>
+                <p class="pageDescription">正在等待服务器响应...</p>
+            </div>
+
+            <div class="errorPage">
+                <div class="pageTitle"></div>
+                <p class="pageDescription"></p>
+            </div>
+        </div>
     </div>
     <script>
-        (function () {
-            const urlParams = new URLSearchParams(window.location.search);
-            const redirectUrl = urlParams.get('redirect_url');
-            const targetUrl = redirectUrl || '/oauth2/unknown_address?countdown=0x2710';
-            const subtitle = document.querySelector(".md3-subtitle");
-            const card = document.querySelector(".md3-card");
-            const loadingIcon = document.querySelector(".loading-icon");
-            const errorIcon = document.querySelector(".error-icon");
-            const btn = document.querySelector(".md3-btn");
-            const title = document.querySelector(".md3-title");
-            let account = null;
-            if (!subtitle || !card || !loadingIcon || !errorIcon || !btn) return;
+        const $ = (sel, ctx = document) => ctx.querySelector(sel);
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectUrl = urlParams.get('redirect_url');
+        const targetUrl = redirectUrl || '/oauth2/unknown_address?countdown=0x2710';
 
-            function showError(text) {
-                title.innerHTML = '出错啦！';
-                subtitle.innerHTML = text;
-                card.style.display = '';
-                btn.style.display = '';
-                errorIcon.style.display = '';
-                loadingIcon.style.display = 'none';
+        const page1 = $("div.step1");
+        const page2 = $("div.step2");
+        const page3 = $("div.step3");
+        const pageError = $("div.errorPage")
+
+        const elErrorPageTitle = $("div.errorPage > div.pageTitle");
+        const elErrorPageDescription = $("div.errorPage > p.pageDescription");
+        const elHeader = $("div.header")
+        const elCard = $("div.card")
+        const elProgress = $("div.progress")
+
+        function showError(text, title = "出错啦！") {
+            elErrorPageTitle.innerHTML = title;
+            elErrorPageDescription.innerHTML = text;
+            changePage("errorPage");
+        }
+
+        const pages = {
+            s1: page1,
+            s2: page2,
+            s3: page3,
+            errorPage: pageError
+        };
+
+        const paginationView = $(".pagination-view");
+
+        let currentPage = null;
+        let isAnimating = false;
+        let pendingTarget = null;
+
+        /* 是否启用 CSS 动画 */
+        const useSlideAnimation = (() => {
+            if (window.matchMedia &&
+                window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                return false;
             }
+            const el = document.createElement("div");
+            return el.style.animationName !== undefined;
+        })();
 
-            function waitForDependencies(timeout = 10000) {
-                return new Promise((resolve, reject) => {
-                    const start = Date.now();
-                    const check = () => {
-                        const geetestReady = typeof initGeetest4 !== 'undefined';
-                        const toastReady = typeof AyShowResult !== 'undefined' && typeof AyCloseToast !== 'undefined';
-                        if (geetestReady && toastReady) {
-                            document.body.style.backgroundColor = "#fff";
-                            card.classList.add("fade-out");
-                            setTimeout(() => { card.style.display = 'none'; }, 250);
-                            resolve();
-                            return;
-                        }
-                        if (Date.now() - start > timeout) {
-                            reject(new Error('依赖加载超时，请检查网络'));
-                            return;
-                        }
-                        setTimeout(check, 200);
-                    };
-                    check();
-                });
-            }
+        function applyMode(target) {
+            const isLogin = target === "s2";
+            document.body.classList.toggle("login-mode", isLogin);
+            elHeader.style.display = isLogin ? "none" : "";
+            elCard.style.padding = isLogin ? "0" : "";
+        }
 
-            /**
-             * 检查登录状态，如果未登录则尝试刷新令牌，再检查一次
-             * @returns {Promise<{ loggedIn: boolean, user?: Object }>}
-             */
-            async function checkAuthWithRefresh(account) {
-                try {
-                    const verifyResult = await account.verify();
-                    if (verifyResult) {
-                        if (verifyResult.valid) {
-                            return { loggedIn: true, user: verifyResult.user };
-                        }
-                        if (verifyResult.banned || verifyResult.error_code === 1017) {
-                            await account.logout();
-                            return { loggedIn: false };
-                        }
-                    }
-                } catch (err) {
+        function renderPage(target) {
+            Object.keys(pages).forEach((key) => {
+                const el = pages[key];
+                if (key === target) {
+                    el.style.visibility = "visible";
+                    el.style.opacity = "1";
+                    el.style.position = "relative";
+                    el.style.pointerEvents = "auto";
+                } else {
+                    el.style.visibility = "hidden";
+                    el.style.opacity = "0";
+                    el.style.position = "absolute";
+                    el.style.pointerEvents = "none";
                 }
+            });
+            applyMode(target);
+            currentPage = target;
+        }
 
-                // 第一次验证失败（未登录或 token 过期），尝试刷新
-                try {
-                    await account.refresh();
-                    const retryVerifyResult = await account.verify();
-                    if (retryVerifyResult && retryVerifyResult.valid) {
-                        return { loggedIn: true, user: retryVerifyResult.user };
-                    }
-                } catch (refreshErr) {
-                    console.debug('刷新失败', refreshErr.message);
-                }
-                return { loggedIn: false };
+        function changePage(target, direction = "next") {
+            if (!pages[target]) {
+                elErrorPageTitle.innerHTML = "出错啦！";
+                elErrorPageDescription.innerHTML = "无法切换至目标页面，请重试";
+                target = "errorPage";
             }
 
-            async function main() {
-                try {
-                    await waitForDependencies();
+            elProgress.style.display = target === "s2" ? "none" : "";
 
-                    account = createAyAccount({
-                        appId: 'oauth2',
-                        i18n: 'zh-cn'
-                    });
+            if (target === currentPage && !isAnimating) return;
 
-                    const authCheck = await checkAuthWithRefresh(account);
-                    if (authCheck.loggedIn) {
-                        title.innerHTML = '登录成功';
-                        subtitle.innerHTML = '正在等待服务器响应...';
-                        card.style.display = '';
-                        btn.style.display = 'none';
-                        errorIcon.style.display = 'none';
-                        loadingIcon.style.display = 'none';
-                        window.location.href = targetUrl;
+            if (isAnimating) {
+                pendingTarget = { target, direction };
+                return;
+            }
+
+            if (currentPage === null || !useSlideAnimation) {
+                renderPage(target);
+                return;
+            }
+
+            const isBack = direction === "back";
+            isAnimating = true;
+
+            paginationView.classList.add("animate");
+            paginationView.classList.remove("slide-in-next", "slide-in-back", "slide-out-next", "slide-out-back");
+            void paginationView.offsetWidth;
+            paginationView.classList.add(isBack ? "slide-out-back" : "slide-out-next");
+
+            let outEnded = false;
+            let inTimer = null;
+            let outTimer = null;
+
+            const finish = () => {
+                isAnimating = false;
+                paginationView.classList.remove(
+                    "animate",
+                    "slide-out-next", "slide-in-next",
+                    "slide-out-back", "slide-in-back"
+                );
+                if (pendingTarget) {
+                    const next = pendingTarget;
+                    pendingTarget = null;
+                    changePage(next.target, next.direction);
+                }
+            };
+
+            const onOutEnd = (e) => {
+                if (e.target !== paginationView || outEnded) return;
+                outEnded = true;
+                paginationView.removeEventListener("animationend", onOutEnd);
+                if (outTimer) { clearTimeout(outTimer); outTimer = null; }
+
+                paginationView.classList.remove("slide-out-next", "slide-out-back");
+                renderPage(target);
+
+                void paginationView.offsetWidth;
+                paginationView.classList.add(isBack ? "slide-in-back" : "slide-in-next");
+
+                const onInEnd = (e2) => {
+                    if (e2.target !== paginationView) return;
+                    paginationView.removeEventListener("animationend", onInEnd);
+                    if (inTimer) { clearTimeout(inTimer); inTimer = null; }
+                    finish();
+                };
+
+                inTimer = setTimeout(() => {
+                    paginationView.removeEventListener("animationend", onInEnd);
+                    finish();
+                }, 700);
+
+                paginationView.addEventListener("animationend", onInEnd);
+            };
+
+            outTimer = setTimeout(() => {
+                if (!outEnded) {
+                    paginationView.removeEventListener("animationend", onOutEnd);
+                    onOutEnd({ target: paginationView });
+                }
+            }, 700);
+
+            paginationView.addEventListener("animationend", onOutEnd);
+        }
+
+        function waitForDependencies(timeout = 10000) {
+            return new Promise((resolve, reject) => {
+                const start = Date.now();
+                const check = () => {
+                    const geetestReady = typeof initGeetest4 !== 'undefined';
+                    const toastReady = typeof AyShowResult !== 'undefined' && typeof AyCloseToast !== 'undefined';
+                    if (geetestReady && toastReady) {
+                        resolve();
                         return;
                     }
-                    const loginPromise = account.login({ hideOauthClient: true, hideClose: true });
-                    const result = await loginPromise;
-                    document.body.style.backgroundColor = "";
-                    card.classList.remove("fade-out");
-                    if (result && result.action === 'login') {
-                        title.innerHTML = '登录成功';
-                        subtitle.innerHTML = '正在等待服务器响应...';
-                        card.style.display = '';
-                        btn.style.display = 'none';
-                        errorIcon.style.display = 'none';
-                        loadingIcon.style.display = 'none';
-                        window.location.href = targetUrl;
-                    } else {
-                        showError('登录返回非预期结果');
+                    if (Date.now() - start > timeout) {
+                        reject(new Error('依赖加载超时，请检查网络'));
+                        return;
                     }
-                } catch (error) {
-                    console.error('登录流程异常:', error);
-                    showError(error.message || '登录初始化失败，请刷新页面重试');
+                    setTimeout(check, 200);
+                };
+                check();
+            });
+        }
+        async function checkAuthWithRefresh(account) {
+            try {
+                const verifyResult = await account.verify();
+                if (verifyResult) {
+                    if (verifyResult.valid) {
+                        return { loggedIn: true, user: verifyResult.user };
+                    }
+                    if (verifyResult.banned || verifyResult.error_code === 1017) {
+                        await account.logout();
+                        return { loggedIn: false };
+                    }
+                }
+            } catch (err) {
+            }
+
+            try {
+                await account.refresh();
+                const retryVerifyResult = await account.verify();
+                if (retryVerifyResult && retryVerifyResult.valid) {
+                    return { loggedIn: true, user: retryVerifyResult.user };
+                }
+            } catch (refreshErr) {
+                console.debug('刷新失败', refreshErr.message);
+            }
+            return { loggedIn: false };
+        }
+        changePage("s1");
+
+        async function main() {
+            try {
+
+                await waitForDependencies();
+                account = createAyAccount({
+                    appId: 'oauth2',
+                    i18n: 'zh-cn'
+                });
+                const authCheck = await checkAuthWithRefresh(account);
+                if (authCheck.loggedIn) {
+                    changePage("s3");
+                }
+                const loginPromise = account.login({
+                    hideOauthClient: true, hideClose: true, container: ".loginContainer",
+                    style: {
+                        ".login-page": {
+                            borderRadius: "0",
+                            "-webkit-box-shadow": " 0 2px 6px rgba(0, 0, 0, 0.2)",
+                            "-moz-box-shadow": "0 2px 6px rgba(0, 0, 0, 0.2)",
+                            "box-shadow": "0 2px 6px rgba(0, 0, 0, 0.2)",
+                        },
+                        ".outcard": {
+                            height: "100%"
+                        },
+                        ".app-leave": {
+                            animation: "none !important",
+                            transform: "none !important"
+                        }
+                    }
+                });
+                const handler = async (event) => {
+                    if (event.origin !== "https://online.undz.cn") return;
+                    try {
+                        let data = event.data;
+                        if (typeof data === "string" && data.startsWith("{")) {
+                            try {
+                                data = JSON.parse(data);
+                            } catch (e) {
+                                return;
+                            }
+                        }
+                        if (typeof data !== "object" || !data.action) return;
+                        switch (data.action) {
+                            case "isReady":
+                                changePage("s2");
+                                break;
+                            default:
+                                break;
+                        }
+                    } catch (e) {
+                        // 忽略非 JSON 消息
+                    }
+                }
+                window.addEventListener("message", handler);
+                const result = await loginPromise;
+                elCard.style.padding = "";
+                if (result && result.action === "login") {
+                    changePage("s3");
+                    window.location.replace(targetUrl);
+                    return;
+                }
+                showError("登录未完成，请重试");
+            } catch (error) {
+                showError(error.message || '登录初始化失败，请刷新页面重试');
+            } finally {
+                if (currentPage !== "s2") {
+                    elCard.style.padding = "";
                 }
             }
-            main();
-        })();
+        }
+        main();
     </script>
 </body>
 

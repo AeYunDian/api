@@ -25,6 +25,48 @@ const PRODUCE = false;
 // ---------- 禁止私自采摘 ----------//
 
 const DEFAULT_WINDOW_CONFIG = { hideOauthClient: false, hideClose: false };
+const MAX_CUSTOM_STYLE_LENGTH = 20000;
+
+function normalizeCustomStyle(style) {
+  if (!style) return "";
+
+  let css = "";
+  if (typeof style === "string") {
+    css = style;
+  } else if (typeof style === "object") {
+    const toKebab = (name) =>
+      name.startsWith("--")
+        ? name
+        : name.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
+
+    for (const [selector, rules] of Object.entries(style)) {
+      if (!selector || rules == null) continue;
+
+      if (selector.startsWith("--")) {
+        css += `:root{${selector}:${String(rules)};}`;
+        continue;
+      }
+      if (typeof rules === "string") {
+        css += `${selector}{${rules}}`;
+        continue;
+      }
+      if (typeof rules !== "object") continue;
+
+      let body = "";
+      for (const [prop, value] of Object.entries(rules)) {
+        if (value == null) continue;
+        body += `${toKebab(prop)}:${String(value)};`;
+      }
+      if (body) css += `${selector}{${body}}`;
+    }
+  }
+
+  return css
+    .replace(/@import[\s\S]*?;/gi, "")
+    .replace(/expression\s*\(/gi, "(")
+    .replace(/javascript\s*:/gi, "")
+    .slice(0, MAX_CUSTOM_STYLE_LENGTH);
+}
 
 const privateData = new WeakMap();
 const URLPATH = {
@@ -43,7 +85,7 @@ const URLPATH = {
   MODALPAGE: {
     LOGIN_YZH_OAUTH: "/api/auth/yzhyzxy/start?mode=login",
     LOGIN_GITHUB_OAUTH: "/api/auth/github/start?mode=login",
-    MOBILE: "/login/mobile",
+    MOBILE: "/login/mobile.html",
     DESKTOP: "/login/",
     REGISTER: "?tab=register",
     LOGIN: "?tab=login",
@@ -880,6 +922,7 @@ class AyAccount {
       const inline = Boolean(
         target && typeof target.appendChild === "function",
       );
+      const customStyle = normalizeCustomStyle(config.style);
 
       if (!inline && document.body) document.body.style.overflow = "hidden";
       if (!inline) AyShowResult(this._t("loading"), "loading", 0);
@@ -945,8 +988,8 @@ class AyAccount {
       let userInfo = null;
 
       const handler = async (event) => {
-        if (event.source !== iframe.contentWindow) return;
-        if (event.origin !== "https://online.undz.cn") return;
+        if (PRODUCE && event.source !== iframe.contentWindow) return;
+        if (PRODUCE && event.origin !== "https://online.undz.cn") return;
         try {
           let data = event.data;
           if (typeof data === "string" && data.startsWith("{")) {
@@ -975,6 +1018,7 @@ class AyAccount {
                     hideOauthClient: !!config.hideOauthClient,
                     hideClose: !!config.hideClose,
                     inline,
+                    customStyle,
                   },
                 }),
                 "*",
@@ -1190,7 +1234,7 @@ class AyAccount {
           }
           const handler = (event) => {
             // 安全校验：只接受来自 online.undz.cn 的消息
-            if (event.origin !== "https://online.undz.cn") return;
+            if (PRODUCE && event.origin !== "https://online.undz.cn") return;
             if (event.data) {
               window.removeEventListener("message", handler);
               if (popup && !popup.closed) {

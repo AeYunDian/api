@@ -5,13 +5,13 @@
  * @copyright 2026 AeYunDian. All rights reserved.
  * @license MIT
  */
-"v2.1.0 AyAccountSDK";
+"v2.2.0 AyAccountSDK";
 "use strict";
 if (typeof window === "undefined") {
   throw new Error("AyAccountSDK requires browser environment");
 }
 
-const VERSION = "2.1.0";
+const VERSION = "2.2.0";
 const PRODUCE = false;
 
 // ---------- 本地南瓜种植基地 ----------//
@@ -25,6 +25,48 @@ const PRODUCE = false;
 // ---------- 禁止私自采摘 ----------//
 
 const DEFAULT_WINDOW_CONFIG = { hideOauthClient: false, hideClose: false };
+const MAX_CUSTOM_STYLE_LENGTH = 20000;
+
+function normalizeCustomStyle(style) {
+  if (!style) return "";
+
+  let css = "";
+  if (typeof style === "string") {
+    css = style;
+  } else if (typeof style === "object") {
+    const toKebab = (name) =>
+      name.startsWith("--")
+        ? name
+        : name.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
+
+    for (const [selector, rules] of Object.entries(style)) {
+      if (!selector || rules == null) continue;
+
+      if (selector.startsWith("--")) {
+        css += `:root{${selector}:${String(rules)};}`;
+        continue;
+      }
+      if (typeof rules === "string") {
+        css += `${selector}{${rules}}`;
+        continue;
+      }
+      if (typeof rules !== "object") continue;
+
+      let body = "";
+      for (const [prop, value] of Object.entries(rules)) {
+        if (value == null) continue;
+        body += `${toKebab(prop)}:${String(value)};`;
+      }
+      if (body) css += `${selector}{${body}}`;
+    }
+  }
+
+  return css
+    .replace(/@import[\s\S]*?;/gi, "")
+    .replace(/expression\s*\(/gi, "(")
+    .replace(/javascript\s*:/gi, "")
+    .slice(0, MAX_CUSTOM_STYLE_LENGTH);
+}
 
 const privateData = new WeakMap();
 const URLPATH = {
@@ -42,7 +84,8 @@ const URLPATH = {
   },
   MODALPAGE: {
     LOGIN_YZH_OAUTH: "/api/auth/yzhyzxy/start?mode=login",
-    MOBILE: "/login/mobile",
+    LOGIN_GITHUB_OAUTH: "/api/auth/github/start?mode=login",
+    MOBILE: "/login/mobile.html",
     DESKTOP: "/login/",
     REGISTER: "?tab=register",
     LOGIN: "?tab=login",
@@ -118,6 +161,7 @@ const BUILTIN_TRANSLATIONS = {
     cookie_policy: "《Cookie 政策》",
     terms: "《服务条款》",
     "btn.login.oauth.yzhyzxy": "使用 Yzhyzxy 账号登入",
+    "btn.login.oauth.github": "使用 GitHub 账号登入",
     "privacy_policy.link": "https://go.undz.cn/privacy/zh-cn",
     "cookie_policy.link": "https://go.undz.cn/cookies/zh-cn",
     "terms.link": "https://go.undz.cn/terms/zh-cn",
@@ -127,7 +171,6 @@ const BUILTIN_TRANSLATIONS = {
     "btn.login": "登录",
     "btn.haveQuestion": "常见问题",
     loading: "加载中...",
-    "agreement.and1": "、",
     "agreement.and1": "和",
     "error.1000": "邮箱格式无效",
     "error.1001": "密码长度须在6~32之间，仅允许 a-z A-Z 0-9 -_=+@#$%",
@@ -223,7 +266,7 @@ const BUILTIN_TRANSLATIONS = {
     "btn.haveQuestion": "FAQ",
     loading: "Loading...",
     "btn.login.oauth.yzhyzxy": "Login with Yzhyzxy account",
-    "agreement.and1": ", ",
+    "btn.login.oauth.github": "Login with GitHub",
     "agreement.and1": "and",
     "link.faq": "https://online.undz.cn/login/faq/en-us",
     "privacy_policy.link": "https://go.undz.cn/privacy/en-us",
@@ -330,9 +373,9 @@ const BUILTIN_TRANSLATIONS = {
     "login.password": "密碼",
     "btn.login": "登錄",
     "btn.login.oauth.yzhyzxy": "使用 Yzhyzxy 賬號登錄",
+    "btn.login.oauth.github": "使用 GitHub 賬號登錄",
     "btn.haveQuestion": "常見問題",
     loading: "載入中...",
-    "agreement.and1": "、",
     "agreement.and1": "和",
     "error.1000": "電郵格式無效",
     "error.1001": "密碼長度在6~32之间，僅允許 a-z A-Z 0-9 -_=+@#$%",
@@ -872,10 +915,20 @@ class AyAccount {
     }
 
     return new Promise((resolve, reject) => {
-      if (document.body) document.body.style.overflow = "hidden";
-      AyShowResult(this._t("loading"), "loading", 0);
+      const target =
+        typeof config.container === "string"
+          ? document.querySelector(config.container)
+          : config.container;
+      const inline = Boolean(
+        target && typeof target.appendChild === "function",
+      );
+      const customStyle = normalizeCustomStyle(config.style);
+
+      if (!inline && document.body) document.body.style.overflow = "hidden";
+      if (!inline) AyShowResult(this._t("loading"), "loading", 0);
+
       const iframediv = document.createElement("div");
-      iframediv.className = "iframe-level-1";
+      iframediv.className = inline ? "ay-account-inline" : "iframe-level-1";
       const iframe = document.createElement("iframe");
       iframe.textContent = "";
 
@@ -892,27 +945,51 @@ class AyAccount {
           ? `${baseUrl}${URLPATH.MODALPAGE.REGISTER}`
           : `${baseUrl}${URLPATH.MODALPAGE.LOGIN}`;
 
-      iframe.style.position = "fixed";
-      iframe.style.top = "0";
-      iframe.style.left = "0";
-      iframe.style.width = "100%";
-      iframe.style.height = "100%";
-      iframe.style.border = "none";
-      iframe.style.colorScheme = "light";
-      iframe.style.zIndex = "20000000";
-      iframe.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
-      iframe.style.opacity = "1";
-      iframe.style.pointerEvents = "auto";
-      iframe.style.display = "block";
+      if (inline) {
+        if (window.getComputedStyle(target).position === "static") {
+          target.style.position = "relative";
+        }
+        target.style.overflow = "hidden";
+
+        iframediv.style.position = "relative";
+        iframediv.style.width = "100%";
+        iframediv.style.height = "100%";
+        iframediv.style.minHeight = config.minHeight || "600px";
+        iframediv.style.overflow = "hidden";
+        iframediv.style.borderRadius = "inherit";
+
+        iframe.style.position = "absolute";
+        iframe.style.inset = "0";
+        iframe.style.width = "100%";
+        iframe.style.height = "100%";
+        iframe.style.border = "none";
+        iframe.style.colorScheme = "light";
+        iframe.style.backgroundColor = "transparent";
+        iframe.style.display = "block";
+      } else {
+        iframe.style.position = "fixed";
+        iframe.style.top = "0";
+        iframe.style.left = "0";
+        iframe.style.width = "100%";
+        iframe.style.height = "100%";
+        iframe.style.border = "none";
+        iframe.style.colorScheme = "light";
+        iframe.style.zIndex = "20000000";
+        iframe.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
+        iframe.style.opacity = "1";
+        iframe.style.pointerEvents = "auto";
+        iframe.style.display = "block";
+      }
 
       this._iframe = iframe;
       this._iframeContainer = iframediv;
+      this._modalInline = inline;
 
       let userInfo = null;
 
       const handler = async (event) => {
-        if (event.source !== iframe.contentWindow) return;
-        if (event.origin !== "https://online.undz.cn") return;
+        if (PRODUCE && event.source !== iframe.contentWindow) return;
+        if (PRODUCE && event.origin !== "https://online.undz.cn") return;
         try {
           let data = event.data;
           if (typeof data === "string" && data.startsWith("{")) {
@@ -937,7 +1014,12 @@ class AyAccount {
               iframe.contentWindow.postMessage(
                 JSON.stringify({
                   action: "configWindow",
-                  config: config,
+                  config: {
+                    hideOauthClient: !!config.hideOauthClient,
+                    hideClose: !!config.hideClose,
+                    inline,
+                    customStyle,
+                  },
                 }),
                 "*",
               );
@@ -954,9 +1036,9 @@ class AyAccount {
               resolve(userInfo);
               break;
             case "oauth_login":
-              if (data.provider === "yzhyzxy") {
+              if (data.provider === "yzhyzxy" || data.provider === "github") {
                 // 调用弹窗登录方法
-                this.#_loginWithOAuthPopup("yzhyzxy")
+                this.#_loginWithOAuthPopup(data.provider)
                   .then((result) => {
                     userInfo = result;
                     iframe.contentWindow.postMessage(
@@ -1082,7 +1164,11 @@ class AyAccount {
 
       this._messageHandler = handler;
       window.addEventListener("message", handler);
-      document.body.appendChild(iframediv);
+      if (inline) {
+        target.appendChild(iframediv);
+      } else {
+        document.body.appendChild(iframediv);
+      }
       iframediv.appendChild(iframe);
     });
   }
@@ -1111,12 +1197,18 @@ class AyAccount {
   async #_loginWithOAuthPopup(provider) {
     const self = this;
 
-    if (provider !== "yzhyzxy") {
+    const endpoints = {
+      yzhyzxy: URLPATH.MODALPAGE.LOGIN_YZH_OAUTH,
+      github: URLPATH.MODALPAGE.LOGIN_GITHUB_OAUTH,
+    };
+    if (!endpoints[provider]) {
       throw new Error("Unsupported provider");
     }
 
+    const endpoint = endpoints[provider];
+
     return new Promise((resolve, reject) => {
-      fetch(`${URLPATH.BASE}${URLPATH.MODALPAGE.LOGIN_YZH_OAUTH}`, {
+      fetch(`${URLPATH.BASE}${endpoint}`, {
         credentials: "include",
       })
         .then((res) => {
@@ -1133,7 +1225,7 @@ class AyAccount {
           const top = (screen.availHeight - height) / 2;
           const popup = window.open(
             data.url,
-            "yzhyzxy_login",
+            `${provider}_login`,
             `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`,
           );
 
@@ -1142,7 +1234,7 @@ class AyAccount {
           }
           const handler = (event) => {
             // 安全校验：只接受来自 online.undz.cn 的消息
-            if (event.origin !== "https://online.undz.cn") return;
+            if (PRODUCE && event.origin !== "https://online.undz.cn") return;
             if (event.data) {
               window.removeEventListener("message", handler);
               if (popup && !popup.closed) {
@@ -1150,7 +1242,7 @@ class AyAccount {
               }
               if (
                 event.data.action === "login_success" &&
-                event.data.provider === "yzhyzxy"
+                event.data.provider === provider
               ) {
                 resolve({
                   action: "login",
@@ -1192,7 +1284,10 @@ class AyAccount {
    * 关闭模态框，清理资源
    */
   #_closeModal() {
-    if (document.body) document.body.style.overflow = "";
+    if (!this._modalInline && document.body) {
+      document.body.style.overflow = "";
+    }
+    this._modalInline = false;
     // 移除 DOM
     if (this._iframeContainer && this._iframeContainer.parentNode) {
       this._iframeContainer.parentNode.removeChild(this._iframeContainer);

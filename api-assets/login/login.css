@@ -179,6 +179,7 @@ input:focus:not(:disabled) {
   display: flex;
   cursor: pointer;
   align-items: center;
+  user-select: none;
   margin-bottom: 16px;
   .checkbox-label {
     margin-left: 8px;

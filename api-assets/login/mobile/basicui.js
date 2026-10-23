@@ -11,6 +11,17 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
     'use strict';
     const $ = (sel, ctx = document) => ctx.querySelector(sel);
     const getVal = (el) => el ? el.value.trim() : '';
+
+    function applyCustomStyle(css) {
+        if (typeof css !== 'string' || !css.trim()) return;
+        var el = document.getElementById('ay-account-custom-style');
+        if (!el) {
+            el = document.createElement('style');
+            el.id = 'ay-account-custom-style';
+            document.head.appendChild(el);
+        }
+        el.textContent = css;
+    }
     let isLogin = true;
     const app = $('.app');
     const loginUsername = $('#loginUsernameOrEmail');
@@ -312,6 +323,7 @@ let i18nData = null;          // 存储父窗口发来的翻译对象
                     break;
                 case 'configWindow':
                     if (data.config) {
+                        applyCustomStyle(data.config.customStyle);
                         if (data.config.hideClose) {
                             if (closeBtn) closeBtn.remove();
                         }
