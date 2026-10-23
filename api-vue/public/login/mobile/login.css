@@ -182,6 +182,7 @@ input:focus:not(:disabled) {
 .loginAgreement {
   display: flex;
   cursor: pointer;
+  user-select: none;
   align-items: center;
   margin-bottom: 16px;
   .checkbox-label {
