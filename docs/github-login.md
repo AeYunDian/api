@@ -76,24 +76,27 @@ VALUES ('github', ?, ?, ?);
 | `avatar` | `user.avatar_url` |
 | `description` | `user.bio`（可选） |
 
-### 3.1 未绑定：中间页询问是否注册
+### 3.1 未绑定：中间页填写用户名/密码
 
-与 yzh 不同：GitHub 未绑定时**不会直接登录，也不会静默建号**，而是跳到一个
-`/oauth2/` 中间页让用户确认：
+GitHub 和 Yzhyzxy 未绑定时**不会直接登录，也不会静默建号**，而是跳到一个
+`/oauth2/` 中间页让用户确认并填写注册信息：
 
 ```
-GitHub 授权成功
+OAuth 授权成功
   └─ oauth_connections 没有该 openid
        ├─ 邮箱已注册 → 中间页提示“请先登录后绑定”
        └─ 邮箱未注册 → /oauth2/github_register?token=...
-                        显示 GitHub 头像 / 昵称 / 邮箱 / 将创建的用户名
-                        ├─ 用户点“注册并登录” → POST /api/auth/github/register
-                        └─ 用户点“取消” → 关闭弹窗（SDK 按取消处理）
+                        显示 OAuth 头像 / 昵称 / 邮箱
+                        用户填写：用户名（预填建议值）+ 密码 + 确认密码
+                        ├─ “注册并登录” → POST /api/auth/oauth/register
+                        └─ “取消” → 关闭弹窗（SDK 按取消处理）
 ```
 
-- 中间页 token 存在 KV（`github_pending:{token}`，10 分钟）；
+- 中间页 token 存在 KV（`oauth_pending:{token}`，10 分钟），包含 `provider`；
 - `register` 消费 token 后建号、写 `oauth_connections`、签发 AY token；
-- 账号密码是随机生成的，用户之后可以通过邮箱/改密流程设置独立密码。
+- 用户名 4–20 位，密码 6–32 位（`a-z A-Z 0-9 - _ = + @ # $ %`）；
+- Yzhyzxy 如果能拿到真实 `email`，走同一个中间页；拿不到时仍走旧的
+  `/oauth2/account_notlinked` 页面（保留未删）。
 
 ---
 
@@ -103,10 +106,13 @@ GitHub 授权成功
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/api/auth/github/start?mode=login\|bind&beta=1` | 生成 state，返回 GitHub 授权 URL |
+| GET | `/api/auth/github/start?mode=login\|bind` | 生成 state，返回 GitHub 授权 URL |
 | GET | `/api/auth/github/callback` | 换 token；已绑定登录，未绑定跳中间页 |
-| GET | `/api/auth/github/pending?token=` | 中间页读取待确认的 GitHub 资料 |
-| POST | `/api/auth/github/register` | 用户确认注册，建号 + 绑定 + 登录 |
+| GET | `/api/auth/oauth/pending?token=` | 中间页读取待注册资料（provider 通用） |
+| POST | `/api/auth/oauth/register` | 用户提交自定义用户名/密码，建号 + 绑定 + 登录 |
+
+> `github_register.html` 目前是 GitHub / Yzhyzxy 共用的注册中间页；
+> 旧路径 `/api/auth/github/pending|register` 也仍然可用，指向同一套逻辑。
 
 `mode=bind` 用于设置页绑定：要求当前已登录，且该 GitHub 未绑定其他账号。
 
@@ -120,6 +126,23 @@ GitHub 已从 beta 转正：
 - `/login/beta/` 已废弃，可删除。
 
 绑定（`mode=bind`）不要求 beta，已登录用户可在「关联账号」页直接绑定。
+
+### 4.2 SDK 内联挂载（container）
+
+`login()` / `register()` 的 config 新增 `container`，用于把 iframe 挂到指定元素里，
+而不是全屏遮罩：
+
+```js
+// 选择器或 DOM 元素都可以
+sdk.login({ container: '#login-box', hideOauthClient: true });
+sdk.register({ container: document.querySelector('#register-box'), minHeight: '640px' });
+```
+
+- `container` 不传时保持原来的全屏遮罩行为；
+- 内联模式不锁定 body 滚动，也不弹全屏 loading；
+- 容器 `position: static` 时会自动设为 `relative`；
+- iframe 绝对定位铺满容器，默认 `minHeight: 600px`，可用 `minHeight` 覆盖；
+- 关闭后只移除 iframe 容器，不影响宿主页面其他内容。
 
 ---
 
@@ -171,10 +194,12 @@ GitHub 已从 beta 转正：
 
 | 文件 | 改动 |
 |---|---|
-| `services/account/routes/github.js` | 新增 start / callback / pending / register |
+| `services/account/routes/github.js` | GitHub 授权 + 通用 pending/register |
+| `services/account/oauth-pending.js` | OAuth 待注册票据、用户名建议 |
+| `services/account/routes/third-party.js` | Yzhyzxy 未绑定时走同一中间页 |
 | `services/account/ayOnline.js` | 挂载 `handleGithubAuth` |
 | `shared/error-codes.js` | 新增 1064–1072 |
-| `public/oauth2/github_register.html` | 注册中间页 |
+| `public/oauth2/github_register.html` | GitHub / Yzhyzxy 共用注册中间页 |
 | `public/login/github-entry.js` | 正式版登录页的 GitHub 入口 |
 | `public/login/beta/` | 已废弃，可删除 |
 | `public/lib/account-sdk.js` | GitHub provider（已移除 beta 分支） |

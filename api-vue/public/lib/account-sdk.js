@@ -129,8 +129,7 @@ const BUILTIN_TRANSLATIONS = {
     "btn.login": "登录",
     "btn.haveQuestion": "常见问题",
     loading: "加载中...",
-    "agreement.and1": "、",
-    "agreement.and2": "和",
+    "agreement.and1": "和",
     "error.1000": "邮箱格式无效",
     "error.1001": "密码长度须在6~32之间，仅允许 a-z A-Z 0-9 -_=+@#$%",
     "error.1002": "用户名或邮箱已存在",
@@ -226,8 +225,7 @@ const BUILTIN_TRANSLATIONS = {
     loading: "Loading...",
     "btn.login.oauth.yzhyzxy": "Login with Yzhyzxy account",
     "btn.login.oauth.github": "Login with GitHub",
-    "agreement.and1": ", ",
-    "agreement.and2": "and",
+    "agreement.and1": "and",
     "link.faq": "https://online.undz.cn/login/faq/en-us",
     "privacy_policy.link": "https://go.undz.cn/privacy/en-us",
     "cookie_policy.link": "https://go.undz.cn/cookies/en-us",
@@ -336,8 +334,7 @@ const BUILTIN_TRANSLATIONS = {
     "btn.login.oauth.github": "使用 GitHub 賬號登錄",
     "btn.haveQuestion": "常見問題",
     loading: "載入中...",
-    "agreement.and1": "、",
-    "agreement.and2": "和",
+    "agreement.and1": "和",
     "error.1000": "電郵格式無效",
     "error.1001": "密碼長度在6~32之间，僅允許 a-z A-Z 0-9 -_=+@#$%",
     "error.1002": "用戶名或電郵已存在",
@@ -876,10 +873,19 @@ class AyAccount {
     }
 
     return new Promise((resolve, reject) => {
-      if (document.body) document.body.style.overflow = "hidden";
-      AyShowResult(this._t("loading"), "loading", 0);
+      const target =
+        typeof config.container === "string"
+          ? document.querySelector(config.container)
+          : config.container;
+      const inline = Boolean(
+        target && typeof target.appendChild === "function",
+      );
+
+      if (!inline && document.body) document.body.style.overflow = "hidden";
+      if (!inline) AyShowResult(this._t("loading"), "loading", 0);
+
       const iframediv = document.createElement("div");
-      iframediv.className = "iframe-level-1";
+      iframediv.className = inline ? "ay-account-inline" : "iframe-level-1";
       const iframe = document.createElement("iframe");
       iframe.textContent = "";
 
@@ -896,21 +902,45 @@ class AyAccount {
           ? `${baseUrl}${URLPATH.MODALPAGE.REGISTER}`
           : `${baseUrl}${URLPATH.MODALPAGE.LOGIN}`;
 
-      iframe.style.position = "fixed";
-      iframe.style.top = "0";
-      iframe.style.left = "0";
-      iframe.style.width = "100%";
-      iframe.style.height = "100%";
-      iframe.style.border = "none";
-      iframe.style.colorScheme = "light";
-      iframe.style.zIndex = "20000000";
-      iframe.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
-      iframe.style.opacity = "1";
-      iframe.style.pointerEvents = "auto";
-      iframe.style.display = "block";
+      if (inline) {
+        if (window.getComputedStyle(target).position === "static") {
+          target.style.position = "relative";
+        }
+        target.style.overflow = "hidden";
+
+        iframediv.style.position = "relative";
+        iframediv.style.width = "100%";
+        iframediv.style.height = "100%";
+        iframediv.style.minHeight = config.minHeight || "600px";
+        iframediv.style.overflow = "hidden";
+        iframediv.style.borderRadius = "inherit";
+
+        iframe.style.position = "absolute";
+        iframe.style.inset = "0";
+        iframe.style.width = "100%";
+        iframe.style.height = "100%";
+        iframe.style.border = "none";
+        iframe.style.colorScheme = "light";
+        iframe.style.backgroundColor = "transparent";
+        iframe.style.display = "block";
+      } else {
+        iframe.style.position = "fixed";
+        iframe.style.top = "0";
+        iframe.style.left = "0";
+        iframe.style.width = "100%";
+        iframe.style.height = "100%";
+        iframe.style.border = "none";
+        iframe.style.colorScheme = "light";
+        iframe.style.zIndex = "20000000";
+        iframe.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
+        iframe.style.opacity = "1";
+        iframe.style.pointerEvents = "auto";
+        iframe.style.display = "block";
+      }
 
       this._iframe = iframe;
       this._iframeContainer = iframediv;
+      this._modalInline = inline;
 
       let userInfo = null;
 
@@ -941,7 +971,11 @@ class AyAccount {
               iframe.contentWindow.postMessage(
                 JSON.stringify({
                   action: "configWindow",
-                  config: config,
+                  config: {
+                    hideOauthClient: !!config.hideOauthClient,
+                    hideClose: !!config.hideClose,
+                    inline,
+                  },
                 }),
                 "*",
               );
@@ -958,10 +992,7 @@ class AyAccount {
               resolve(userInfo);
               break;
             case "oauth_login":
-              if (
-                data.provider === "yzhyzxy" ||
-                data.provider === "github"
-              ) {
+              if (data.provider === "yzhyzxy" || data.provider === "github") {
                 // 调用弹窗登录方法
                 this.#_loginWithOAuthPopup(data.provider)
                   .then((result) => {
@@ -1089,7 +1120,11 @@ class AyAccount {
 
       this._messageHandler = handler;
       window.addEventListener("message", handler);
-      document.body.appendChild(iframediv);
+      if (inline) {
+        target.appendChild(iframediv);
+      } else {
+        document.body.appendChild(iframediv);
+      }
       iframediv.appendChild(iframe);
     });
   }
@@ -1205,7 +1240,10 @@ class AyAccount {
    * 关闭模态框，清理资源
    */
   #_closeModal() {
-    if (document.body) document.body.style.overflow = "";
+    if (!this._modalInline && document.body) {
+      document.body.style.overflow = "";
+    }
+    this._modalInline = false;
     // 移除 DOM
     if (this._iframeContainer && this._iframeContainer.parentNode) {
       this._iframeContainer.parentNode.removeChild(this._iframeContainer);

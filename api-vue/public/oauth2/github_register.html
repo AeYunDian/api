@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>使用 GitHub 注册 AyAccount - AyOauth2Center</title>
+    <title>注册 AyAccount</title>
     <style>
         @import url('https://cdn.undz.cn/css2?family=Roboto:wght@400;500;700&display=swap');
 
@@ -104,38 +104,46 @@
             word-break: break-all;
         }
 
-        .field {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            font-size: 13px;
-            padding: 10px 0;
-            border-top: 1px solid #EADDF2;
+        .form-field {
+            margin-bottom: 14px;
         }
 
-        .field span:first-child {
-            color: #79747E;
-            flex: none;
-        }
-
-        .field span:last-child {
-            color: #1D1B20;
-            text-align: right;
-            word-break: break-all;
-        }
-
-        .field code {
-            font-family: 'Roboto Mono', monospace;
-            background: #E6E0E9;
-            border-radius: 4px;
-            padding: 1px 6px;
+        .form-field label {
+            display: block;
             font-size: 12px;
-            color: #21005D;
+            line-height: 16px;
+            letter-spacing: 0.4px;
+            color: #49454F;
+            margin-bottom: 6px;
+        }
+
+        .form-field input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #79747E;
+            border-radius: 12px;
+            background: transparent;
+            color: #1D1B20;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .form-field input:focus {
+            border-color: #6750A4;
+            box-shadow: 0 0 0 2px rgba(103, 80, 164, 0.16);
+        }
+
+        .form-hint {
+            margin-top: 6px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #79747E;
         }
 
         .alert {
             display: none;
-            margin: 16px 0 4px;
+            margin: 4px 0 14px;
             padding: 12px 14px;
             border-radius: 12px;
             background: #FCE8E6;
@@ -220,12 +228,12 @@
 <body>
     <div class="card">
         <div class="icon">
-            <img src="/github.svg" alt="GitHub" />
+            <img id="providerIcon" src="/github.svg" alt="" />
         </div>
         <h1>注册 AyAccount</h1>
-        <p class="subtitle">该 GitHub 账号还没有绑定 AyAccount，是否用它注册一个新账号？</p>
+        <p id="subtitle" class="subtitle">该账号还没有绑定 AyAccount，填写用户名和密码后即可注册。</p>
 
-        <div id="loading" class="loading">正在读取 GitHub 信息…</div>
+        <div id="loading" class="loading">正在读取账号信息…</div>
 
         <div id="content" style="display: none;">
             <div class="profile">
@@ -236,15 +244,30 @@
                 </div>
             </div>
 
-            <div class="field">
-                <span>将创建的用户名</span>
-                <span><code id="username"></code></span>
-            </div>
-
             <div id="alert" class="alert"></div>
 
-            <form id="registerForm" method="POST" action="/api/auth/github/register">
+            <form id="registerForm" method="POST" action="/api/auth/oauth/register">
                 <input type="hidden" id="token" name="token" />
+
+                <div class="form-field">
+                    <label for="usernameInput">用户名</label>
+                    <input id="usernameInput" name="username" type="text" maxlength="20" autocomplete="username"
+                        placeholder="4–20 位" />
+                </div>
+
+                <div class="form-field">
+                    <label for="passwordInput">密码</label>
+                    <input id="passwordInput" name="password" type="password" maxlength="32"
+                        autocomplete="new-password" placeholder="6–32 位" />
+                    <div class="form-hint">可用 a-z A-Z 0-9 - _ = + @ # $ %</div>
+                </div>
+
+                <div class="form-field">
+                    <label for="passwordConfirm">确认密码</label>
+                    <input id="passwordConfirm" type="password" maxlength="32" autocomplete="new-password"
+                        placeholder="再输入一次" />
+                </div>
+
                 <div class="actions">
                     <button id="submitBtn" type="submit" class="primary">注册并登录</button>
                     <button id="cancelBtn" type="button" class="text">取消</button>
@@ -256,13 +279,18 @@
                 <a href="https://undz.cn/terms/zh-cn.html" target="_blank">《服务条款》</a>
                 和
                 <a href="https://undz.cn/privacy_policy/zh-cn.html" target="_blank">《隐私政策》</a>。
-                注册后可用该 GitHub 账号登录，也可以稍后设置独立密码。
             </p>
         </div>
     </div>
 
     <script>
         (function () {
+            var PROVIDERS = {
+                github: { name: 'GitHub', icon: '/github.svg' },
+                yzhyzxy: { name: 'Yzhyzxy', icon: '/yzhyzxy.svg' }
+            };
+            var PASSWORD_RE = /^[a-zA-Z0-9\-_=+@#$%]+$/;
+
             var params = new URLSearchParams(window.location.search);
             var token = params.get('token') || '';
             var loading = document.getElementById('loading');
@@ -270,13 +298,17 @@
             var alertBox = document.getElementById('alert');
             var submitBtn = document.getElementById('submitBtn');
             var cancelBtn = document.getElementById('cancelBtn');
+            var usernameInput = document.getElementById('usernameInput');
+            var passwordInput = document.getElementById('passwordInput');
+            var passwordConfirm = document.getElementById('passwordConfirm');
+            var pending = null;
 
             function closeWith(message) {
                 try {
                     if (window.opener) {
                         window.opener.postMessage({
                             action: 'login_fail',
-                            provider: 'github',
+                            provider: pending ? pending.provider : 'github',
                             message: message || '用户取消注册'
                         }, '*');
                     }
@@ -289,38 +321,128 @@
                 alertBox.classList.add('show');
             }
 
+            function validate() {
+                var username = usernameInput.value.trim();
+                var password = passwordInput.value;
+                if (username.length < 4 || username.length > 20) {
+                    return '用户名需 4–20 位';
+                }
+                if (/\s/.test(username)) {
+                    return '用户名不能包含空格';
+                }
+                if (password.length < 6 || password.length > 32 || !PASSWORD_RE.test(password)) {
+                    return '密码需 6–32 位，且只能包含 a-z A-Z 0-9 - _ = + @ # $ %';
+                }
+                if (password !== passwordConfirm.value) {
+                    return '两次输入的密码不一致';
+                }
+                return '';
+            }
+
             cancelBtn.addEventListener('click', function () {
                 closeWith('用户取消注册');
             });
 
+            [usernameInput, passwordInput, passwordConfirm].forEach(function (input) {
+                input.addEventListener('input', function () {
+                    alertBox.classList.remove('show');
+                });
+            });
+
+            document.getElementById('registerForm').addEventListener('submit', function (event) {
+                event.preventDefault();
+                var bad = validate();
+                if (bad) {
+                    showAlert(bad);
+                    return;
+                }
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = '注册中…';
+
+                fetch('/api/auth/oauth/register', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        token: token,
+                        username: usernameInput.value.trim(),
+                        password: passwordInput.value
+                    })
+                })
+                    .then(function (res) {
+                        return res.json().then(function (data) {
+                            return { ok: res.ok, data: data };
+                        });
+                    })
+                    .then(function (result) {
+                        if (!result.ok) {
+                            showAlert(result.data.error || '注册失败，请重试');
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = '注册并登录';
+                            return;
+                        }
+
+                        try {
+                            if (window.opener) {
+                                window.opener.postMessage({
+                                    action: 'login_success',
+                                    provider: result.data.provider,
+                                    registered: true,
+                                    user: result.data.user
+                                }, '*');
+                            }
+                        } catch (e) { }
+                        window.close();
+                    })
+                    .catch(function () {
+                        showAlert('网络异常，请重试');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '注册并登录';
+                    });
+            });
+
             if (!token) {
-                loading.textContent = '缺少注册凭证，请重新使用 GitHub 登录';
+                loading.textContent = '缺少注册凭证，请重新登录';
                 return;
             }
 
-            fetch('/api/auth/github/pending?token=' + encodeURIComponent(token))
-                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+            fetch('/api/auth/oauth/pending?token=' + encodeURIComponent(token))
+                .then(function (res) {
+                    return res.json().then(function (data) {
+                        return { ok: res.ok, data: data };
+                    });
+                })
                 .then(function (result) {
                     if (!result.ok) {
                         loading.textContent = result.data.error || '注册会话已过期，请重新登录';
                         return;
                     }
 
-                    var data = result.data;
-                    document.getElementById('login').textContent = '@' + data.login;
-                    document.getElementById('email').textContent = data.email;
-                    document.getElementById('username').textContent = data.proposed_username;
+                    pending = result.data;
+                    var provider = PROVIDERS[pending.provider] || { name: pending.provider, icon: '/github.svg' };
+
+                    document.getElementById('providerIcon').src = provider.icon;
+                    document.getElementById('providerIcon').alt = provider.name;
+                    document.getElementById('subtitle').textContent =
+                        '该 ' + provider.name + ' 账号还没有绑定 AyAccount，填写用户名和密码后即可注册。';
+                    document.getElementById('login').textContent = '@' + pending.login;
+                    document.getElementById('email').textContent = pending.email;
                     document.getElementById('token').value = token;
+                    usernameInput.value = pending.proposed_username || '';
 
                     var avatar = document.getElementById('avatar');
-                    if (data.avatar && /^https:\/\//i.test(data.avatar)) {
-                        avatar.src = data.avatar;
+                    if (pending.avatar && /^https:\/\//i.test(pending.avatar)) {
+                        avatar.src = pending.avatar;
                     } else {
                         avatar.style.display = 'none';
                     }
 
-                    if (data.email_exists) {
-                        showAlert('该 GitHub 邮箱已经注册过 AyAccount。请先登录原账号，在「账号设置 → 关联账号」中绑定 GitHub。');
+                    if (pending.email_exists) {
+                        showAlert('该邮箱已经注册过 AyAccount。请先登录原账号，在「账号设置 → 关联账号」中绑定。');
                         submitBtn.disabled = true;
                         submitBtn.textContent = '邮箱已注册';
                     }

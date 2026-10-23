@@ -27,6 +27,7 @@ import {
   YZHYZXY_TOKEN_URL,
   YZHYZXY_USERINFO_URL,
 } from "../config.js";
+import { savePending } from "../oauth-pending.js";
 
 export async function handleThirdPartyAuth({ request, env, url, path, method, cors }) {
       if (path === "/api/auth/yzhyzxy/start" && method === "GET") {
@@ -131,7 +132,6 @@ export async function handleThirdPartyAuth({ request, env, url, path, method, co
         const provider = "yzhyzxy";
         const username =
           userData.username || userData.nickname || `yz_${openid.slice(-8)}`;
-        const email = userData.email || `${openid}@yzhyzxy.local`;
         const avatar = userData.avatar || "";
 
         let localUser = await env.db
@@ -202,6 +202,34 @@ export async function handleThirdPartyAuth({ request, env, url, path, method, co
             });
           }
 
+          // 未绑定：有真实邮箱就走通用的「注册确认」中间页
+          if (userData.email) {
+            const pendingEmail = String(userData.email).toLowerCase();
+            const emailExists = await env.db
+              .prepare("SELECT sub FROM online_users WHERE email = ?")
+              .bind(pendingEmail)
+              .first();
+
+            const { token } = await savePending(env, {
+              provider,
+              openid,
+              login: username,
+              email: pendingEmail,
+              avatar,
+              bio: userData.description || userData.bio || "",
+              email_exists: Boolean(emailExists),
+            });
+
+            return new Response(null, {
+              status: 302,
+              headers: {
+                Location: `/oauth2/github_register?token=${encodeURIComponent(token)}`,
+                "Cache-Control": "no-store",
+              },
+            });
+          }
+
+          // 没有邮箱时保留原来的「账户未绑定」页面
           return new Response(null, {
             status: 302,
             headers: {

@@ -1,8 +1,8 @@
-// routes/github.js —— GitHub 第三方登录（OAuth 2.0 授权码）
+// routes/github.js —— OAuth 登录（GitHub / Yzhyzxy 共用注册中间页）
 // 流程：/start 返回授权 URL → 用户授权 → /callback 换 token
 //   - 已绑定：直接登录
-//   - 未绑定：跳 /oauth2/github_register 中间页，询问是否注册
-//            用户确认后 POST /register 创建 AyAccount 并绑定
+//   - 未绑定：跳 /oauth2/github_register 中间页，让用户填用户名/密码后注册
+// 该模块同时承载 GitHub 的授权端点和通用的待注册/注册端点。
 
 import { checkAuth, signAccessToken } from "../auth/jwt.js";
 import { getKv } from "../auth/kv.js";
@@ -12,16 +12,24 @@ import { serialize } from "cookie";
 import {
   DEFAULT_USER_AVATAR,
   DEFAULT_USER_DESC,
+  MAX_USERNAME_LENGTH,
+  MIN_USERNAME_LENGTH,
   REFRESH_TOKEN_TTL,
   SALT_LENGTH,
   TAG_LOGGEDIN,
 } from "../config.js";
-import { hashPassword, toBase64 } from "../auth/crypto.js";
+import { hashPassword, toBase64, validatePassword } from "../auth/crypto.js";
 import {
   generateRandomBytes,
   generateToken,
 } from "../../../shared/utils.js";
 import { ERROR_CODES } from "../../../shared/error-codes.js";
+import {
+  deletePending,
+  pickUsername,
+  readPending,
+  savePending,
+} from "../oauth-pending.js";
 
 const PROVIDER = "github";
 const GITHUB_AUTHORIZE = "https://github.com/login/oauth/authorize";
@@ -58,12 +66,22 @@ function htmlHeaders(cookies = []) {
   return headers;
 }
 
+function jsonHeaders(cookies = []) {
+  const headers = new Headers({
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+  });
+  for (const cookie of cookies) headers.append("Set-Cookie", cookie);
+  return headers;
+}
+
 /**
  * 在弹窗里给 opener 发消息并关闭。
  * action: login_success | login_fail | bind_success | bind_failed
  */
 function messagePage({
   action,
+  provider = PROVIDER,
   user = null,
   registered = false,
   message = "",
@@ -74,7 +92,7 @@ function messagePage({
 }) {
   const payload = {
     action,
-    provider: PROVIDER,
+    provider,
     ...(user ? { user } : {}),
     ...(registered ? { registered: true } : {}),
     ...(message ? { message } : {}),
@@ -87,10 +105,10 @@ function messagePage({
       ? "登录成功"
       : action === "bind_success"
         ? "绑定成功"
-        : "登录失败";
+        : "操作失败";
   const hint =
-    action === "login_fail"
-      ? `${escapeHtml(message || "登录失败")}，窗口即将关闭…`
+    action === "login_fail" || action === "bind_failed"
+      ? `${escapeHtml(message || "操作失败")}，窗口即将关闭…`
       : `${title}，窗口即将关闭…`;
 
   const html = `<!DOCTYPE html>
@@ -115,19 +133,20 @@ p{font-size:13px;line-height:1.6;color:#49454f;margin:0}
   } catch (e) {}
   setTimeout(function () { window.close(); }, 300);
 })();
-<\/script>
+</script>
 </body></html>`;
 
   return new Response(html, { status, headers: htmlHeaders(cookies) });
 }
 
-function failPage(message, code, status = 400) {
-  return messagePage({ action: "login_fail", message, code, status });
+function failPage(message, code, status = 400, provider = PROVIDER) {
+  return messagePage({ action: "login_fail", provider, message, code, status });
 }
 
-function bindFailPage(message, error, code, status = 400) {
+function bindFailPage(message, error, code, status = 400, provider = PROVIDER) {
   return messagePage({
     action: "bind_failed",
+    provider,
     message,
     error,
     code,
@@ -135,84 +154,9 @@ function bindFailPage(message, error, code, status = 400) {
   });
 }
 
-/* ───────────────────────── 用户名 / 建号 ───────────────────────── */
+/* ───────────────────────── Token / 建号 ───────────────────────── */
 
-function normalizeLogin(login, id) {
-  let base = String(login || "")
-    .replace(/[^a-zA-Z0-9_]/g, "_")
-    .slice(0, 20);
-  if (base.length < 4) base = `gh_${id}`.slice(0, 20);
-  return base;
-}
-
-async function pickUsername(db, login, id) {
-  const base = normalizeLogin(login, id);
-  const candidates = [base];
-  for (let i = 1; i <= 20; i++) {
-    candidates.push(
-      `${base.slice(0, 12)}_${String(id).slice(-4)}${i}`.slice(0, 20),
-    );
-  }
-  for (const candidate of candidates) {
-    const exists = await db
-      .prepare("SELECT sub FROM online_users WHERE username = ?")
-      .bind(candidate)
-      .first();
-    if (!exists) return candidate;
-  }
-  return `gh_${String(id).slice(-10)}`;
-}
-
-async function createUserFromPending(db, pending) {
-  const username = await pickUsername(db, pending.login, pending.openid);
-  const now = Date.now();
-
-  // 没有密码：生成随机口令并只保存散列，用户后续可通过邮箱/改密流程设置
-  const randomPassword = Array.from(generateRandomBytes(24))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  const salt = generateRandomBytes(SALT_LENGTH);
-  const hash = await hashPassword(randomPassword, salt);
-
-  const result = await db
-    .prepare(
-      `INSERT INTO online_users
-         (username, email, gender, avatar, description,
-          password_salt, password_hash, created_at, updated_at)
-       VALUES (?, ?, 'unknown', ?, ?, ?, ?, ?, ?)`,
-    )
-    .bind(
-      username,
-      pending.email,
-      pending.avatar || DEFAULT_USER_AVATAR,
-      pending.bio || DEFAULT_USER_DESC,
-      toBase64(salt),
-      toBase64(hash),
-      now,
-      now,
-    )
-    .run();
-
-  const sub = result.meta.last_row_id;
-  await db
-    .prepare(
-      `INSERT INTO oauth_connections (provider, openid, user_sub, created_at)
-       VALUES (?, ?, ?, ?)`,
-    )
-    .bind(PROVIDER, pending.openid, sub, now)
-    .run();
-
-  return db
-    .prepare(
-      "SELECT sub, username, email, gender, avatar, description, created_at FROM online_users WHERE sub = ?",
-    )
-    .bind(sub)
-    .first();
-}
-
-/* ───────────────────────── 登录响应 ───────────────────────── */
-
-async function loginResponse(env, user, registered = false) {
+async function issueTokens(env, user) {
   const accessToken = await signAccessToken(
     {
       sub: user.sub,
@@ -243,8 +187,21 @@ async function loginResponse(env, user, registered = false) {
     maxAge: REFRESH_TOKEN_TTL,
   };
 
+  return {
+    accessToken,
+    refreshToken,
+    cookies: [
+      serialize("access_token", accessToken, cookieOptions),
+      serialize("refresh_token", refreshToken, cookieOptions),
+    ],
+  };
+}
+
+async function loginResponse(env, user, registered = false, provider = PROVIDER) {
+  const tokens = await issueTokens(env, user);
   return messagePage({
     action: "login_success",
+    provider,
     registered,
     user: {
       sub: user.sub,
@@ -252,11 +209,83 @@ async function loginResponse(env, user, registered = false) {
       email: user.email,
       avatar: user.avatar,
     },
-    cookies: [
-      serialize("access_token", accessToken, cookieOptions),
-      serialize("refresh_token", refreshToken, cookieOptions),
-    ],
+    cookies: tokens.cookies,
   });
+}
+
+async function loginJsonResponse(
+  env,
+  user,
+  registered = false,
+  provider = PROVIDER,
+) {
+  const tokens = await issueTokens(env, user);
+  return new Response(
+    JSON.stringify({
+      success: true,
+      provider,
+      registered,
+      user: {
+        sub: user.sub,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar,
+      },
+    }),
+    { status: 200, headers: jsonHeaders(tokens.cookies) },
+  );
+}
+
+async function createUserFromPending(db, pending, username, password) {
+  const finalUsername =
+    username ||
+    pending.proposed_username ||
+    (await pickUsername(db, pending.login, pending.openid));
+
+  const finalPassword =
+    password ||
+    Array.from(generateRandomBytes(24))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+  const now = Date.now();
+  const salt = generateRandomBytes(SALT_LENGTH);
+  const hash = await hashPassword(finalPassword, salt);
+
+  const result = await db
+    .prepare(
+      `INSERT INTO online_users
+         (username, email, gender, avatar, description,
+          password_salt, password_hash, created_at, updated_at)
+       VALUES (?, ?, 'unknown', ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      finalUsername,
+      pending.email,
+      pending.avatar || DEFAULT_USER_AVATAR,
+      pending.bio || DEFAULT_USER_DESC,
+      toBase64(salt),
+      toBase64(hash),
+      now,
+      now,
+    )
+    .run();
+
+  const sub = result.meta.last_row_id;
+  await db
+    .prepare(
+      `INSERT INTO oauth_connections (provider, openid, user_sub, created_at)
+       VALUES (?, ?, ?, ?)`,
+    )
+    .bind(pending.provider, pending.openid, sub, now)
+    .run();
+
+  return db
+    .prepare(
+      "SELECT sub, username, email, gender, avatar, description, created_at FROM online_users WHERE sub = ?",
+    )
+    .bind(sub)
+    .first();
 }
 
 /* ───────────────────────── GitHub API ───────────────────────── */
@@ -325,7 +354,7 @@ export async function handleGithubAuth({
   method,
   cors,
 }) {
-  /* ---------- 发起授权 ---------- */
+  /* ---------- 发起 GitHub 授权 ---------- */
   if (path === "/api/auth/github/start" && method === "GET") {
     const mode = url.searchParams.get("mode") === "bind" ? "bind" : "login";
     if (
@@ -359,7 +388,7 @@ export async function handleGithubAuth({
     return jsonResponse({ url: authUrl.toString() }, 200, cors);
   }
 
-  /* ---------- 回调 ---------- */
+  /* ---------- GitHub 回调 ---------- */
   if (path === "/api/auth/github/callback" && method === "GET") {
     const oauthError = url.searchParams.get("error");
     if (oauthError) {
@@ -494,37 +523,37 @@ export async function handleGithubAuth({
       return loginResponse(env, user, false);
     }
 
-    /* ---- 未绑定：跳中间页询问是否注册 ---- */
+    /* ---- 未绑定：跳中间页，用户填用户名/密码后注册 ---- */
     const emailExists = await env.db
       .prepare("SELECT sub FROM online_users WHERE email = ?")
       .bind(ghUser.email)
       .first();
 
-    const pendingToken = generateToken();
-    await getKv().put(
-      `github_pending:${pendingToken}`,
-      JSON.stringify({
-        openid: ghUser.id,
-        login: ghUser.login,
-        email: ghUser.email,
-        avatar: ghUser.avatar,
-        bio: ghUser.bio,
-        email_exists: Boolean(emailExists),
-      }),
-      { expirationTtl: 600 },
-    );
+    const { token } = await savePending(env, {
+      provider: PROVIDER,
+      openid: ghUser.id,
+      login: ghUser.login,
+      email: ghUser.email,
+      avatar: ghUser.avatar,
+      bio: ghUser.bio,
+      email_exists: Boolean(emailExists),
+    });
 
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `/oauth2/github_register?token=${encodeURIComponent(pendingToken)}`,
+        Location: `/oauth2/github_register?token=${encodeURIComponent(token)}`,
         "Cache-Control": "no-store",
       },
     });
   }
 
-  /* ---------- 中间页读取待确认信息 ---------- */
-  if (path === "/api/auth/github/pending" && method === "GET") {
+  /* ---------- 中间页读取待注册信息（GitHub / Yzhyzxy 通用） ---------- */
+  if (
+    (path === "/api/auth/oauth/pending" ||
+      path === "/api/auth/github/pending") &&
+    method === "GET"
+  ) {
     const token = url.searchParams.get("token") || "";
     if (!token) {
       return jsonResponse(
@@ -536,8 +565,9 @@ export async function handleGithubAuth({
         cors,
       );
     }
-    const stored = await getKv().get(`github_pending:${token}`);
-    if (!stored) {
+
+    const pending = await readPending(env, token);
+    if (!pending) {
       return jsonResponse(
         {
           error_code: ERROR_CODES.GITHUB_PENDING_INVALID,
@@ -547,57 +577,77 @@ export async function handleGithubAuth({
         cors,
       );
     }
-    const pending = JSON.parse(stored);
-    const proposedUsername = await pickUsername(
-      env.db,
-      pending.login,
-      pending.openid,
-    );
 
     return jsonResponse(
       {
+        provider: pending.provider,
         login: pending.login,
         email: pending.email,
         avatar: pending.avatar,
         bio: pending.bio,
         email_exists: Boolean(pending.email_exists),
-        proposed_username: proposedUsername,
+        proposed_username: pending.proposed_username,
       },
       200,
       cors,
     );
   }
 
-  /* ---------- 用户确认注册 ---------- */
-  if (path === "/api/auth/github/register" && method === "POST") {
+  /* ---------- 用户确认注册（自定义用户名 + 密码） ---------- */
+  if (
+    (path === "/api/auth/oauth/register" ||
+      path === "/api/auth/github/register") &&
+    method === "POST"
+  ) {
+    const wantsJson = (request.headers.get("Accept") || "").includes(
+      "application/json",
+    );
     const contentType = request.headers.get("Content-Type") || "";
     let token = null;
+    let username = "";
+    let password = "";
+
     if (contentType.includes("application/json")) {
       const body = await request.json().catch(() => null);
       token = body?.token || null;
+      username = body?.username || "";
+      password = body?.password || "";
     } else {
       const form = await request.formData().catch(() => null);
       token = form?.get("token") || null;
+      username = form?.get("username") || "";
+      password = form?.get("password") || "";
     }
+
+    const registerFail = (message, code, status = 400) => {
+      if (wantsJson) {
+        return jsonResponse(
+          { error_code: code, error: message },
+          status,
+          cors,
+        );
+      }
+      return failPage(message, code, status);
+    };
 
     if (!token) {
-      return failPage("缺少注册凭证", ERROR_CODES.GITHUB_PENDING_INVALID, 400);
+      return registerFail("缺少注册凭证", ERROR_CODES.GITHUB_PENDING_INVALID, 400);
     }
 
-    const stored = await getKv().get(`github_pending:${token}`);
-    await getKv().delete(`github_pending:${token}`);
-    if (!stored) {
-      return failPage(
-        "注册会话已过期，请重新使用 GitHub 登录",
+    const pending = await readPending(env, token);
+    if (!pending) {
+      return registerFail(
+        "注册会话已过期，请重新登录",
         ERROR_CODES.GITHUB_PENDING_INVALID,
         401,
       );
     }
 
-    const pending = JSON.parse(stored);
+    const provider = pending.provider || PROVIDER;
+
     if (pending.email_exists) {
-      return failPage(
-        "该 GitHub 邮箱已注册 AyAccount，请先登录后在账号设置中绑定",
+      return registerFail(
+        "该邮箱已注册 AyAccount，请先登录后在账号设置中绑定",
         ERROR_CODES.GITHUB_EMAIL_REGISTERED,
         409,
       );
@@ -608,8 +658,8 @@ export async function handleGithubAuth({
       .bind(pending.email)
       .first();
     if (emailOwner) {
-      return failPage(
-        "该 GitHub 邮箱已注册 AyAccount，请先登录后在账号设置中绑定",
+      return registerFail(
+        "该邮箱已注册 AyAccount，请先登录后在账号设置中绑定",
         ERROR_CODES.GITHUB_EMAIL_REGISTERED,
         409,
       );
@@ -619,7 +669,7 @@ export async function handleGithubAuth({
       .prepare(
         "SELECT user_sub FROM oauth_connections WHERE provider = ? AND openid = ?",
       )
-      .bind(PROVIDER, pending.openid)
+      .bind(provider, pending.openid)
       .first();
     if (existingConnection) {
       const user = await env.db
@@ -628,22 +678,83 @@ export async function handleGithubAuth({
         )
         .bind(existingConnection.user_sub)
         .first();
-      if (user) return loginResponse(env, user, false);
+      if (user) {
+        if (user.banned) {
+          return registerFail(
+            `账号已被封禁：${user.ban_reason || "未提供原因"}`,
+            ERROR_CODES.ACCOUNT_BANNED,
+            403,
+          );
+        }
+        await deletePending(env, token);
+        return wantsJson
+          ? loginJsonResponse(env, user, false, provider)
+          : loginResponse(env, user, false, provider);
+      }
+    }
+
+    const finalUsername = String(
+      username || pending.proposed_username || "",
+    ).trim();
+    if (
+      finalUsername.length < MIN_USERNAME_LENGTH ||
+      finalUsername.length > MAX_USERNAME_LENGTH
+    ) {
+      return registerFail(
+        `用户名需 ${MIN_USERNAME_LENGTH}–${MAX_USERNAME_LENGTH} 位`,
+        ERROR_CODES.INVALID_USERNAME_LENGTH,
+        400,
+      );
+    }
+    if (/\s/.test(finalUsername)) {
+      return registerFail(
+        "用户名不能包含空白字符",
+        ERROR_CODES.INVALID_USERNAME_LENGTH,
+        400,
+      );
+    }
+
+    const usernameOwner = await env.db
+      .prepare("SELECT sub FROM online_users WHERE username = ?")
+      .bind(finalUsername)
+      .first();
+    if (usernameOwner) {
+      return registerFail(
+        "该用户名已被占用",
+        ERROR_CODES.USERNAME_ALREADY_EXISTS,
+        409,
+      );
+    }
+
+    if (!password || !validatePassword(password)) {
+      return registerFail(
+        "密码需 6–32 位，且只能包含 a-z A-Z 0-9 - _ = + @ # $ %",
+        ERROR_CODES.WEAK_PASSWORD,
+        400,
+      );
     }
 
     let user;
     try {
-      user = await createUserFromPending(env.db, pending);
+      user = await createUserFromPending(
+        env.db,
+        { ...pending, provider },
+        finalUsername,
+        password,
+      );
     } catch (err) {
-      if (env.DEBUG) console.error("[github] create user failed:", err);
-      return failPage(
-        "注册失败，请稍后重试",
-        ERROR_CODES.GITHUB_UPSTREAM_ERROR,
+      if (env.DEBUG) console.error("[oauth] create user failed:", err);
+      return registerFail(
+        "注册失败，用户名或邮箱可能已被占用",
+        ERROR_CODES.SERVER_DOWN,
         500,
       );
     }
 
-    return loginResponse(env, user, true);
+    await deletePending(env, token);
+    return wantsJson
+      ? loginJsonResponse(env, user, true, provider)
+      : loginResponse(env, user, true, provider);
   }
 
   return null;
