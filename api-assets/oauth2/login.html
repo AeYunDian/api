@@ -208,10 +208,6 @@
             }
         }
 
-        /* 渲染新视图前的短暂隐藏，避免闪一帧 */
-        .pagination-view.zero-opacity {
-            opacity: 0;
-        }
 
         /* 降级：减少动态 / 不支持动画时直接切 */
         @media (prefers-reduced-motion: reduce) {
@@ -516,7 +512,15 @@
             }
 
             if (currentPage === null || !useSlideAnimation) {
+                const isFirstLoad = currentPage === null; // 提前保存状态
                 renderPage(target);
+                // 如果是首次加载且要求从左侧滑入
+                if (isFirstLoad && direction === "back" && useSlideAnimation) {
+                    paginationView.classList.add("animate", "slide-in-back");
+                    setTimeout(() => {
+                        paginationView.classList.remove("animate", "slide-in-back");
+                    }, 700);
+                }
                 return;
             }
 
@@ -628,7 +632,7 @@
             }
             return { loggedIn: false };
         }
-        changePage("s1");
+        changePage("s1", "back");
 
         async function main() {
             try {
