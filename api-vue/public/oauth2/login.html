@@ -445,7 +445,9 @@
 
         // 监听窗口大小变化，实时更新样式
         window.addEventListener('resize', () => {
-            if (currentPage) applyMode(currentPage);
+            if (currentPage !== "s2") {
+                applyMode(currentPage);
+            }
         });
 
         function renderPage(target) {
@@ -617,6 +619,8 @@
                 const authCheck = await checkAuthWithRefresh(account);
                 if (authCheck.loggedIn) {
                     changePage("s3");
+                    window.location.replace(targetUrl);
+                    return;
                 }
                 const loginPromise = account.login({
                     hideOauthClient: true, hideClose: true, container: ".loginContainer",
