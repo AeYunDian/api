@@ -286,27 +286,7 @@
             height: 100%;
         }
 
-        /* 内联登录 iframe：外层卡片让位，交给内层登录卡自己决定宽高 */
-        body.login-mode .card {
-            width: min(500px, calc(100vw - 24px));
-            max-width: none;
-            min-width: 0;
-            min-height: 0;
-            padding: 0;
-            background: transparent;
-            box-shadow: none;
-            overflow: visible;
-            animation: none;
-        }
 
-        body.login-mode .card .step2 {
-            width: 100%;
-            height: auto;
-        }
-
-        body.login-mode .card .step2>div {
-            min-height: 600px;
-        }
 
         @keyframes fadeIn {
             0% {
@@ -315,69 +295,6 @@
 
             100% {
                 opacity: 1;
-            }
-        }
-
-        /* ===== 移动端适配 ===== */
-        @media (max-width: 600px) {
-            body {
-                /* 移动端去掉背景图，改用纯白或浅灰 */
-                background-image: none !important;
-                background-color: #ffffff !important;
-                align-items: flex-start !important;
-                /* 取消垂直居中，从顶部开始 */
-            }
-
-            /* 普通状态（加载中）：撑满屏幕 */
-            .card {
-                width: 100vw !important;
-                max-width: 100vw !important;
-                min-height: 100vh !important;
-                min-height: 100dvh !important;
-                /* 适配手机浏览器地址栏收缩 */
-                padding: 24px !important;
-                margin: 0 !important;
-                border-radius: 0 !important;
-                box-shadow: none !important;
-            }
-
-            .pageTitle {
-                font-size: 1.25rem !important;
-                margin-top: 16px !important;
-            }
-
-            /* 登录模式（显示 iframe）：去掉所有外部留白和阴影 */
-            body.login-mode {
-                background-color: #ffffff !important;
-            }
-
-            body.login-mode .card {
-                width: 100vw !important;
-                max-width: 100vw !important;
-                min-height: 100vh !important;
-                min-height: 100dvh !important;
-                padding: 0 !important;
-                border-radius: 0 !important;
-                box-shadow: none !important;
-            }
-
-            /* 让 iframe 容器撑满全屏 */
-            body.login-mode .card .step2>div {
-                min-height: 100vh !important;
-                min-height: 100dvh !important;
-                border-radius: 0 !important;
-                box-shadow: none !important;
-            }
-
-            /* 移动端下，让整个滑动容器也撑满 */
-            .pagination-view {
-                min-height: calc(100vh - 24px) !important;
-                min-height: calc(100dvh - 24px) !important;
-            }
-
-            body.login-mode .pagination-view {
-                min-height: 100vh !important;
-                min-height: 100dvh !important;
             }
         }
     </style>
@@ -468,13 +385,68 @@
             const el = document.createElement("div");
             return el.style.animationName !== undefined;
         })();
-
         function applyMode(target) {
             const isLogin = target === "s2";
-            document.body.classList.toggle("login-mode", isLogin);
-            elHeader.style.display = isLogin ? "none" : "";
-            elCard.style.padding = isLogin ? "0" : "";
+            const isMobile = window.innerWidth <= 600; // 动态判断移动端
+
+            elProgress.style.display = isLogin ? "none" : "";
+
+            if (isLogin) {
+                elHeader.style.display = "none";
+                // 接管 iframe 容器的尺寸计算
+                elCard.style.padding = "0";
+                elCard.style.boxShadow = "none";
+                elCard.style.background = "transparent";
+                elCard.style.animation = "none";
+                elCard.style.width = isMobile ? "100vw" : "min(500px, calc(100vw - 24px))";
+                elCard.style.maxWidth = "none";
+                elCard.style.minWidth = "0";
+                elCard.style.minHeight = isMobile ? "100dvh" : "0";
+                elCard.style.overflow = "visible";
+                elCard.style.margin = isMobile ? "0" : "";
+            } else {
+                elHeader.style.display = "";
+                if (isMobile) {
+                    // 移动端：卡片满宽、去阴影、去圆角、撑满全屏
+                    elCard.style.padding = "24px";
+                    elCard.style.boxShadow = "none";
+                    elCard.style.background = "#fff";
+                    elCard.style.animation = "none";
+                    elCard.style.width = "100vw";
+                    elCard.style.maxWidth = "100vw";
+                    elCard.style.minWidth = "0";
+                    elCard.style.minHeight = "100dvh";
+                    elCard.style.overflow = "visible";
+                    elCard.style.margin = "0";
+
+                    // 让页面取消垂直居中，改为靠上对齐，白底无背景图
+                    document.body.style.alignItems = "flex-start";
+                    document.body.style.backgroundImage = "none";
+                    document.body.style.backgroundColor = "#fff";
+                } else {
+                    // 桌面端：恢复默认样式
+                    elCard.style.padding = "";
+                    elCard.style.boxShadow = "";
+                    elCard.style.background = "";
+                    elCard.style.animation = "";
+                    elCard.style.width = "";
+                    elCard.style.maxWidth = "";
+                    elCard.style.minWidth = "";
+                    elCard.style.minHeight = "";
+                    elCard.style.overflow = "";
+                    elCard.style.margin = "";
+
+                    document.body.style.alignItems = "";
+                    document.body.style.backgroundImage = "";
+                    document.body.style.backgroundColor = "";
+                }
+            }
         }
+
+        // 监听窗口大小变化，实时更新样式
+        window.addEventListener('resize', () => {
+            if (currentPage) applyMode(currentPage);
+        });
 
         function renderPage(target) {
             Object.keys(pages).forEach((key) => {
@@ -658,9 +630,17 @@
                         ".outcard": {
                             height: "100%"
                         },
+                        ".app-enter": {
+
+                            animation: "none !important",
+                            transform: "none !important"
+                        },
                         ".app-leave": {
                             animation: "none !important",
                             transform: "none !important"
+                        },
+                        "body, button, input, select, textarea, ::placeholder": {
+                            "font-family": `"Roboto", "Noto Sans HK", "Noto Sans SC", "Noto Sans JP", "Noto Sans TC", "Noto Sans CJK SC", "Noto Sans CJK TC", "Noto Sans CJK HK", "Noto Sans CJK JP", "Droid Sans Fallback", "Droid Sans", "PingFang HK", "PingFang SC", "PingFang TC", "Microsoft JhengHei", "Microsoft YaHei", "Hiragino Sans GB", "Heiti SC", "Heiti TC", "WenQuanYi Micro Hei", "Segoe UI", "Helvetica Neue", "Lucida Grande", "Ebrima", "Nirmala UI", "Gadugi", "Segoe Xbox Symbol", "Segoe UI Symbol", "Meiryo UI", "Khmer UI", "Tunga", "Lao UI", "Raavi", "Iskoola Pota", "Latha", "Leelawadee", "Microsoft YaHei UI", "Microsoft JhengHei UI", "Malgun Gothic", "Estrangelo Edessa", "Microsoft Himalaya", "Microsoft New Tai Lue", "Microsoft PhagsPa", "Microsoft Tai Le", "Microsoft Yi Baiti", "Mongolian Baiti", "MV Boli", "Myanmar Text", "Cambria Math" !important`
                         }
                     }
                 });
@@ -700,7 +680,7 @@
                 showError(error.message || '登录初始化失败，请刷新页面重试');
             } finally {
                 if (currentPage !== "s2") {
-                    elCard.style.padding = "";
+                    applyMode(currentPage);
                 }
             }
         }

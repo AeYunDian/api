@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="./header-title.css" />
+    <script defer src="./header-title.js"></script>
+    <title>滑动切换演示 - AyAccount</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Segoe UI", "Helvetica Neue", "Lucida Grande", "Roboto", "Ebrima", "Nirmala UI", "Gadugi", "Segoe Xbox Symbol", "Segoe UI Symbol", "Meiryo UI", "Khmer UI", "Tunga", "Lao UI", "Raavi", "Iskoola Pota", "Latha", "Leelawadee", "Microsoft YaHei UI", "Microsoft JhengHei UI", "Malgun Gothic", "Estangelo Edessa", "Microsoft Himalaya", "Microsoft New Tai Lue", "Microsoft PhagsPa", "Microsoft Tai Le", "Microsoft Yi Baiti", "Mongolian Baiti", "MV Boli", "Myanmar Text", "Cambria Math";
+        }
+
+        body {
+            background-color: #f4f2f9;
+            background-image: url("./background_eae2dd7e.svg");
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #1b1b1b;
+            padding: 20px;
+        }
+
+        .card {
+            background-color: #fff;
+            border-radius: 0;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            width: 440px;
+            max-width: calc(100% - 40px);
+            min-width: 320px;
+            padding: 44px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn .3s ease-in;
+        }
+
+
+
+        .pageTitle {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .pageDescription {
+            font-size: 15px;
+            line-height: 1.25rem;
+            margin-bottom: 24px;
+        }
+
+        /* ===== 微软原版滑动容器样式 ===== */
+        .pagination-view {
+            position: relative;
+            overflow: hidden;
+            min-height: 120px;
+            will-change: transform, opacity;
+        }
+
+        .pagination-view>div {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .pagination-view.animate {
+            animation-duration: .25s;
+            animation-timing-function: cubic-bezier(.5, 0, .5, 1);
+            animation-fill-mode: both;
+        }
+
+        .pagination-view.slide-out-next {
+            animation-name: hide-to-left;
+        }
+
+        .pagination-view.slide-in-next {
+            animation-name: show-from-right;
+        }
+
+        .pagination-view.slide-out-back {
+            animation-name: hide-to-right;
+        }
+
+        .pagination-view.slide-in-back {
+            animation-name: show-from-left;
+        }
+
+        @keyframes hide-to-left {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+        }
+
+        @keyframes show-from-right {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes hide-to-right {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        @keyframes show-from-left {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* 按钮组 */
+        .actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+
+        .btn {
+            padding: 0 24px;
+            height: 36px;
+            font-size: 15px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-radius: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, opacity 0.2s;
+            min-width: 96px;
+        }
+
+        .btn-primary {
+            background: #0067b8;
+            color: #fff;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #005da6;
+        }
+
+        .btn-secondary {
+            background: rgba(0, 0, 0, 0.1);
+            color: #1b1b1b;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        /* 只有在到达边界时才禁用按钮 */
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .back-link {
+            display: block;
+            text-align: right;
+            margin-top: 24px;
+            color: #0067b8;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                background-image: none;
+                background-color: #fff;
+                align-items: flex-start;
+                padding: 0;
+            }
+
+            .card {
+                width: 100vw;
+                max-width: 100vw;
+                min-height: 100vh;
+                padding: 24px;
+                margin: 0;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="header">
+            <span class="header-title">A</span>
+            <span class="header-title">y</span>
+            <span class="header-title">A</span>
+            <span class="header-title">c</span>
+            <span class="header-title">c</span>
+            <span class="header-title">o</span>
+            <span class="header-title">u</span>
+            <span class="header-title">n</span>
+            <span class="header-title">t</span>
+        </div>
+
+        <div class="pagination-view" id="pageContainer">
+            <div class="step1">
+                <div class="pageTitle">身份验证</div>
+                <p class="pageDescription">请输入你的账号以继续。</p>
+            </div>
+            <div class="step2">
+                <div class="pageTitle">输入密码</div>
+                <p class="pageDescription">请输入与此账号关联的密码。</p>
+            </div>
+            <div class="step3">
+                <div class="pageTitle">保持登录状态？</div>
+                <p class="pageDescription">是否要在此设备上保持登录状态？</p>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button id="backBtn" class="btn btn-secondary" onclick="requestChange('back')">上一步</button>
+            <button id="nextBtn" class="btn btn-primary" onclick="requestChange('next')">下一步</button>
+        </div>
+
+        <a href="index.html" class="back-link">返回首页</a>
+    </div>
+    <script>
+        const pages = {
+            s1: document.querySelector('.step1'),
+            s2: document.querySelector('.step2'),
+            s3: document.querySelector('.step3')
+        };
+        const paginationView = document.getElementById('pageContainer');
+        const backBtn = document.getElementById('backBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        const pageOrder = ['s1', 's2', 's3'];
+        let currentIndex = 0;
+        let isAnimating = false;
+        let pendingTarget = null;
+
+        // 初始化渲染第一页
+        function renderPage(target) {
+            Object.keys(pages).forEach((key) => {
+                const el = pages[key];
+                if (key === target) {
+                    el.style.visibility = "visible";
+                    el.style.opacity = "1";
+                    el.style.position = "relative";
+                    el.style.pointerEvents = "auto";
+                } else {
+                    el.style.visibility = "hidden";
+                    el.style.opacity = "0";
+                    el.style.position = "absolute";
+                    el.style.pointerEvents = "none";
+                }
+            });
+            updateButtons(target);
+        }
+
+        // 更新按钮状态
+        function updateButtons(target) {
+            if (target === 's1') {
+                backBtn.disabled = true;
+            } else {
+                backBtn.disabled = false;
+            }
+            if (target === 's3') {
+                nextBtn.disabled = true;
+            } else {
+                nextBtn.disabled = false;
+            }
+        }
+
+        renderPage('s1'); // 初始渲染
+
+        // 核心滑动切换逻辑
+        function executeSlide(targetId, direction) {
+            if (isAnimating) {
+                pendingTarget = { targetId, direction };
+                return;
+            }
+
+            const isBack = direction === "back";
+            isAnimating = true;
+
+            paginationView.classList.add("animate");
+            paginationView.classList.remove("slide-in-next", "slide-in-back", "slide-out-next", "slide-out-back");
+            void paginationView.offsetWidth; // 触发重绘
+            paginationView.classList.add(isBack ? "slide-out-back" : "slide-out-next");
+
+            let outEnded = false;
+
+            const finish = () => {
+                isAnimating = false;
+                paginationView.classList.remove("animate", "slide-out-next", "slide-in-next", "slide-out-back", "slide-in-back");
+                if (pendingTarget) {
+                    const next = pendingTarget;
+                    pendingTarget = null;
+                    executeSlide(next.targetId, next.direction);
+                }
+            };
+
+            const onOutEnd = (e) => {
+                if (e.target !== paginationView || outEnded) return;
+                outEnded = true;
+                paginationView.removeEventListener("animationend", onOutEnd);
+
+                paginationView.classList.remove("slide-out-next", "slide-out-back");
+                renderPage(targetId);
+
+                void paginationView.offsetWidth;
+                paginationView.classList.add(isBack ? "slide-in-back" : "slide-in-next");
+
+                const onInEnd = (e2) => {
+                    if (e2.target !== paginationView) return;
+                    paginationView.removeEventListener("animationend", onInEnd);
+                    finish();
+                };
+                setTimeout(() => finish(), 400);
+                paginationView.addEventListener("animationend", onInEnd, { once: true });
+            };
+
+            setTimeout(() => {
+                if (!outEnded) onOutEnd({ target: paginationView });
+            }, 400);
+
+            paginationView.addEventListener("animationend", onOutEnd, { once: true });
+        }
+
+        // 外部按钮调用的方法
+        function changePage(direction) {
+            let targetIndex = currentIndex;
+            if (direction === 'next' && currentIndex < pageOrder.length - 1) {
+                targetIndex++;
+            } else if (direction === 'back' && currentIndex > 0) {
+                targetIndex--;
+            } else {
+                return; // 已经在边界了
+            }
+
+            const targetId = pageOrder[targetIndex];
+            currentIndex = targetIndex;
+
+            executeSlide(targetId, direction);
+        }
+    </script>
+</body>
+
+</html>

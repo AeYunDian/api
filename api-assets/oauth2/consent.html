@@ -505,7 +505,10 @@
         }
 
         document.getElementById('reloadBtn').addEventListener('click', function () {
-            window.location.href = window.location.href + (window.location.href.includes('?') ? '&' : '?') + '_t=' + Date.now();
+            const url = new URL(window.location.href);
+            // set 方法会自动判断：如果存在 _t 就替换值，不存在就追加
+            url.searchParams.set('_t', Date.now());
+            window.location.href = url.toString();
         });
 
         // 初始化

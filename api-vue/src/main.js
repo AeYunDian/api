@@ -290,7 +290,7 @@ async function loadApp() {
     appInstance = app;
 
     await applyHead(appName, "beforeMount");
-    app.mount("#aymspa");
+    app.mount("#website");
     await applyHead(appName, "afterMount");
     await applyAppInit(appName, "afterMount", { app, pinia, appName, router });
 

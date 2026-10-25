@@ -1,0 +1,27 @@
+.header-title {
+  font-weight: bold;
+  user-select: none;
+  font-size: 22px;
+  align-items: center;
+  display: inline-block;
+  animation: colorChange 1.3s ease forwards;
+  animation-play-state: paused;
+  --text-color: #3f80ca;
+  color: var(--text-color);
+}
+
+.header {
+  font-size: 0;
+}
+
+@keyframes colorChange {
+  0% {
+    color: var(--text-color);
+  }
+  50% {
+    color: #8eaccf;
+  }
+  100% {
+    color: var(--text-color);
+  }
+}

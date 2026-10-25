@@ -48,7 +48,12 @@
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
 }
-body {
+body,
+button,
+input,
+select,
+textarea,
+::placeholder {
   font-family:
     "Roboto", "Noto Sans HK", "Noto Sans SC", "Noto Sans JP", "Noto Sans TC",
     "Noto Sans CJK SC", "Noto Sans CJK TC", "Noto Sans CJK HK",

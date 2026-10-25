@@ -1,6 +1,7 @@
 .card-header-title {
   font-weight: bolder;
   font-size: 28px;
+  user-select: none;
   align-items: center;
   display: inline-block;
   animation: colorChange 1.3s ease forwards;

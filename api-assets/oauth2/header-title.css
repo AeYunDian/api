@@ -1,5 +1,6 @@
 .header-title {
   font-weight: bold;
+  user-select: none;
   font-size: 22px;
   align-items: center;
   display: inline-block;

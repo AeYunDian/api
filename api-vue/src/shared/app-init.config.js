@@ -38,6 +38,15 @@
 
 export const appInitConfig = [
   {
+    name: "hide-progressbar",
+    apps: ["*"],
+    phase: "afterMount",
+    run: () => {
+      const bar = document.getElementById("ant-progress-bar");
+      if (bar) bar.remove();
+    },
+  },
+  {
     name: "memorial-style",
     apps: [],
     phase: "beforeLoadModule",

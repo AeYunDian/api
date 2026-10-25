@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>进度条演示 - AyAccount</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Segoe UI", "Helvetica Neue", "Lucida Grande", "Roboto", "Ebrima", "Nirmala UI", "Gadugi", "Segoe Xbox Symbol", "Segoe UI Symbol", "Meiryo UI", "Khmer UI", "Tunga", "Lao UI", "Raavi", "Iskoola Pota", "Latha", "Leelawadee", "Microsoft YaHei UI", "Microsoft JhengHei UI", "Malgun Gothic", "Estrangelo Edessa", "Microsoft Himalaya", "Microsoft New Tai Lue", "Microsoft PhagsPa", "Microsoft Tai Le", "Microsoft Yi Baiti", "Mongolian Baiti", "MV Boli", "Myanmar Text", "Cambria Math";
+        }
+
+        body {
+            background-color: #f4f2f9;
+            background-image: url("./background_eae2dd7e.svg");
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #1b1b1b;
+            padding: 20px;
+        }
+
+        .card {
+            background-color: #fff;
+            border-radius: 0;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            width: 440px;
+            max-width: calc(100% - 40px);
+            min-width: 320px;
+            padding: 44px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn .3s ease-in;
+        }
+
+        .pageTitle {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 16px;
+            margin-bottom: 12px;
+        }
+
+        .pageDescription {
+            font-size: 15px;
+            line-height: 1.25rem;
+            margin-bottom: 24px;
+        }
+
+        .btn {
+            padding: 0 24px;
+            height: 36px;
+            font-size: 15px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            background: #0067b8;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            border-radius: 0;
+        }
+
+        .btn:hover {
+            background: #005da6;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-left: 16px;
+            color: #0067b8;
+            text-decoration: none;
+            font-size: 15px;
+            line-height: 36px;
+            vertical-align: top;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        /* ===== 微软原版进度条样式 ===== */
+        .progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            overflow: hidden;
+        }
+
+        .progress>div {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background-color: #0067b8;
+            opacity: 0;
+            animation: progressDot 2s infinite;
+        }
+
+        .progress>div:nth-child(1) {
+            animation-delay: .05s;
+        }
+
+        .progress>div:nth-child(2) {
+            animation-delay: .20s;
+        }
+
+        .progress>div:nth-child(3) {
+            animation-delay: .35s;
+        }
+
+        .progress>div:nth-child(4) {
+            animation-delay: .50s;
+        }
+
+        .progress>div:nth-child(5) {
+            animation-delay: .65s;
+        }
+
+        @keyframes progressDot {
+
+            0%,
+            20% {
+                left: 0;
+                opacity: 0;
+                animation-timing-function: ease-out;
+            }
+
+            25% {
+                opacity: 1;
+            }
+
+            35% {
+                left: 45%;
+                animation-timing-function: linear;
+            }
+
+            65% {
+                left: 60%;
+                animation-timing-function: ease-in;
+            }
+
+            75% {
+                opacity: 1;
+            }
+
+            80%,
+            100% {
+                left: 100%;
+                opacity: 0;
+            }
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                background-image: none;
+                background-color: #fff;
+                align-items: flex-start;
+                padding: 0;
+            }
+
+            .card {
+                width: 100vw;
+                max-width: 100vw;
+                min-height: 100vh;
+                padding: 24px;
+                margin: 0;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <!-- 进度条 -->
+        <div class="progress" role="progressbar" id="progressBar">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+
+        <div class="pageTitle">进度条演示</div>
+        <p class="pageDescription">基于微软的“蚂蚁进度条”</p>
+
+        <div>
+            <button class="btn" onclick="toggleProgress()">切换显示/隐藏</button>
+            <a href="index.html" class="back-link">返回首页</a>
+        </div>
+    </div>
+
+    <script>
+        function toggleProgress() {
+            const pb = document.getElementById('progressBar');
+            pb.style.display = pb.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+</body>
+
+</html>
