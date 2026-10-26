@@ -9,6 +9,7 @@
     <script defer src="./header-title.js"></script>
     <script src="/lib/account-sdk.min.js"></script>
     <style>
+        /* ===== 进度条 ===== */
         .progress {
             position: absolute;
             top: 0;
@@ -16,6 +17,7 @@
             width: 100%;
             height: 5px;
             overflow: hidden;
+            transition: opacity 0.3s;
         }
 
         .progress>div {
@@ -82,17 +84,6 @@
             }
         }
 
-        .progress[data-use-css-animation="false"]>div,
-        .progress.is-static>div {
-            animation: none;
-            opacity: .6;
-            left: 0;
-            width: 100%;
-            height: 5px;
-            border-radius: 0;
-            background-color: #0067b8;
-        }
-
         @media (prefers-reduced-motion: reduce) {
             .progress>div {
                 animation: none;
@@ -110,11 +101,11 @@
             }
         }
 
+        /* ===== 滑动容器 ===== */
         .pagination-view {
             position: relative;
             overflow: hidden;
             min-height: 206px;
-            /* 提升合成层，动画更流畅 */
             will-change: transform, opacity;
         }
 
@@ -153,7 +144,6 @@
             animation-name: show-from-left;
         }
 
-        /* 使用 100% 代替 200px，配合 transform 性能更佳 */
         @keyframes hide-to-left {
             from {
                 transform: translateX(0);
@@ -208,15 +198,7 @@
             }
         }
 
-
-        /* 降级：减少动态 / 不支持动画时直接切 */
-        @media (prefers-reduced-motion: reduce) {
-            .pagination-view.animate {
-                animation: none;
-            }
-        }
-    </style>
-    <style>
+        /* ===== 基础与字体 ===== */
         * {
             margin: 0;
             padding: 0;
@@ -235,7 +217,9 @@
         }
 
         body {
-            overflow: hidden;
+            /* 允许滚动，防止极验弹窗被截断 */
+            overflow-y: auto;
+            overflow-x: hidden;
             background: #f4f2f9;
             display: flex;
             justify-content: center;
@@ -243,8 +227,9 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-image: url("./background_eae2dd7e.svg");
+            background-size: cover;
+            background-position: center;
         }
 
         .pageTitle {
@@ -263,18 +248,13 @@
 
         .card {
             animation: fadeIn .3s ease-in;
-            -webkit-animation: fadeIn .3s ease-in;
-
             margin-left: auto;
             margin-right: auto;
             position: relative;
             max-width: calc(100% - 40px);
-
             width: 440px;
             padding: 44px;
             background-color: #fff;
-            -webkit-box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-            -moz-box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
             min-width: 320px;
             min-height: 338px;
@@ -286,8 +266,6 @@
             height: 100%;
         }
 
-
-
         @keyframes fadeIn {
             0% {
                 opacity: 0;
@@ -295,6 +273,64 @@
 
             100% {
                 opacity: 1;
+            }
+        }
+
+        /* ===== 登录模式特调（使用类名接管，不碰 body） ===== */
+        .card.is-login {
+            width: min(500px, calc(100vw - 24px));
+            max-width: none;
+            min-width: 0;
+            min-height: 0;
+            padding: 0;
+            background: transparent;
+            box-shadow: none;
+            overflow: visible;
+            animation: none;
+        }
+
+        /* ===== 移动端适配 ===== */
+        @media (max-width: 600px) {
+            body {
+                align-items: flex-start;
+                /* 改为靠上对齐 */
+                background-image: none;
+                background-color: #fff;
+            }
+
+            .card {
+                width: 100vw;
+                max-width: 100vw;
+                min-height: 100vh;
+                min-height: 100dvh;
+                padding: 24px;
+                margin: 0;
+                border-radius: 0;
+                box-shadow: none;
+            }
+
+            .pageTitle {
+                font-size: 1.25rem;
+                margin-top: 16px;
+            }
+
+            .pagination-view {
+                min-height: calc(100vh - 24px);
+                min-height: calc(100dvh - 24px);
+            }
+
+            /* 移动端登录模式：卡片全屏铺满 */
+            .card.is-login {
+                width: 100vw;
+                max-width: 100vw;
+                min-height: 100vh;
+                min-height: 100dvh;
+                margin: 0;
+            }
+
+            .card.is-login .step2>div {
+                min-height: 100vh !important;
+                min-height: 100dvh !important;
             }
         }
     </style>
@@ -387,68 +423,20 @@
         })();
         function applyMode(target) {
             const isLogin = target === "s2";
-            const isMobile = window.innerWidth <= 600; // 动态判断移动端
 
+            // 控制进度条显隐
             elProgress.style.display = isLogin ? "none" : "";
 
+            // 切换卡片类名
             if (isLogin) {
+                elCard.classList.add("is-login");
                 elHeader.style.display = "none";
-                // 接管 iframe 容器的尺寸计算
-                elCard.style.padding = "0";
-                elCard.style.boxShadow = "none";
-                elCard.style.background = "transparent";
-                elCard.style.animation = "none";
-                elCard.style.width = isMobile ? "100vw" : "min(500px, calc(100vw - 24px))";
-                elCard.style.maxWidth = "none";
-                elCard.style.minWidth = "0";
-                elCard.style.minHeight = isMobile ? "100dvh" : "0";
-                elCard.style.overflow = "visible";
-                elCard.style.margin = isMobile ? "0" : "";
             } else {
+                elCard.classList.remove("is-login");
                 elHeader.style.display = "";
-                if (isMobile) {
-                    // 移动端：卡片满宽、去阴影、去圆角、撑满全屏
-                    elCard.style.padding = "24px";
-                    elCard.style.boxShadow = "none";
-                    elCard.style.background = "#fff";
-                    elCard.style.animation = "none";
-                    elCard.style.width = "100vw";
-                    elCard.style.maxWidth = "100vw";
-                    elCard.style.minWidth = "0";
-                    elCard.style.minHeight = "100dvh";
-                    elCard.style.overflow = "visible";
-                    elCard.style.margin = "0";
-
-                    // 让页面取消垂直居中，改为靠上对齐，白底无背景图
-                    document.body.style.alignItems = "flex-start";
-                    document.body.style.backgroundImage = "none";
-                    document.body.style.backgroundColor = "#fff";
-                } else {
-                    // 桌面端：恢复默认样式
-                    elCard.style.padding = "";
-                    elCard.style.boxShadow = "";
-                    elCard.style.background = "";
-                    elCard.style.animation = "";
-                    elCard.style.width = "";
-                    elCard.style.maxWidth = "";
-                    elCard.style.minWidth = "";
-                    elCard.style.minHeight = "";
-                    elCard.style.overflow = "";
-                    elCard.style.margin = "";
-
-                    document.body.style.alignItems = "";
-                    document.body.style.backgroundImage = "";
-                    document.body.style.backgroundColor = "";
-                }
             }
         }
 
-        // 监听窗口大小变化，实时更新样式
-        window.addEventListener('resize', () => {
-            if (currentPage !== "s2") {
-                applyMode(currentPage);
-            }
-        });
 
         function renderPage(target) {
             Object.keys(pages).forEach((key) => {

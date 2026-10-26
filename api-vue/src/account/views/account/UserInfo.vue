@@ -1,16 +1,14 @@
 <script setup>
-import { inject, ref, watch, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, inject, ref, watch, onUnmounted } from 'vue';
 import { Dialog, Snackbar } from '@varlet/ui'
 import { formatTime } from '@/shared/utils/format';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
 import { isEmailDomainAllowed } from '@/account/utils/validators';
-import { updateProfile, request } from '@/account/utils/api';
+import { updateProfile, createEmailVerify, queryEmailVerify, changeEmail } from '@/account/utils/api';
 const sdk = inject('sdk');
 const user = inject('user');
 const refreshUser = inject('refreshUser');
-const router = useRouter();
 const usernameInput = ref('');
 const avatarInput = ref('');
 const emailInput = ref('');
@@ -19,104 +17,193 @@ const uidInput = ref('');
 const genderInput = ref('');
 const loading = ref(false);
 const isModified = ref(false);
-// 邮箱修改对话框相关
+// 修改邮箱（第一步：输入新邮箱并创建反向验证任务）
 const showChangeEmailDialog = ref(false);
 const newEmail = ref('');
-const emailCode = ref('');
-const emailToken = ref('');
 const emailSending = ref(false);
-const emailChanging = ref(false);
-const emailCountdown = ref(0);
-let emailTimer = null;
 
-// 发送验证码
+// 修改邮箱（第二步：提示用户发邮件 + 轮询验证结果）
+const showVerifyEmailDialog = ref(false);
+const verifyTicket = ref(null);
+const verifyStatus = ref('waiting'); // waiting | success | expired | error
+const verifyMessage = ref('');
+const verifyPolling = ref(false);
+const verifyPollCount = ref(0);
+const emailChanging = ref(false);
+const canRetryChange = ref(false);
+let verifyTimer = null;
+
+const mailtoUrl = computed(() => {
+    const ticket = verifyTicket.value;
+    if (!ticket) return '';
+    return `mailto:${encodeURIComponent(ticket.email)}?subject=${encodeURIComponent('验证码')}&body=${encodeURIComponent(ticket.code)}`;
+});
+
+const verifyExpiresAt = computed(() => {
+    const ticket = verifyTicket.value;
+    if (!ticket?.expiresAt) return '';
+    return new Date(ticket.expiresAt * 1000).toLocaleString('zh-CN', { hour12: false });
+});
+
+function stopVerifyPolling() {
+    if (verifyTimer) {
+        clearInterval(verifyTimer);
+        verifyTimer = null;
+    }
+}
+
+function resetVerifyState() {
+    stopVerifyPolling();
+    verifyTicket.value = null;
+    verifyStatus.value = 'waiting';
+    verifyMessage.value = '';
+    verifyPolling.value = false;
+    verifyPollCount.value = 0;
+    canRetryChange.value = false;
+    emailChanging.value = false;
+    newEmail.value = '';
+}
+
+// 获取验证码：创建反向验证任务，拿到专用收件地址和随机验证码
 async function sendEmailCode() {
-    if (!newEmail.value || !newEmail.value.includes('@')) {
+    const email = newEmail.value.trim();
+    if (!email || !email.includes('@')) {
         Snackbar.warning('请输入有效的邮箱地址');
         return;
     }
-    if (!isEmailDomainAllowed(newEmail.value)) {
+    if (!isEmailDomainAllowed(email)) {
         Snackbar.warning('该邮箱域名不在支持列表中，请更换邮箱');
         return;
     }
+
     emailSending.value = true;
     try {
-        const res = await request('send-verification', {
-            method: 'POST',
-            body: { email: newEmail.value, action: 'change_email' }
-        });
-        emailToken.value = res.token;
-        Snackbar.success('验证码已发送，请查收邮件');
-        // 开始倒计时
-        emailCountdown.value = 60;
-        if (emailTimer) clearInterval(emailTimer);
-        emailTimer = setInterval(() => {
-            emailCountdown.value--;
-            if (emailCountdown.value <= 0) {
-                clearInterval(emailTimer);
-                emailTimer = null;
-            }
-        }, 1000);
+        const ticket = await createEmailVerify({ email });
+        newEmail.value = email;
+        verifyTicket.value = ticket;
+        verifyStatus.value = 'waiting';
+        verifyMessage.value = '';
+        verifyPollCount.value = 0;
+        canRetryChange.value = false;
+        showChangeEmailDialog.value = false;
+        showVerifyEmailDialog.value = true;
+        startVerifyPolling();
     } catch (error) {
-        Snackbar.error(error.message || '发送失败');
+        Snackbar.error(error.message || '获取验证码失败');
     } finally {
         emailSending.value = false;
     }
 }
 
-// 确认修改邮箱
-async function confirmChangeEmail() {
-    if (!newEmail.value || !newEmail.value.includes('@')) {
-        Snackbar.warning('请输入有效的邮箱地址');
-        return;
-    }
-    if (!isEmailDomainAllowed(newEmail.value)) {
-        Snackbar.warning('该邮箱域名不在支持列表中，请更换邮箱');
-        return;
-    }
-    if (!emailCode.value || emailCode.value.length !== 6) {
-        Snackbar.warning('请输入6位验证码');
-        return;
-    }
-    if (!emailToken.value) {
-        Snackbar.warning('请先获取验证码');
-        return;
-    }
+function startVerifyPolling() {
+    stopVerifyPolling();
+    // 立即查一次，之后每 3 秒自动轮询
+    pollVerifyOnce();
+    verifyTimer = setInterval(pollVerifyOnce, 3000);
+}
 
-    emailChanging.value = true;
+// 轮询（也用于界面上的“手动刷新”按钮）
+async function pollVerifyOnce() {
+    const ticket = verifyTicket.value;
+    if (!ticket || verifyPolling.value || verifyStatus.value !== 'waiting') return;
+
+    verifyPolling.value = true;
+    verifyPollCount.value++;
     try {
-        await updateProfile({
-            email: newEmail.value,
-            code: emailCode.value,
-            token: emailToken.value
+        const data = await queryEmailVerify({
+            requestId: ticket.requestId,
+            email: newEmail.value
         });
-        if (refreshUser) {
-            await refreshUser();
+        // 期间用户可能点了“返回修改”或关闭弹窗，丢弃过期响应
+        if (!verifyTicket.value || verifyTicket.value.requestId !== ticket.requestId) return;
+
+        if (data.valid) {
+            verifyStatus.value = 'success';
+            stopVerifyPolling();
+            // 验证通过：带上邮件验证 ID 请求修改邮箱
+            await applyEmailChange();
+            return;
         }
-        Snackbar.success('邮箱修改成功');
-        showChangeEmailDialog.value = false;
-        // 重置状态
-        newEmail.value = '';
-        emailCode.value = '';
-        emailToken.value = '';
-        if (emailTimer) {
-            clearInterval(emailTimer);
-            emailTimer = null;
-            emailCountdown.value = 0;
+
+        if (data.error === 'EXPIRED_OR_NOT_FOUND') {
+            verifyStatus.value = 'expired';
+            verifyMessage.value = '验证已过期，请重新获取';
+            stopVerifyPolling();
+        } else if (data.error === 'ACTION_MISMATCH' || data.error === 'EMAIL_MISMATCH') {
+            verifyStatus.value = 'error';
+            verifyMessage.value = '验证信息不匹配，请重新获取';
+            stopVerifyPolling();
+        } else {
+            // NOT_YET_VERIFIED：继续等待下一轮
+            verifyMessage.value = '';
         }
     } catch (error) {
-        Dialog({
-            title: '修改失败',
-            message: error.message || '请重试'
+        const message = error.message || '网络异常';
+        if (message === 'Unauthorized') {
+            verifyStatus.value = 'error';
+            verifyMessage.value = '登录状态已过期，请刷新页面后重试';
+            stopVerifyPolling();
+        } else {
+            // 网络抖动不终止轮询，下一轮自动重试
+            verifyMessage.value = `${message}，正在重试…`;
+        }
+    } finally {
+        verifyPolling.value = false;
+    }
+}
+
+// 验证通过后真正提交改邮箱；失败时保留 ticket 供“重试修改”
+async function applyEmailChange() {
+    const ticket = verifyTicket.value;
+    if (!ticket || emailChanging.value) return;
+
+    emailChanging.value = true;
+    canRetryChange.value = false;
+    try {
+        await changeEmail({
+            email: newEmail.value,
+            emailVerifyId: ticket.requestId
         });
+        Snackbar.success('邮箱修改成功');
+        showVerifyEmailDialog.value = false;
+        resetVerifyState();
+        if (refreshUser) {
+            try {
+                await refreshUser();
+            } catch (error) {
+                console.error('刷新用户信息失败:', error);
+            }
+        }
+    } catch (error) {
+        verifyStatus.value = 'error';
+        verifyMessage.value = error.message || '邮箱修改失败，请重试';
+        canRetryChange.value = true;
     } finally {
         emailChanging.value = false;
     }
 }
 
+// 取消验证：任务会在服务端自然过期
+function closeVerifyDialog() {
+    showVerifyEmailDialog.value = false;
+    resetVerifyState();
+}
+
+// 返回第一步修改邮箱地址；旧任务不消费，等待过期
+function backToEmailDialog() {
+    stopVerifyPolling();
+    showVerifyEmailDialog.value = false;
+    verifyTicket.value = null;
+    verifyStatus.value = 'waiting';
+    verifyMessage.value = '';
+    verifyPollCount.value = 0;
+    canRetryChange.value = false;
+    emailChanging.value = false;
+    showChangeEmailDialog.value = true;
+}
 
 onUnmounted(() => {
-    if (emailTimer) clearInterval(emailTimer);
+    stopVerifyPolling();
 });
 
 let runCount = 0;
@@ -274,9 +361,9 @@ async function pasteWithClipboard(refvalue) {
 </script>
 
 <template>
-    <!-- 修改邮箱：var-dialog + var-form（MD3 对话框，不再手写 var-dialog 内部结构） -->
+    <!-- 第一步：输入新邮箱，创建反向邮件验证任务 -->
     <var-dialog v-model:show="showChangeEmailDialog" title="修改邮箱" :confirm-button="false" :cancel-button="false"
-        :close-on-click-overlay="false" width="min(480px, calc(100vw - 32px))">
+        :close-on-click-overlay="false" :close-on-key-escape="false" width="min(480px, calc(100vw - 32px))">
         <template #title>
             <div class="md-dialog-title">
                 <my-icon icon="email-edit-outline" size="1.25em" class="md-dialog-title__icon" />
@@ -284,19 +371,98 @@ async function pasteWithClipboard(refvalue) {
             </div>
         </template>
         <div class="md-dialog-form">
-            <p class="dialog-hint">请输入新的邮箱地址，验证码将发送到该邮箱。</p>
+            <p class="dialog-hint">
+                请输入新的邮箱地址。点击“获取验证码”后会生成一个专用收件地址，
+                需要你用这个新邮箱向该地址发送验证邮件。
+            </p>
             <var-input v-model="newEmail" type="email" variant="outlined" placeholder="新邮箱地址" />
-            <var-button type="primary" block :loading="emailSending" :disabled="emailCountdown > 0 || !newEmail"
-                @click="sendEmailCode">
-                {{ emailCountdown > 0 ? `${emailCountdown}s 后可重新获取` : '获取验证码' }}
-            </var-button>
-            <var-input v-model="emailCode" variant="outlined" placeholder="6 位验证码" :maxlength="6" />
         </div>
 
         <template #actions="{ slotClass }">
             <div :class="slotClass" class="md-dialog-actions">
                 <var-button text type="primary" @click="showChangeEmailDialog = false">取消</var-button>
-                <var-button type="primary" :loading="emailChanging" @click="confirmChangeEmail">确认修改</var-button>
+                <var-button type="primary" :loading="emailSending" :disabled="!newEmail" @click="sendEmailCode">
+                    获取验证码
+                </var-button>
+            </div>
+        </template>
+    </var-dialog>
+
+    <!-- 第二步：指导用户发邮件，并每 3 秒轮询验证结果 -->
+    <var-dialog v-model:show="showVerifyEmailDialog" title="验证新邮箱" :confirm-button="false" :cancel-button="false"
+        :close-on-click-overlay="false" :close-on-key-escape="false" width="min(560px, calc(100vw - 32px))">
+        <template #title>
+            <div class="md-dialog-title">
+                <my-icon icon="email-check-outline" size="1.25em" class="md-dialog-title__icon" />
+                <span>验证新邮箱</span>
+            </div>
+        </template>
+
+        <div v-if="verifyTicket" class="md-dialog-form verify-dialog">
+            <p class="dialog-hint">
+                请用新邮箱 <strong class="verify-email">{{ newEmail }}</strong> 作为发件人，
+                向下面的专用地址发送一封邮件（主题随意）：
+            </p>
+
+            <div class="verify-box">
+                <span class="verify-box__label">收件地址</span>
+                <code class="verify-box__value">{{ verifyTicket.email }}</code>
+                <var-button text type="primary" @click="copyToClipboard(verifyTicket.email)">复制</var-button>
+            </div>
+
+            <div class="verify-box">
+                <span class="verify-box__label">邮件正文</span>
+                <code class="verify-box__value verify-box__value--code">{{ verifyTicket.code }}</code>
+                <var-button text type="primary" @click="copyToClipboard(verifyTicket.code)">复制</var-button>
+            </div>
+
+            <p class="dialog-hint">
+                正文只需填写上面的验证码，若发送后无响应，请尝试发送时启用纯文本模式。
+            </p>
+
+            <a class="verify-mailto" :href="mailtoUrl">
+                <my-icon icon="email-fast-outline" />
+                <span>使用邮件客户端发送（mailto）</span>
+            </a>
+
+            <div class="verify-status" :class="`verify-status--${verifyStatus}`">
+                <template v-if="verifyStatus === 'waiting'">
+                    <span class="verify-spinner" />
+                    <span>{{ verifyMessage || `等待邮件…` }}</span>
+                </template>
+                <template v-else-if="verifyStatus === 'success'">
+                    <my-icon icon="check-circle-outline" />
+                    <span>{{ emailChanging ? '验证通过，正在修改邮箱…' : '验证通过' }}</span>
+                </template>
+                <template v-else-if="verifyStatus === 'expired'">
+                    <my-icon icon="clock-alert-outline" />
+                    <span>验证已过期，请重新获取</span>
+                </template>
+                <template v-else>
+                    <my-icon icon="alert-circle-outline" />
+                    <span>{{ verifyMessage || '验证失败' }}</span>
+                </template>
+            </div>
+
+            <p v-if="verifyExpiresAt" class="md-hint">验证有效期至 {{ verifyExpiresAt }}</p>
+        </div>
+
+        <template #actions="{ slotClass }">
+            <div :class="slotClass" class="md-dialog-actions">
+                <var-button text type="primary" :disabled="emailChanging" @click="backToEmailDialog">
+                    返回修改
+                </var-button>
+                <var-button v-if="verifyStatus === 'waiting'" type="primary" :loading="verifyPolling"
+                    @click="pollVerifyOnce">
+                    手动刷新
+                </var-button>
+                <var-button v-if="verifyStatus === 'expired'" type="primary" @click="backToEmailDialog">
+                    重新获取
+                </var-button>
+                <var-button v-if="canRetryChange" type="primary" :loading="emailChanging" @click="applyEmailChange">
+                    重试修改
+                </var-button>
+                <var-button text :disabled="emailChanging" @click="closeVerifyDialog">取消</var-button>
             </div>
         </template>
     </var-dialog>
@@ -405,5 +571,101 @@ async function pasteWithClipboard(refvalue) {
     font-size: 14px;
     line-height: 20px;
     color: var(--color-text-secondary);
+}
+
+/* 窄屏时操作按钮自动换行，避免四个按钮挤成一排 */
+.md-dialog-actions {
+    flex-wrap: wrap;
+}
+
+.verify-email {
+    color: var(--color-primary);
+    word-break: break-all;
+}
+
+.verify-box {
+    display: flex;
+    align-items: center;
+    gap: var(--md-space-2);
+    padding: 10px 12px;
+    border-radius: var(--md-shape-md);
+    background: var(--color-surface-container-high, rgba(0, 0, 0, 0.04));
+}
+
+.verify-box__label {
+    flex: 0 0 auto;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+}
+
+.verify-box__value {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--md-font-mono);
+    font-size: 14px;
+    word-break: break-all;
+    color: var(--color-text);
+}
+
+.verify-box__value--code {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    color: var(--color-primary);
+}
+
+.verify-mailto {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--md-space-2);
+    align-self: flex-start;
+    padding: 8px 16px;
+    border-radius: var(--md-shape-full);
+    background: var(--color-primary-container);
+    color: var(--color-on-primary-container);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: filter var(--md-duration-short) var(--md-ease-standard);
+}
+
+.verify-mailto:hover {
+    filter: brightness(0.96);
+}
+
+.verify-status {
+    display: flex;
+    align-items: center;
+    gap: var(--md-space-2);
+    padding: 10px 12px;
+    border-radius: var(--md-shape-md);
+    background: var(--color-surface-container, rgba(0, 0, 0, 0.04));
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+
+.verify-status--success {
+    color: var(--color-primary);
+}
+
+.verify-status--expired,
+.verify-status--error {
+    color: var(--color-error);
+}
+
+.verify-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--color-outline-variant);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: verify-spin 0.8s linear infinite;
+}
+
+@keyframes verify-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 </style>

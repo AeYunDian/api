@@ -39,6 +39,40 @@ export function updateProfile(profileData) {
     });
 }
 
+/**
+ * 修改邮箱（新接口，不影响 update-profile）
+ * 需要先通过反向邮件验证，提交 { email, emailVerifyId }。
+ */
+export function changeEmail(body) {
+    return request('change-email', {
+        method: 'POST',
+        body,
+    });
+}
+
+/**
+ * 创建修改邮箱的反向邮件验证任务
+ * 返回 { requestId, email, code, expiresAt }：
+ * 用户需要用新邮箱向 email 发送正文为 code 的邮件。
+ */
+export function createEmailVerify(body) {
+    return request('email-verify/create', {
+        method: 'POST',
+        body,
+    });
+}
+
+/**
+ * 轮询反向邮件验证任务状态
+ * 返回 { valid, email?, error? }，error 可能是 NOT_YET_VERIFIED / EXPIRED_OR_NOT_FOUND。
+ */
+export function queryEmailVerify(body) {
+    return request('email-verify/query', {
+        method: 'POST',
+        body,
+    });
+}
+
 export function getDeviceCount() {
     return request('device-count');
 }

@@ -24,4 +24,5 @@ export const ACTION_PRESETS = {
   REGISTER: "register",
   LOGIN: "login",
   CHANGE_PASSWORD: "change_password",
+  CHANGE_EMAIL: "change_email",
 };

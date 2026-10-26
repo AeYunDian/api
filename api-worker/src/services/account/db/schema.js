@@ -8,6 +8,7 @@ import {
   DEFAULT_OAUTH_CLIENT_SCOPE,
 } from "../config.js";
 import { generateToken } from "../../../shared/utils.js";
+import { initReverseVerifyTable } from "../../../shared/email-reverse-verify.js";
 
 async function initDatabase(db) {
   try {
@@ -291,6 +292,8 @@ async function initDatabase(db) {
         )
         .run();
     }
+    // 反向邮箱验证（修改邮箱等场景）：随账户库一起初始化，避免依赖运维后台手动建表。
+    await initReverseVerifyTable(db);
     return { success: true, message: "Database initialized" };
   } catch (err) {
     console.error("initDatabase error:", err);

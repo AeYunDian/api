@@ -481,6 +481,7 @@ function adminPage(keyInfo) {
     <option value="register"></option>
     <option value="login"></option>
     <option value="change_password"></option>
+    <option value="change_email"></option>
   </datalist>
 
   <h1>Reverse Email Verify Tester</h1>

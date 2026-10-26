@@ -19,6 +19,12 @@ import {
   providerMap,
 } from "../config.js";
 import { ERROR_CODES } from "../../../shared/error-codes.js";
+import { ACTION_PRESETS } from "../../../shared/config.js";
+import {
+  createReverseVerification,
+  deleteReverseVerification,
+  verifyReverseCode,
+} from "../../../shared/email-reverse-verify.js";
 
 export async function handleProfileRoutes({ request, env, url, path, method, cors }) {
         if (path === "/api/ayonline/oauth-unbind" && method === "POST") {
@@ -121,6 +127,297 @@ export async function handleProfileRoutes({ request, env, url, path, method, cor
             .first();
 
           return jsonResponse({ count: result?.count || 0 }, 200, cors);
+        }
+
+        // 修改邮箱第一步：创建一个反向邮件验证任务。
+        // 返回 { requestId, email, code, expiresAt }，前端把 email/code 展示给用户，
+        // 用户用新邮箱向 email 发送正文为 code 的邮件，Worker 的 email() 入口负责匹配。
+        if (path === "/api/ayonline/email-verify/create" && method === "POST") {
+          const [authStatus, user] = await checkAuth(request, env);
+          if (authStatus !== TAG_LOGGEDIN) {
+            return jsonResponse(
+              { error: "Unauthorized", error_code: ERROR_CODES.UNAUTHORIZED },
+              401,
+              cors,
+            );
+          }
+
+          const body = await request.json().catch(() => null);
+          const email =
+            typeof body?.email === "string"
+              ? body.email.trim().toLowerCase()
+              : "";
+          if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return jsonResponse(
+              { error: "Invalid email", error_code: ERROR_CODES.INVALID_EMAIL },
+              400,
+              cors,
+            );
+          }
+          if (!allowedEmailDomains.some((domain) => email.endsWith(domain))) {
+            return jsonResponse(
+              {
+                error: "Unsupported email domain",
+                error_code: ERROR_CODES.UNSUPPORTED_EMAIL_DOMAIN,
+              },
+              400,
+              cors,
+            );
+          }
+
+          const existing = await env.db
+            .prepare(
+              "SELECT sub FROM online_users WHERE email = ? AND sub != ?",
+            )
+            .bind(email, user.sub)
+            .first();
+          if (existing) {
+            return jsonResponse(
+              {
+                error: "Email already exists",
+                error_code: ERROR_CODES.EMAIL_ALREADY_EXISTS,
+              },
+              409,
+              cors,
+            );
+          }
+
+          try {
+            const ticket = await createReverseVerification(env, {
+              targetEmail: email,
+              action: ACTION_PRESETS.CHANGE_EMAIL,
+            });
+            return jsonResponse(ticket, 200, cors);
+          } catch (err) {
+            return jsonResponse(
+              {
+                error: "Failed to create email verification",
+                error_code: ERROR_CODES.SERVER_DOWN,
+                detail: err.message,
+              },
+              500,
+              cors,
+            );
+          }
+        }
+
+        // 修改邮箱第二步：前端轮询任务状态。只有任务 action 与 targetEmail 都对上才返回 valid。
+        if (path === "/api/ayonline/email-verify/query" && method === "POST") {
+          const [authStatus] = await checkAuth(request, env);
+          if (authStatus !== TAG_LOGGEDIN) {
+            return jsonResponse(
+              { error: "Unauthorized", error_code: ERROR_CODES.UNAUTHORIZED },
+              401,
+              cors,
+            );
+          }
+
+          const body = await request.json().catch(() => null);
+          const requestId =
+            typeof body?.requestId === "string" ? body.requestId.trim() : "";
+          const email =
+            typeof body?.email === "string"
+              ? body.email.trim().toLowerCase()
+              : "";
+          if (!requestId || !email) {
+            return jsonResponse(
+              {
+                error: "requestId and email required",
+                error_code: ERROR_CODES.MISSING_PARAMS,
+              },
+              400,
+              cors,
+            );
+          }
+
+          const result = await verifyReverseCode(
+            env,
+            requestId,
+            ACTION_PRESETS.CHANGE_EMAIL,
+          );
+          if (
+            result.valid &&
+            String(result.email || "").toLowerCase() !== email
+          ) {
+            return jsonResponse(
+              { valid: false, error: "EMAIL_MISMATCH" },
+              200,
+              cors,
+            );
+          }
+          return jsonResponse(result, 200, cors);
+        }
+
+        // 修改邮箱第三步（新增接口，不改动 update-profile 的既有契约）：
+        // 前端带上反向验证 ticket 的 requestId，服务端复核后消费 ticket 并写库。
+        if (path === "/api/ayonline/change-email" && method === "POST") {
+          const [authStatus, user] = await checkAuth(request, env);
+          if (authStatus !== TAG_LOGGEDIN) {
+            return jsonResponse(
+              { error: "Unauthorized", error_code: ERROR_CODES.UNAUTHORIZED },
+              401,
+              cors,
+            );
+          }
+
+          const body = await request.json().catch(() => null);
+          if (!body || typeof body !== "object") {
+            return jsonResponse(
+              {
+                error: "Invalid request body",
+                error_code: ERROR_CODES.MISSING_PARAMS,
+              },
+              400,
+              cors,
+            );
+          }
+
+          const email =
+            typeof body.email === "string"
+              ? body.email.trim().toLowerCase()
+              : "";
+          const emailVerifyId =
+            typeof body.emailVerifyId === "string"
+              ? body.emailVerifyId.trim()
+              : "";
+
+          if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return jsonResponse(
+              { error: "Invalid email", error_code: ERROR_CODES.INVALID_EMAIL },
+              400,
+              cors,
+            );
+          }
+          if (!allowedEmailDomains.some((domain) => email.endsWith(domain))) {
+            return jsonResponse(
+              {
+                error: "Unsupported email domain",
+                error_code: ERROR_CODES.UNSUPPORTED_EMAIL_DOMAIN,
+              },
+              400,
+              cors,
+            );
+          }
+          if (!emailVerifyId) {
+            return jsonResponse(
+              {
+                error: "Email change requires email verification",
+                error_code: ERROR_CODES.EMAIL_CHANGE_CODE_REQUIRED,
+              },
+              400,
+              cors,
+            );
+          }
+
+          // 二次校验：verifyReverseCode 只读不删，避免仅凭前端轮询结果绕过。
+          const verifyResult = await verifyReverseCode(
+            env,
+            emailVerifyId,
+            ACTION_PRESETS.CHANGE_EMAIL,
+          );
+          if (
+            !verifyResult.valid ||
+            String(verifyResult.email || "").toLowerCase() !== email
+          ) {
+            return jsonResponse(
+              {
+                error: "Invalid or expired email verification",
+                error_code: ERROR_CODES.INVALID_VERIFICATION_CODE,
+              },
+              400,
+              cors,
+            );
+          }
+
+          const existing = await env.db
+            .prepare(
+              "SELECT sub FROM online_users WHERE email = ? AND sub != ?",
+            )
+            .bind(email, user.sub)
+            .first();
+          if (existing) {
+            return jsonResponse(
+              {
+                error: "Email already exists",
+                error_code: ERROR_CODES.EMAIL_ALREADY_EXISTS,
+              },
+              409,
+              cors,
+            );
+          }
+
+          // 一次性凭证：先消费再写库，防止同一 ticket 在保留期内被重复使用。
+          const consumed = await deleteReverseVerification(env, emailVerifyId);
+          if (!consumed) {
+            return jsonResponse(
+              {
+                error: "Email verification already used or expired",
+                error_code: ERROR_CODES.INVALID_VERIFICATION_CODE,
+              },
+              400,
+              cors,
+            );
+          }
+
+          await env.db
+            .prepare(
+              "UPDATE online_users SET email = ?, updated_at = ? WHERE sub = ?",
+            )
+            .bind(email, Date.now(), user.sub)
+            .run();
+
+          const newUser = await env.db
+            .prepare(
+              "SELECT sub, username, email, banned, ban_reason, gender, avatar, description, created_at FROM online_users WHERE sub = ?",
+            )
+            .bind(user.sub)
+            .first();
+
+          // 邮箱已变化，重签 access_token 让 Cookie 里的登录态同步更新。
+          const newAccessToken = await signAccessToken(
+            {
+              sub: newUser.sub,
+              username: newUser.username,
+              email: newUser.email,
+              gender: newUser.gender,
+              avatar: newUser.avatar,
+              description: newUser.description,
+              created_at: newUser.created_at,
+            },
+            env.JWT_KEY,
+          );
+
+          const cookieOptions = {
+            domain: ".undz.cn",
+            path: "/",
+            httpOnly: true,
+            secure: true,
+            sameSite: "Lax",
+            maxAge: REFRESH_TOKEN_TTL,
+          };
+          const headers = new Headers(corsHeaders(request));
+          headers.set("Content-Type", "application/json");
+          headers.append(
+            "Set-Cookie",
+            serialize("access_token", newAccessToken, cookieOptions),
+          );
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: "Email updated",
+              user: {
+                sub: newUser.sub,
+                username: newUser.username,
+                email: newUser.email,
+                gender: newUser.gender,
+                avatar: newUser.avatar,
+                description: newUser.description,
+                created_at: newUser.created_at,
+              },
+            }),
+            { status: 200, headers },
+          );
         }
 
         if (path === "/api/ayonline/update-profile" && method === "POST") {

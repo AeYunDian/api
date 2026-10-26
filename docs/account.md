@@ -87,7 +87,10 @@ const [status, user] = await checkAuth(request, env);
 
 | 方法 | 路径 | 登录态 | 说明 |
 |---|---|---|---|
-| POST | `/api/ayonline/update-profile` | Cookie | 改用户名/邮箱/头像/签名 |
+| POST | `/api/ayonline/update-profile` | Cookie | 改用户名/头像/签名（邮箱仍走旧验证码流程） |
+| POST | `/api/ayonline/email-verify/create` | Cookie | 创建改邮箱的反向邮件验证任务，返回收件地址 + 验证码 |
+| POST | `/api/ayonline/email-verify/query` | Cookie | 轮询反向验证任务状态（前端每 3 秒一次） |
+| POST | `/api/ayonline/change-email` | Cookie | 凭 `emailVerifyId` 修改邮箱（新增接口，不动 `update-profile`） |
 | GET | `/api/ayonline/oauth-bindings` | Cookie | 已绑定的第三方平台 |
 | POST | `/api/ayonline/oauth-unbind` | Cookie | 解绑第三方平台 |
 | GET | `/api/ayonline/device-count` | Cookie | 登录设备数 |
@@ -137,6 +140,7 @@ scope：`openid` / `profile` / `email`，`userdata` 只返回被授权的字段�
 | `file_manager` | 文件记录（console / files 使用） |
 | `short_links` | 短链接（console / go 使用） |
 | `app_kv_store` | 用 D1 模拟的 KV |
+| `reverse_verify_tickets` | 反向邮箱验证任务（`shared/email-reverse-verify.js`，改邮箱用） |
 
 ## 闸门顺序
 
@@ -155,6 +159,25 @@ scope：`openid` / `profile` / `email`，`userdata` 只返回被授权的字段�
 - 口令长度 6–32，字符集 `a-zA-Z0-9-_=+@#$%`；用户名 4–20。
 - 邮箱验证码 6 位数字，KV 存 5 分钟；邮箱域名必须在 `allowedEmailDomains`。
 - 注册、登录、改密强制 GeeTest，缺 `gt` 返回 1023 + `gt_code`。
+
+### 修改邮箱（反向邮件验证）
+
+新流程不再往新邮箱发验证码，而是让用户证明自己控制该邮箱：
+
+1. `POST /api/ayonline/email-verify/create`：服务端在 `reverse_verify_tickets`
+   建一条 `action=change_email`、`target_email=新邮箱` 的任务，返回
+   `{ requestId, email, code, expiresAt }`。
+2. 前端展示 `email`（形如 `onecode+xxx@services.undz.cn`）和 `code`，用户用
+   **新邮箱** 作为发件人，向 `email` 发送正文含 `code` 的邮件（主题随意）。
+   Worker 的 `email()` 入口匹配发件人、收件地址和验证码后把任务置为 `verified`。
+3. 前端每 3 秒调用 `/api/ayonline/email-verify/query` 轮询；也可点按钮手动刷新。
+4. 拿到 `valid: true` 后调用 `POST /api/ayonline/change-email`，body 为
+   `{ email, emailVerifyId }`。服务端二次校验后先消费（删除）ticket，再写
+   `online_users.email`，并重签 `access_token` Cookie。
+
+`update-profile` 的既有 `email + code + token` 契约保持不变；新前端只走上面三个
+新接口。`reverse_verify_tickets` 已并入 `initDatabase`，调用一次
+`POST /api/ayonline/init` 即可建表。
 
 ## 错误码
 
