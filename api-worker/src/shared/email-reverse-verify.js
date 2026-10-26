@@ -133,13 +133,61 @@ export async function createReverseVerification(env, options = {}) {
 
   return { requestId, email: receiveAddress, code: expectedCode, expiresAt };
 }
-
 /**
- * 供 Worker 的 email() 事件调用，处理接收到的邮件
- * @param {ForwardableEmailMessage} message 邮件对象
- * @param {Object} env 环境变量
- * @param {ExecutionContext} ctx 执行上下文
+ * 从文本中提取所有像 base64 的块，解码后精确匹配验证码。
+ * 支持跨行拼接（解决 QQ 邮箱每 76 字符强制换行导致 HTML 被切碎的问题）。
  */
+function matchCodeInBase64Text(text, expectedCode) {
+  if (!text || !expectedCode) return false;
+
+  const lines = text.split(/[\r\n]+/);
+  let currentB64 = "";
+  const b64Blocks = [];
+
+  // 1. 按行扫描，拼接连续的纯 Base64 行
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line.length > 0 && /^[A-Za-z0-9+/=]+$/.test(line)) {
+      currentB64 += line;
+    } else {
+      if (currentB64.length >= 8) {
+        b64Blocks.push(currentB64);
+      }
+      currentB64 = "";
+    }
+  }
+  if (currentB64.length >= 8) {
+    b64Blocks.push(currentB64);
+  }
+
+  // 2. 对完整的 Base64 块进行解码比对
+  for (const block of b64Blocks) {
+    // 防止过大的文件导致 Worker 内存溢出（例如内嵌图片）
+    if (block.length > 1024 * 100) continue;
+
+    try {
+      const padded = block + "=".repeat((4 - (block.length % 4)) % 4);
+      const decoded = atob(padded);
+
+      // 直接命中
+      if (decoded === expectedCode) return true;
+
+      // 如果解码出来是 HTML 或文本，按非数字切段提取验证码
+      // 例如：`<div style="...">971281</div>` 会切出 ["", "971281", ""]
+      if (decoded.includes(expectedCode)) {
+        const digits = decoded.replace(/[^\d]+/g, " ");
+        if (digits.split(" ").includes(expectedCode)) {
+          return true;
+        }
+      }
+    } catch {
+      // 忽略非法 base64
+    }
+  }
+
+  return false;
+}
+
 export async function handleIncomingReverseEmail(message, env, ctx) {
   const toAddress = (message.to || "").toLowerCase();
 
@@ -148,22 +196,15 @@ export async function handleIncomingReverseEmail(message, env, ctx) {
   );
   if (!domainMatch) return;
 
-  if (message.rawSize > REVERSE_VERIFY_CONFIG.MAX_EMAIL_SIZE) {
-    console.warn(
-      `[ReverseVerify] Email too large: ${message.rawSize} bytes from ${message.from}`,
-    );
-    return;
-  }
+  if (message.rawSize > REVERSE_VERIFY_CONFIG.MAX_EMAIL_SIZE) return;
 
   const fromAddress = (message.from || "").toLowerCase();
   const now = Math.floor(Date.now() / 1000);
 
   const results = await env.db
     .prepare(
-      `
-    SELECT * FROM reverse_verify_tickets
-    WHERE receive_address = ? AND status = 'pending' AND expires_at > ?
-  `,
+      `SELECT * FROM reverse_verify_tickets
+       WHERE receive_address = ? AND status = 'pending' AND expires_at > ?`,
     )
     .bind(toAddress, now)
     .all();
@@ -174,11 +215,12 @@ export async function handleIncomingReverseEmail(message, env, ctx) {
   const parser = new PostalMime();
   const emailContent = await parser.parse(message.raw);
 
-  let text = emailContent.text || "";
+  const originalText = emailContent.text || "";
+  const originalHtml = emailContent.html || "";
 
-  // 兼容 HTML-only 邮件：剥离标签，处理块级元素换行，解码 HTML 实体
-  if (!text.trim() && emailContent.html) {
-    text = emailContent.html
+  let text = originalText;
+  if (!text.trim() && originalHtml) {
+    text = originalHtml
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
       .replace(/<br\s*\/?>/gi, "\n")
@@ -192,36 +234,34 @@ export async function handleIncomingReverseEmail(message, env, ctx) {
       .replace(/&nbsp;/gi, " ");
   }
 
-  // 按非数字切段提取所有纯数字串，防止验证码粘连误判
   const strictSegments = text.split(/[^\d]+/);
-  // 兜底处理：去除换行/制表符（解决邮件客户端自动折行问题），再次切段
   const collapsed = text.replace(/[\r\n\t]+/g, "");
   const relaxedSegments = collapsed.split(/[^\d]+/);
 
   for (const row of rows) {
-    if (row.target_email && row.target_email !== fromAddress) {
-      continue;
-    }
+    if (row.target_email && row.target_email !== fromAddress) continue;
 
-    if (
-      strictSegments.includes(row.expected_code) ||
-      relaxedSegments.includes(row.expected_code)
-    ) {
-      // 验证通过时，将过期时间延长至保留期，防止被清理任务提前删除
-      const extendedExpiresAt =
-        now + REVERSE_VERIFY_CONFIG.VERIFIED_RETENTION_TTL;
+    const code = row.expected_code;
 
-      await env.db
-        .prepare(
-          `
-        UPDATE reverse_verify_tickets
-        SET status = 'verified', actual_from_email = ?, verified_at = ?, expires_at = ?
-        WHERE request_id = ?
-      `,
-        )
-        .bind(fromAddress, now, extendedExpiresAt, row.request_id)
-        .run();
-    }
+    const matched =
+      strictSegments.includes(code) ||
+      relaxedSegments.includes(code) ||
+      matchCodeInBase64Text(originalText, code) ||
+      matchCodeInBase64Text(originalHtml, code);
+
+    if (!matched) continue;
+
+    const extendedExpiresAt =
+      now + REVERSE_VERIFY_CONFIG.VERIFIED_RETENTION_TTL;
+
+    await env.db
+      .prepare(
+        `UPDATE reverse_verify_tickets
+         SET status = 'verified', actual_from_email = ?, verified_at = ?, expires_at = ?
+         WHERE request_id = ?`,
+      )
+      .bind(fromAddress, now, extendedExpiresAt, row.request_id)
+      .run();
   }
 }
 
@@ -338,7 +378,6 @@ export async function cleanExpiredReverseVerifications(db) {
   const now = Math.floor(Date.now() / 1000);
 
   try {
-    // 验证成功的记录在更新时已自动续期 expires_at，这里只需统一按时间清理即可
     const result = await db
       .prepare(
         `

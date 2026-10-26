@@ -434,11 +434,14 @@ function adminPage(keyInfo) {
   label{display:block;margin:.35rem 0;font-size:.85rem;color:#444}
   input,select{width:100%;padding:.4rem .55rem;font-size:.9rem;border:1px solid #cbd2dc;border-radius:6px;box-sizing:border-box;background:#fff}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
-  button{padding:.45rem 1rem;font-size:.9rem;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer;margin-right:.5rem;margin-bottom:.35rem}
-  button.secondary{background:#6b7280}
-  button.danger{background:#dc2626}
-  button.success{background:#15803d}
-  button:hover{filter:brightness(.94)}
+
+  /* 统一 button 和 .btn-link 的外观 */
+  button, .btn-link{padding:.45rem 1rem;font-size:.9rem;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer;margin-right:.5rem;margin-bottom:.35rem;display:inline-block;text-align:center;text-decoration:none;box-sizing:border-box;font-family:inherit;}
+  button.secondary, .btn-link.secondary{background:#6b7280}
+  button.danger, .btn-link.danger{background:#dc2626}
+  button.success, .btn-link.success{background:#15803d}
+  button:hover, .btn-link:hover{filter:brightness(.94)}
+
   pre{background:#f4f5f7;padding:.75rem;overflow:auto;max-height:320px;border-radius:6px;font-size:.82rem;margin:.75rem 0 0}
   .status{font-size:.85rem;color:#444;margin-left:.5rem}
   .ok{color:#15803d}
@@ -464,7 +467,7 @@ function adminPage(keyInfo) {
   .wait-kv dt{color:#666}
   .wait-kv dd{margin:0;font-family:ui-monospace,monospace;word-break:break-all;color:#111}
   .wait-foot{font-size:.8rem;color:#666;margin:.25rem 0 .5rem}
-  .wait-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin:0}
+  .wait-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin:0;align-items:center;}
   .spinner{display:inline-block;width:14px;height:14px;border:2px solid #cbd5e1;border-top-color:#2563eb;border-radius:50%;animation:spin .8s linear infinite;margin-right:.4rem;vertical-align:-2px}
   @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -730,6 +733,9 @@ function adminPage(keyInfo) {
     var actions = [];
     if (state === "waiting") {
       actions.push('<button data-act="poll">立即校验</button>');
+      // 新增：mailto 快捷发信按钮，自动填入收件人和验证码
+      var mailtoUrl = "mailto:" + encodeURIComponent(info.email) + "?subject=" + encodeURIComponent("验证码") + "&body=" + encodeURIComponent(info.code);
+      actions.push('<a href="' + mailtoUrl + '" class="btn-link secondary">使用 mailto 发信</a>');
       actions.push('<button data-act="stop" class="secondary">停止轮询</button>');
     }
     if (state === "success") {
