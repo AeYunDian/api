@@ -84,7 +84,7 @@ export async function checkAuth(request, env) {
       return [TAG_NOT_LOGGEDIN, null];
     }
 
-    if (user.banned == 1) {
+    if (user.banned === 1) {
       return [
         TAG_BANNED,
         {

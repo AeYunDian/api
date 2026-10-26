@@ -1,5 +1,9 @@
-import { cleanExpiredKv, initKvTable } from "./shared/kvWithD1.js";
-import { cleanExpiredPsp, initPspTables } from "./services/relay/wsRelay.js";
+import { cleanExpiredKv } from "./shared/kvWithD1.js";
+import { cleanExpiredPsp } from "./services/relay/wsRelay.js";
+import {
+  handleIncomingReverseEmail,
+  cleanExpiredReverseVerifications,
+} from "./shared/email-reverse-verify.js";
 
 import uniAPI from "./services/gateway/uniAPI.js";
 import chatRoom from "./services/chat/ayChatRoom.js";
@@ -15,7 +19,7 @@ import ai from "./services/ai/ai.js";
 import ayFiles from "./services/files/ayFiles.js";
 import yzhAi from "./services/ai/yzh.ai.js";
 import { handleShortLink } from "./services/console/shortlink.js";
-// import shundzcn from './legacy/sh.undz.cn.js'
+import adminServices from "./shared/admin.js";
 
 // const corsHeaders_GPO = {
 //     'Access-Control-Allow-Origin': '*',
@@ -29,8 +33,16 @@ export default {
   async scheduled(controller, env) {
     await cleanExpiredKv(env.db);
     await cleanExpiredPsp(env.db);
+    await cleanExpiredReverseVerifications(env.db);
   },
-
+  async email(message, env, ctx) {
+    try {
+      await handleIncomingReverseEmail(message, env, ctx);
+    } catch (err) {
+      // 捕获解析异常，防止格式错误的邮件导致 Worker 崩溃
+      console.error("[Email Handler] Error processing incoming email:", err);
+    }
+  },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
@@ -98,88 +110,8 @@ export default {
       if (hostname === "online.undz.cn")
         return await ayOnline.fetch(request, env);
 
-      if (hostname === "kv.undz.cn") {
-        if (url.pathname === "/runtask") {
-          const authKey = request.headers.get("X-Admin-Key");
-          if (authKey !== env.KEY) {
-            return new Response(JSON.stringify({ error: "Unauthorized" }), {
-              status: 401,
-              headers: {
-                "Content-Type": "application/json",
-              },
-            });
-          }
-          try {
-            await cleanExpiredKv(env.db);
-            return new Response(
-              JSON.stringify({ success: true, message: "task runed" }),
-              {
-                status: 200,
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              },
-            );
-          } catch (err) {
-            console.error("Init failed:", err);
-            return new Response(
-              JSON.stringify({
-                error: "Task run failed",
-                detail: err.message,
-                stack: err.stack,
-              }),
-              {
-                status: 500,
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              },
-            );
-          }
-        }
-        if (url.pathname === "/initdb") {
-          const authKey = request.headers.get("X-Admin-Key");
-          if (authKey !== env.KEY) {
-            return new Response(JSON.stringify({ error: "Unauthorized" }), {
-              status: 401,
-              headers: {
-                "Content-Type": "application/json",
-              },
-            });
-          }
-          try {
-            await initKvTable(env.db);
-            await initPspTables(env.db);
-            return new Response(
-              JSON.stringify({
-                success: true,
-                message: "Database initialized",
-              }),
-              {
-                status: 200,
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              },
-            );
-          } catch (err) {
-            console.error("Init failed:", err);
-            return new Response(
-              JSON.stringify({
-                error: "Database initialization failed",
-                detail: err.message,
-                stack: err.stack,
-              }),
-              {
-                status: 500,
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              },
-            );
-          }
-        }
-      }
+      if (hostname === "kv.undz.cn")
+        return await adminServices.fetch(request, env);
 
       return env.assets.fetch(request);
     } catch (err) {
