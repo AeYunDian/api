@@ -7,7 +7,11 @@ export const head = [
     apps: ["*"],
     phase: "beforeLoadModule",
     tag: "script",
-    attrs: { src: "/lib/ay-account/main.js", id: "account-sdk", async: true },
+    attrs: {
+      src: "/lib/ay-account/main.min.js",
+      id: "account-sdk",
+      async: true,
+    },
   },
   {
     apps: ["analytics"],
