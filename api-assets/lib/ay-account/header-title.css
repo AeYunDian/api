@@ -1,0 +1,33 @@
+/* AyAccount · brand letter wave (MD3 primary color, same motion as /login/header-title.css) */
+.card-header-title {
+  font-weight: bolder;
+  font-size: 28px;
+  user-select: none;
+  align-items: center;
+  display: inline-block;
+  animation: colorChange 1.3s ease forwards;
+  animation-play-state: paused;
+  --text-color: var(--md-sys-color-primary, #0061a4);
+  color: var(--text-color);
+}
+
+.card-header {
+  font-size: 0;
+  text-align: center;
+}
+
+@keyframes colorChange {
+  0% {
+    color: var(--text-color);
+  }
+  50% {
+    color: color-mix(
+      in srgb,
+      var(--md-sys-color-primary, #0061a4) 45%,
+      var(--md-sys-color-primary-container, #d1e4ff)
+    );
+  }
+  100% {
+    color: var(--text-color);
+  }
+}

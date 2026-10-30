@@ -7,7 +7,7 @@
     <title>登录 - AyAccount</title>
     <link rel="stylesheet" type="text/css" href="./header-title.css" />
     <script defer src="./header-title.js"></script>
-    <script src="/lib/account-sdk.min.js"></script>
+    <script src="/lib/ay-account/main.min.js"></script>
     <style>
         /* ===== 进度条 ===== */
         .progress {
@@ -549,25 +549,6 @@
             paginationView.addEventListener("animationend", onOutEnd);
         }
 
-        function waitForDependencies(timeout = 10000) {
-            return new Promise((resolve, reject) => {
-                const start = Date.now();
-                const check = () => {
-                    const geetestReady = typeof initGeetest4 !== 'undefined';
-                    const toastReady = typeof AyShowResult !== 'undefined' && typeof AyCloseToast !== 'undefined';
-                    if (geetestReady && toastReady) {
-                        resolve();
-                        return;
-                    }
-                    if (Date.now() - start > timeout) {
-                        reject(new Error('依赖加载超时，请检查网络'));
-                        return;
-                    }
-                    setTimeout(check, 200);
-                };
-                check();
-            });
-        }
         async function checkAuthWithRefresh(account) {
             try {
                 const verifyResult = await account.verify();
@@ -599,8 +580,7 @@
         async function main() {
             try {
 
-                await waitForDependencies();
-                account = createAyAccount({
+                account = window.createAyAccount({
                     appId: 'oauth2',
                     i18n: 'zh-cn'
                 });
@@ -610,34 +590,24 @@
                     window.location.replace(targetUrl);
                     return;
                 }
+                // container: ".loginContainer",
                 const loginPromise = account.login({
-                    hideOauthClient: true, hideClose: true, container: ".loginContainer",
-                    style: {
-                        ".login-page": {
-                            borderRadius: "0",
-                            "-webkit-box-shadow": " 0 2px 6px rgba(0, 0, 0, 0.2)",
-                            "-moz-box-shadow": "0 2px 6px rgba(0, 0, 0, 0.2)",
-                            "box-shadow": "0 2px 6px rgba(0, 0, 0, 0.2)",
-                        },
-                        ".outcard": {
-                            height: "100%"
-                        },
-                        ".app-enter": {
+                    hideOauthClient: true, hideClose: true, hideSwitch: true, scrim: false,
+                    style: `main.ay-card {
+                        border-radius: 0 !important;
+                        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+                      }
 
-                            animation: "none !important",
-                            transform: "none !important"
-                        },
-                        ".app-leave": {
-                            animation: "none !important",
-                            transform: "none !important"
-                        },
-                        "body, button, input, select, textarea, ::placeholder": {
-                            "font-family": `"Roboto", "Noto Sans HK", "Noto Sans SC", "Noto Sans JP", "Noto Sans TC", "Noto Sans CJK SC", "Noto Sans CJK TC", "Noto Sans CJK HK", "Noto Sans CJK JP", "Droid Sans Fallback", "Droid Sans", "PingFang HK", "PingFang SC", "PingFang TC", "Microsoft JhengHei", "Microsoft YaHei", "Hiragino Sans GB", "Heiti SC", "Heiti TC", "WenQuanYi Micro Hei", "Segoe UI", "Helvetica Neue", "Lucida Grande", "Ebrima", "Nirmala UI", "Gadugi", "Segoe Xbox Symbol", "Segoe UI Symbol", "Meiryo UI", "Khmer UI", "Tunga", "Lao UI", "Raavi", "Iskoola Pota", "Latha", "Leelawadee", "Microsoft YaHei UI", "Microsoft JhengHei UI", "Malgun Gothic", "Estrangelo Edessa", "Microsoft Himalaya", "Microsoft New Tai Lue", "Microsoft PhagsPa", "Microsoft Tai Le", "Microsoft Yi Baiti", "Mongolian Baiti", "MV Boli", "Myanmar Text", "Cambria Math" !important`
+                      @media (max-width: 560px) {
+                        html[data-mode="full"] .ay-card {
+                          margin-block-start: 0 !important;
+                          min-block-size: 100dvh !important;
+                          max-block-size: 100dvh !important;
                         }
-                    }
+                      }`
                 });
                 const handler = async (event) => {
-                    if (event.origin !== "https://online.undz.cn") return;
+                    // if (event.origin !== "https://online.undz.cn") return;
                     try {
                         let data = event.data;
                         if (typeof data === "string" && data.startsWith("{")) {

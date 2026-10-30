@@ -75,8 +75,10 @@ const [status, user] = await checkAuth(request, env);
 
 | 方法 | 路径 | 登录态 | 说明 |
 |---|---|---|---|
-| POST | `/api/ayonline/send-verification` | — | 发邮箱验证码，`action` ∈ login/register/change_email |
-| POST | `/api/ayonline/register` | — | 注册，需 `emailCode` + `emailToken` + `gt` |
+| POST | `/api/ayonline/send-verification` | — | 旧发邮箱验证码接口；2027-01-01（北京时间）后停止并返回 1040 |
+| POST | `/api/ayonline/register/verification/start` | — | 新 SDK 注册验证：极验 → 检查发信服务 → 发信/反向任务，返回 `verifySessionId` |
+| POST | `/api/ayonline/register/verification/query` | — | 新 SDK 反向验证轮询 |
+| POST | `/api/ayonline/register` | — | 注册；<3.0 旧逻辑，>=3.0 用 `verifySessionId` 新逻辑 |
 | POST | `/api/ayonline/login` | — | 用户名/邮箱 + 密码 + `gt` |
 | POST | `/api/ayonline/change-password` | Cookie | 改密，成功后撤销全部 refresh token |
 | POST | `/api/ayonline/logout` | — | 清 Cookie，可选撤销 refresh token |
@@ -178,6 +180,17 @@ scope：`openid` / `profile` / `email`，`userdata` 只返回被授权的字段�
 `update-profile` 的既有 `email + code + token` 契约保持不变；新前端只走上面三个
 新接口。`reverse_verify_tickets` 已并入 `initDatabase`，调用一次
 `POST /api/ayonline/init` 即可建表。
+
+### 注册邮箱验证（新 SDK >= 3.0）
+
+- `register/verification/start` 先校验 GeeTest，再检查
+  `http://send.undz.cn/health`（结果写 `app_kv_store`，TTL 10 分钟）。
+- 健康时走传统邮件；服务不可用或本次请求 1/7 随机命中时改用反向验证。
+- start 返回 `verifySessionId`（D1 KV，TTL 10 分钟），最终 `/register`
+  只认这个会话，不再要求第二次 `gt`。
+- 旧 SDK（`X-App-Ver` / `X-SDK-VER` < 3.0）继续旧逻辑；2027-01-01
+  00:00:00（Asia/Shanghai）后旧 SDK 与旧 `send-verification` 接口统一返回 1040。
+- 详细方案见 `api-vue/public/doc/registration-email-verification.md`。
 
 ## 错误码
 

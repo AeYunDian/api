@@ -26,6 +26,24 @@ import {
   allowedEmailDomains,
 } from "../config.js";
 import { ERROR_CODES } from "../../../shared/error-codes.js";
+import { isAfterLegacyCutoff, parseClientVersion } from "../auth/version.js";
+import {
+  queryRegisterVerification,
+  startRegisterVerification,
+} from "../mail_verify/register-verification.js";
+import { handleNewRegistration } from "./register-new.js";
+
+function sdkOutdated(cors, action = "register") {
+  return jsonResponse(
+    {
+      action,
+      error: "Client SDK version is outdated, please upgrade",
+      error_code: ERROR_CODES.SDK_VERSION_OUTDATED,
+    },
+    500,
+    cors,
+  );
+}
 
 export async function handleSessionRoutes({
   request,
@@ -36,6 +54,16 @@ export async function handleSessionRoutes({
   cors,
 }) {
   if (path === "/api/ayonline/send-verification" && method === "POST") {
+    if (isAfterLegacyCutoff()) {
+      return jsonResponse(
+        {
+          error: "Client SDK version is outdated, please upgrade",
+          error_code: ERROR_CODES.SDK_VERSION_OUTDATED,
+        },
+        500,
+        cors,
+      );
+    }
     const body = await request.json().catch(() => null);
     if (!body || !body.email || !body.action) {
       return jsonResponse(
@@ -117,7 +145,92 @@ export async function handleSessionRoutes({
     }
   }
 
+  if (
+    path === "/api/ayonline/register/verification/start" &&
+    method === "POST"
+  ) {
+    const client = parseClientVersion(request);
+    if (client.isLegacy) return sdkOutdated(cors);
+
+    const body = await request.json().catch(() => null);
+    const email =
+      body && typeof body.email === "string"
+        ? body.email.trim().toLowerCase()
+        : "";
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return jsonResponse(
+        {
+          action: "register",
+          error: "Invalid email",
+          error_code: ERROR_CODES.INVALID_EMAIL,
+        },
+        400,
+        cors,
+      );
+    }
+    if (!allowedEmailDomains.some((domain) => email.endsWith(domain))) {
+      return jsonResponse(
+        {
+          action: "register",
+          error: "Unsupported email domain",
+          error_code: ERROR_CODES.UNSUPPORTED_EMAIL_DOMAIN,
+        },
+        400,
+        cors,
+      );
+    }
+
+    const result = await startRegisterVerification(env, email, body.gt);
+    if (!result.ok) {
+      return jsonResponse(
+        { action: "register", ...result.payload },
+        result.status,
+        cors,
+      );
+    }
+    return jsonResponse(
+      { action: "register", success: true, ...result.data },
+      200,
+      cors,
+    );
+  }
+
+  if (
+    path === "/api/ayonline/register/verification/query" &&
+    method === "POST"
+  ) {
+    const client = parseClientVersion(request);
+    if (client.isLegacy) return sdkOutdated(cors);
+
+    const body = await request.json().catch(() => null);
+    const requestId =
+      body && typeof body.requestId === "string" ? body.requestId.trim() : "";
+    const email =
+      body && typeof body.email === "string"
+        ? body.email.trim().toLowerCase()
+        : "";
+    if (!requestId || !email) {
+      return jsonResponse(
+        {
+          action: "register",
+          error: "requestId and email required",
+          error_code: ERROR_CODES.MISSING_PARAMS,
+        },
+        400,
+        cors,
+      );
+    }
+    const result = await queryRegisterVerification(env, requestId, email);
+    return jsonResponse({ action: "register", ...result }, 200, cors);
+  }
+
   if (path === "/api/ayonline/register" && method === "POST") {
+    const client = parseClientVersion(request);
+    if (!client.isLegacy) {
+      const body = await request.json().catch(() => null);
+      return handleNewRegistration(body, env, cors);
+    }
+    if (isAfterLegacyCutoff()) return sdkOutdated(cors);
     const body = await request.json().catch(() => null);
     if (
       !body ||

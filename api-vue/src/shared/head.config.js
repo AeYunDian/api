@@ -7,8 +7,7 @@ export const head = [
     apps: ["*"],
     phase: "beforeLoadModule",
     tag: "script",
-    // TODO: account-sdk.min.js 重新生成后改回 min 版本
-    attrs: { src: "/lib/account-sdk.js", id: "account-sdk", async: true },
+    attrs: { src: "/lib/ay-account/main.js", id: "account-sdk", async: true },
   },
   {
     apps: ["analytics"],

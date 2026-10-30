@@ -27,7 +27,7 @@
  *   1500-1599  AI              ai.undz.cn
  *   1900-1999  通用 / 平台级
  *
- * 【已用号】1000-1023、1025、1026、1029、1040-1043
+ * 【已用号】1000-1023、1025、1026、1029、1040-1047
  * 【服务端不要占用】1024、1027-1039 —— 这些号由前端 SDK 内部使用
  *   （1024 取消人机验证；1027/1028 验证码发送；1030-1039 邮件与登录窗口），
  *   服务端一旦下发就会和客户端语义撞车。
@@ -148,6 +148,18 @@ export const USERNAME_ALREADY_EXISTS = 1042;
 /** 修改邮箱缺少验证码与凭证（原 1007 的场景之一） */
 export const EMAIL_CHANGE_CODE_REQUIRED = 1043;
 
+/** 注册邮件验证：传统发信与反向验证均不可用 */
+export const REGISTER_VERIFY_EMAIL_UNAVAILABLE = 1044;
+
+/** 注册邮件验证：提交的验证方式与 start 返回的 method 不一致 */
+export const REGISTER_VERIFY_METHOD_MISMATCH = 1045;
+
+/** 注册邮件验证：验证记录已过期 */
+export const REGISTER_VERIFY_EXPIRED = 1046;
+
+/** 注册邮件验证：缺少验证凭证 / 注册会话 */
+export const REGISTER_VERIFY_REQUIRED = 1047;
+
 // ---------- GitHub 登录（1064-1072，账号段） ----------
 
 /** GitHub OAuth state 无效或已过期 */
@@ -257,6 +269,10 @@ export const ERROR_CODES = Object.freeze({
   EMAIL_ALREADY_EXISTS,
   USERNAME_ALREADY_EXISTS,
   EMAIL_CHANGE_CODE_REQUIRED,
+  REGISTER_VERIFY_EMAIL_UNAVAILABLE,
+  REGISTER_VERIFY_METHOD_MISMATCH,
+  REGISTER_VERIFY_EXPIRED,
+  REGISTER_VERIFY_REQUIRED,
   GITHUB_STATE_INVALID,
   GITHUB_CODE_INVALID,
   GITHUB_UPSTREAM_ERROR,
@@ -315,6 +331,13 @@ export const ERROR_MESSAGES = Object.freeze({
   [EMAIL_ALREADY_EXISTS]: "Email already exists",
   [USERNAME_ALREADY_EXISTS]: "Username already exists",
   [EMAIL_CHANGE_CODE_REQUIRED]: "Email change requires verification code and token",
+  [REGISTER_VERIFY_EMAIL_UNAVAILABLE]:
+    "Both email verification methods are unavailable",
+  [REGISTER_VERIFY_METHOD_MISMATCH]:
+    "Verification method does not match the started registration",
+  [REGISTER_VERIFY_EXPIRED]: "Registration verification has expired",
+  [REGISTER_VERIFY_REQUIRED]:
+    "Registration verification session is required",
   [GITHUB_STATE_INVALID]: "GitHub login state is invalid or expired",
   [GITHUB_CODE_INVALID]: "GitHub authorization code is invalid or already used",
   [GITHUB_UPSTREAM_ERROR]: "GitHub upstream request failed",
@@ -349,6 +372,7 @@ export const ERROR_STATUS = Object.freeze({
   1025: 400, 1026: 400, 1029: 400,
   // 1040 暂维持 500：SDK 版本闸门原来就返回 500，改状态码会影响既有客户端。
   1040: 500, 1041: 409, 1042: 409, 1043: 400,
+  1044: 503, 1045: 400, 1046: 400, 1047: 400,
   // GitHub 登录（1064-1072）
   1064: 400, 1065: 400, 1066: 502, 1067: 400, 1068: 409,
   1069: 403, 1070: 503, 1071: 401, 1072: 409,

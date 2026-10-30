@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="auto">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>AyAccount SDK Demo</title>
+    <style>
+        :root {
+            --demo-bg: #f6f8fc;
+            --demo-surface: #ffffff;
+            --demo-surface-soft: #eef2f8;
+            --demo-text: #18202b;
+            --demo-muted: #5d6a7c;
+            --demo-border: #dbe2ec;
+            --demo-primary: #0061a4;
+            --demo-on-primary: #ffffff;
+            --demo-radius: 24px;
+            color-scheme: light;
+        }
+
+        :root[data-theme="dark"] {
+            --demo-bg: #0e1218;
+            --demo-surface: #171d26;
+            --demo-surface-soft: #202836;
+            --demo-text: #e6ebf2;
+            --demo-muted: #9aa7b8;
+            --demo-border: #313b4b;
+            --demo-primary: #9ecaff;
+            --demo-on-primary: #003258;
+            color-scheme: dark;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root[data-theme="auto"] {
+                --demo-bg: #0e1218;
+                --demo-surface: #171d26;
+                --demo-surface-soft: #202836;
+                --demo-text: #e6ebf2;
+                --demo-muted: #9aa7b8;
+                --demo-border: #313b4b;
+                --demo-primary: #9ecaff;
+                --demo-on-primary: #003258;
+                color-scheme: dark;
+            }
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-block-size: 100vh;
+            padding: 24px;
+            background: var(--demo-bg);
+            color: var(--demo-text);
+            font-family: "Roboto", "Noto Sans SC", "PingFang SC",
+                "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", sans-serif;
+        }
+
+        .demo {
+            inline-size: 100%;
+            max-inline-size: 860px;
+            margin-inline: auto;
+        }
+
+        .demo__header {
+            margin-block-end: 18px;
+        }
+
+        .demo__title {
+            margin: 0;
+            font-size: 28px;
+            line-height: 1.25;
+        }
+
+        .demo__desc {
+            margin: 8px 0 0;
+            color: var(--demo-muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .demo__panel {
+            padding: 20px;
+            border: 1px solid var(--demo-border);
+            border-radius: var(--demo-radius);
+            background: var(--demo-surface);
+            box-shadow: 0 8px 30px rgba(20, 40, 70, 0.08);
+        }
+
+        .demo__row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-block-end: 10px;
+        }
+
+        .demo__btn {
+            min-block-size: 40px;
+            padding-inline: 16px;
+            border: 1px solid var(--demo-border);
+            border-radius: 999px;
+            background: var(--demo-surface-soft);
+            color: var(--demo-text);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .demo__btn:hover {
+            border-color: var(--demo-primary);
+            color: var(--demo-primary);
+        }
+
+        .demo__btn--primary {
+            border-color: transparent;
+            background: var(--demo-primary);
+            color: var(--demo-on-primary);
+        }
+
+        .demo__btn--primary:hover {
+            color: var(--demo-on-primary);
+            filter: brightness(1.04);
+        }
+
+        .demo__slot {
+            position: relative;
+            min-block-size: 120px;
+            margin-block: 14px;
+            border: 1px dashed var(--demo-border);
+            border-radius: 16px;
+            background:
+                repeating-linear-gradient(45deg,
+                    transparent,
+                    transparent 8px,
+                    var(--demo-surface-soft) 8px,
+                    var(--demo-surface-soft) 16px);
+            display: grid;
+            place-items: center;
+            color: var(--demo-muted);
+            font-size: 13px;
+            overflow: hidden;
+        }
+
+        .demo__slot.has-iframe {
+            display: block;
+            min-block-size: 0;
+            background: transparent;
+        }
+
+        .demo__out {
+            margin: 12px 0 0;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: var(--demo-surface-soft);
+            color: var(--demo-text);
+            font-family: ui-monospace, "Roboto Mono", Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            min-block-size: 84px;
+        }
+
+        .demo__code {
+            margin-block-start: 14px;
+            border-block-start: 1px solid var(--demo-border);
+            padding-block-start: 12px;
+            color: var(--demo-muted);
+            font-size: 13px;
+        }
+
+        .demo__code summary {
+            cursor: pointer;
+        }
+
+        .demo__code pre {
+            margin: 10px 0 0;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: var(--demo-surface-soft);
+            color: var(--demo-text);
+            overflow: auto;
+            font-family: ui-monospace, "Roboto Mono", Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .demo__floatbar {
+            position: fixed;
+            inset-block-start: 12px;
+            inset-inline-start: 50%;
+            z-index: 20000005;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border: 1px solid var(--demo-border);
+            border-radius: 999px;
+            background: var(--demo-surface);
+            box-shadow: 0 8px 24px rgba(20, 40, 70, 0.18);
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: var(--demo-muted);
+        }
+
+        .demo__floatbar[hidden] {
+            display: none;
+        }
+
+        .demo__floatbar select {
+            border: 0;
+            background: transparent;
+            color: var(--demo-text);
+            font: inherit;
+            outline: none;
+        }
+
+        @media (max-width: 560px) {
+            body {
+                padding: 14px;
+            }
+
+            .demo__floatbar {
+                inset-block-start: auto;
+                inset-block-end: 12px;
+            }
+
+            .demo__panel {
+                padding: 16px;
+            }
+
+            .demo__title {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="demo">
+        <header class="demo__header">
+            <h1 class="demo__title">AyAccount SDK Demo</h1>
+            <p class="demo__desc">
+                在同一个页面里演示全屏 iframe、嵌入式容器、主题、语言、关闭弹窗和宿主 Toast。
+            </p>
+        </header>
+
+        <section class="demo__panel">
+            <div class="demo__row">
+                <button class="demo__btn demo__btn--primary" type="button" data-action="login">全屏登录</button>
+                <button class="demo__btn demo__btn--primary" type="button" data-action="register">全屏注册</button>
+                <button class="demo__btn" type="button" data-action="inline">嵌入式登录</button>
+                <button class="demo__btn" type="button" data-action="close">关闭弹窗</button>
+            </div>
+
+            <div class="demo__row">
+                <button class="demo__btn" type="button" data-action="login-only">只登录</button>
+                <button class="demo__btn" type="button" data-action="register-only">只注册</button>
+                <button class="demo__btn" type="button" data-action="hide-faq">隐藏常见问题</button>
+                <button class="demo__btn" type="button" data-action="hide-switch">隐藏“去登录”</button>
+            </div>
+
+            <div class="demo__row">
+                <button class="demo__btn" type="button" data-theme="auto">Auto 主题</button>
+                <button class="demo__btn" type="button" data-theme="light">Light</button>
+                <button class="demo__btn" type="button" data-theme="dark">Dark</button>
+            </div>
+
+            <div class="demo__row">
+                <button class="demo__btn" type="button" data-lang="zh-cn">简体中文</button>
+                <button class="demo__btn" type="button" data-lang="zh-hk">繁體中文</button>
+                <button class="demo__btn" type="button" data-lang="en-us">English</button>
+                <button class="demo__btn" type="button" data-action="toast">宿主 Toast</button>
+            </div>
+
+            <p class="demo__desc" style="margin: 0 0 12px">
+                全屏 iframe 会覆盖本页按钮；打开后可用浮动条实时切换语言和主题。
+            </p>
+
+            <div class="demo__slot" id="inlineSlot">嵌入式容器：点击“嵌入式登录”后在这里加载 SDK</div>
+
+            <pre class="demo__out" id="demoOut">等待操作…</pre>
+
+            <details class="demo__code">
+                <summary>查看调用代码</summary>
+                <pre><code>&lt;script src="https://online.undz.cn/lib/ay-account/main.js?v=3.2.0"&gt;&lt;/script&gt;
+&lt;script&gt;
+"use strict";
+const account = new AyAccount({
+  appId: "ayaccountcenter_1601",
+  theme: "auto" // auto | light | dark
+});
+
+// 全屏 iframe
+account.login().then((result) => console.log(result));
+
+// 嵌入式
+account.login({ container: "#inlineSlot", minHeight: "600px" });
+
+// 注册 / 主题 / 语言
+account.register({ theme: "dark" });
+account.setTheme("light");
+account.changeLanguage("en-us");
+
+// 首屏进入动画（默认 back；可分别配置移动端/电脑端）
+account.login({ enter: "back" });
+account.login({ enter: { mobile: "up", desktop: "next" } });
+account.login({ enter: "none" });
+
+// 嵌入式卡片默认撑满容器；也可手动关闭
+account.login({ container: "#inlineSlot", fill: true });
+account.login({ container: "#inlineSlot", fill: false });
+
+// 更多窗口配置
+account.login({ only: "login", hideFaq: true, hideSwitch: true });
+account.register({ only: "register" });
+account.login({ hideFaq: true });
+account.register({ hideSwitch: true });
+account.login({ scrim: false }); // 电脑端全屏去掉半透明遮罩
+&lt;/script&gt;</code></pre>
+            </details>
+        </section>
+    </main>
+
+    <div class="demo__floatbar" id="floatbar" hidden>
+        <label>语言
+            <select id="floatLang">
+                <option value="zh-cn">简体中文</option>
+                <option value="zh-hk">繁體中文</option>
+                <option value="en-us">English</option>
+            </select>
+        </label>
+        <label>主题
+            <select id="floatTheme">
+                <option value="auto">Auto</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+            </select>
+        </label>
+    </div>
+
+    <script src="./main.js?v=3.2.0"></script>
+    <script>
+        "use strict";
+
+        (() => {
+            const $ = (sel, ctx = document) => ctx.querySelector(sel);
+
+            const out = $("#demoOut");
+            const slot = $("#inlineSlot");
+            const floatbar = $("#floatbar");
+            const floatLang = $("#floatLang");
+            const floatTheme = $("#floatTheme");
+            let currentTheme = "auto";
+            let currentLang = "zh-cn";
+            let modalOpen = false;
+
+            function setModalOpen(open) {
+                modalOpen = Boolean(open);
+                if (floatbar) floatbar.hidden = !modalOpen;
+            }
+
+            function syncFloatbar() {
+                if (floatLang) floatLang.value = currentLang;
+                if (floatTheme) floatTheme.value = currentTheme;
+            }
+
+            syncFloatbar();
+
+            let account;
+            try {
+                account = new AyAccount({
+                    appId: "ayaccountcenter_1601",
+                    // 改成你实际接入的白名单 appId；本 demo 使用 AyAccountCenter 的 appId。
+                    theme: currentTheme,
+                    i18n: "zh-cn"
+                });
+            } catch (error) {
+                out.textContent = "SDK 初始化失败：" + (error.message || error);
+                return;
+            }
+            window.daccount = account;
+            function print(label, value) {
+                let text;
+                if (value instanceof Error) {
+                    text = value.message || String(value);
+                } else {
+                    try {
+                        text = JSON.stringify(value, null, 2);
+                    } catch {
+                        text = String(value);
+                    }
+                }
+                out.textContent = `[${label}]\n${text}`;
+            }
+
+            function setTheme(theme) {
+                currentTheme = theme;
+                document.documentElement.setAttribute("data-theme", theme);
+                account.setTheme(theme);
+                syncFloatbar();
+            }
+
+            function setLanguage(lang) {
+                currentLang = lang;
+                account.changeLanguage(lang);
+                syncFloatbar();
+            }
+
+            async function run(label, starter) {
+                setModalOpen(true);
+                try {
+                    const result = await starter();
+                    print(label, result);
+                } catch (error) {
+                    print(label + " error", error);
+                } finally {
+                    setModalOpen(false);
+                }
+            }
+
+            async function open(kind) {
+                setModalOpen(true);
+                try {
+                    const result =
+                        kind === "register"
+                            ? await account.register({ theme: currentTheme })
+                            : await account.login({ theme: currentTheme });
+                    print(kind, result);
+                } catch (error) {
+                    print(kind + " error", error);
+                } finally {
+                    setModalOpen(false);
+                }
+            }
+
+            async function openInline() {
+                setModalOpen(true);
+                slot.classList.add("has-iframe");
+                slot.textContent = "";
+                try {
+                    const result = await account.login({
+                        container: "#inlineSlot",
+                        theme: currentTheme,
+                        minHeight: "600px"
+                    });
+                    print("inline login", result);
+                } catch (error) {
+                    print("inline login error", error);
+                } finally {
+                    setModalOpen(false);
+                    slot.classList.remove("has-iframe");
+                    slot.textContent = "嵌入式容器：点击“嵌入式登录”后在这里加载 SDK";
+                }
+            }
+
+            document.addEventListener("click", (event) => {
+                const actionEl = event.target.closest("[data-action]");
+                if (actionEl) {
+                    const action = actionEl.getAttribute("data-action");
+                    if (action === "login") open("login");
+                    if (action === "register") open("register");
+                    if (action === "inline") openInline();
+                    if (action === "login-only") {
+                        run("login only", () =>
+                            account.login({ theme: currentTheme, only: "login" }),
+                        );
+                    }
+                    if (action === "register-only") {
+                        run("register only", () =>
+                            account.register({ theme: currentTheme, only: "register" }),
+                        );
+                    }
+                    if (action === "hide-faq") {
+                        run("hide faq", () =>
+                            account.login({ theme: currentTheme, hideFaq: true }),
+                        );
+                    }
+                    if (action === "hide-switch") {
+                        run("hide switch", () =>
+                            account.register({ theme: currentTheme, hideSwitch: true }),
+                        );
+                    }
+                    if (action === "close") {
+                        account.close();
+                        print("close", "requested");
+                    }
+                    if (action === "toast") {
+                        account.toast.success("AyToast 已集成在 SDK 内");
+                    }
+                    return;
+                }
+
+                const themeEl = event.target.closest("[data-theme]");
+                if (themeEl) {
+                    setTheme(themeEl.getAttribute("data-theme"));
+                    print("theme", currentTheme);
+                    return;
+                }
+
+                const langEl = event.target.closest("[data-lang]");
+                if (langEl) {
+                    setLanguage(langEl.getAttribute("data-lang"));
+                    print("language", currentLang);
+                }
+            });
+
+            if (floatLang) {
+                floatLang.addEventListener("change", () => {
+                    setLanguage(floatLang.value);
+                    print("language", currentLang);
+                });
+            }
+            if (floatTheme) {
+                floatTheme.addEventListener("change", () => {
+                    setTheme(floatTheme.value);
+                    print("theme", currentTheme);
+                });
+            }
+
+            print("ready", {
+                api: "https://online.undz.cn",
+                appId: "ayaccountcenter_1601",
+                theme: currentTheme
+            });
+        })();
+    </script>
+</body>
+
+</html>
