@@ -125,7 +125,7 @@
   const state = {
     config: {
       appId: "default",
-      sdkVersion: "3.2.0",
+      sdkVersion: "3.2.1",
       apiBase: API_BASE,
       inline: false,
       theme: "auto",
@@ -959,8 +959,8 @@
       headers: {
         "Content-Type": "application/json",
         "X-App-Id": state.config.appId || "default",
-        "X-SDK-VER": state.config.sdkVersion || "3.2.0",
-        "X-App-Ver": state.config.sdkVersion || "3.2.0",
+        "X-SDK-VER": state.config.sdkVersion || "3.2.1",
+        "X-App-Ver": state.config.sdkVersion || "3.2.1",
         ...headers,
       },
       body: body === undefined ? undefined : JSON.stringify(body),

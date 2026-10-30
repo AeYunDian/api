@@ -25,7 +25,7 @@ Open `/lib/ay-account/demo.html` for a ready-to-run playground.
 ## Usage (same API as before)
 
 ```html
-<script src="https://online.undz.cn/lib/ay-account/main.js?v=3.2.0"></script>
+<script src="https://online.undz.cn/lib/ay-account/main.js?v=3.2.1"></script>
 <script>
   "use strict";
   const account = new AyAccount({ appId: "your_app_id" });
@@ -80,6 +80,9 @@ is missing. Host pages can use `main.min.js` directly.
   script.
 - Inline (`container`) mode delegates sign-in/register API calls to the host SDK,
   so Geetest appears in the host page.
+- Opening `login()` / `register()` shows a host loading toast until the iframe
+  sends `isReady`. `loadingToast` defaults to `false` in inline mode and `true`
+  in fullscreen mode; pass a boolean to override it.
 - Registration (SDK >= 3.2.0) calls `register/verification/start`; the backend
   chooses a traditional email-code page or a reverse-email page. The final
   `/register` call uses the returned `verifySessionId`.

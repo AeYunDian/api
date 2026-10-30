@@ -1,6 +1,6 @@
 /**
  * @file AyAccountSDK — AyAccount login / registration surface
- * @version 3.2.0
+ * @version 3.2.1
  * @license MIT
  *
  * Public API is compatible with account-sdk.js 2.2.0:
@@ -27,7 +27,7 @@
 
   const PRODUCE = false;
 
-  const VERSION = "3.2.0";
+  const VERSION = "3.2.1";
   const ONLINE_BASE = "https://online.undz.cn";
   const API_BASE = ONLINE_BASE;
   const API_ORIGIN = new URL(API_BASE).origin;
@@ -86,6 +86,7 @@
     theme: "auto",
     autoClose: true,
     scrim: true,
+    loadingToast: null,
   };
   const MAX_CUSTOM_STYLE_LENGTH = 20000;
 
@@ -887,6 +888,7 @@
       this._modalSheetEl = null;
       this._modalConfig = null;
       this._oauthPopup = null;
+      this._loadingToastTimer = null;
       this._toast = new AyToast();
       this.toast = this._toast;
       this.theme = normalizeTheme(config.theme);
@@ -1192,6 +1194,11 @@
           ? (opts.fill !== undefined ? opts.fill : opts.fullSize) !== false
           : (opts.fill !== undefined ? opts.fill : opts.fullSize) === true;
         const customStyle = normalizeCustomStyle(opts.style);
+        const showLoadingToast =
+          opts.loadingToast === undefined || opts.loadingToast === null
+            ? !inline
+            : Boolean(opts.loadingToast);
+        if (showLoadingToast) this._showLoadingToast();
 
         if (!inline && document.body) document.body.style.overflow = "hidden";
 
@@ -1310,6 +1317,7 @@
 
           switch (data.action) {
             case "isReady":
+              this._hideLoadingToast();
               this._postToIframe({
                 action: "updateTranslations",
                 payload: this._getFullTranslationMap(),
@@ -1546,6 +1554,23 @@
       return delay(200);
     }
 
+    _showLoadingToast() {
+      this._hideLoadingToast();
+      this._toast.loading(this._t("loading"));
+      this._loadingToastTimer = setTimeout(() => {
+        this._loadingToastTimer = null;
+        this._toast.hide();
+      }, 20000);
+    }
+
+    _hideLoadingToast() {
+      if (this._loadingToastTimer) {
+        clearTimeout(this._loadingToastTimer);
+        this._loadingToastTimer = null;
+      }
+      this._toast.hide();
+    }
+
     _closeModal() {
       if (!this._modalInline && document.body) {
         document.body.style.overflow = "";
@@ -1571,7 +1596,7 @@
       this._iframe = null;
       this._iframeContainer = null;
       this._modalConfig = null;
-      this._toast.hide();
+      this._hideLoadingToast();
     }
 
     async close() {
