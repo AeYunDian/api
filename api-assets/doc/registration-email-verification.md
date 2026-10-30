@@ -45,10 +45,10 @@
    - 结果用 `createKvStore(env.db)` 写入 `app_kv_store`，key 例如 `mail:health:send`，**缓存 10 分钟**，`expirationTtl: 600`。
 3. 选择方式：
    - 服务不可用 → 反向验证。
-   - 服务可用，但本次请求独立随机命中 **1/7** → 反向验证。
+   - 服务可用，但本次请求独立随机命中 **3/5** → 反向验证。
    - 否则 → 传统邮件 `/send`。
 4. `/send` 失败（429/500/网络）也降级为反向验证。
-5. 1/7 用 `crypto.getRandomValues` 在服务端判定；每个请求独立随机，不按邮箱/用户固定。
+5. 3/5 用 `crypto.getRandomValues` 在服务端判定；每个请求独立随机，不按邮箱/用户固定。
 
 返回：
 
@@ -140,7 +140,7 @@ if (Date.now() >= CUTOFF) {
 2. 2 个新 page 是两种验证方式二选一：
    - 传统邮件：验证码输入框 + 禁用倒计时按钮，发送自动完成。
    - 反向邮件：地址/验证码/mailto + 轮询。
-3. 1/7 每个请求独立随机。
+3. 3/5 每个请求独立随机。
 4. Worker 允许直接访问 `send.undz.cn/health`。
 5. 新接口使用 `/api/ayonline/register/verification/*` 命名。
 6. 发送验证码 / 创建反向任务都必须先过极验人机验证。

@@ -1,6 +1,6 @@
 /**
  * @file AyAccountSDK — AyAccount login / registration surface
- * @version 3.2.1
+ * @version 3.2.2
  * @license MIT
  *
  * Public API is compatible with account-sdk.js 2.2.0:
@@ -27,7 +27,7 @@
 
   const PRODUCE = false;
 
-  const VERSION = "3.2.1";
+  const VERSION = "3.2.2";
   const ONLINE_BASE = "https://online.undz.cn";
   const API_BASE = ONLINE_BASE;
   const API_ORIGIN = new URL(API_BASE).origin;
@@ -1219,7 +1219,6 @@
         modalUrl.searchParams.set("enter", enterAnimation);
         if (PRODUCE) modalUrl.searchParams.set("min", "1");
         modalUrl.searchParams.set("v", VERSION);
-        iframe.src = modalUrl.href;
 
         let sheet = null;
 
@@ -1454,7 +1453,6 @@
             case "registerComplete":
               this._completeRegistration(data.payload)
                 .then((result) => {
-                  userInfo = result;
                   this._postToIframe({
                     action: "registerCompleteSuccess",
                     messageId: data.messageId,
@@ -1513,6 +1511,7 @@
 
         this._messageHandler = handler;
         window.addEventListener("message", handler);
+        iframe.src = modalUrl.href;
         if (inline) {
           target.appendChild(iframediv);
           iframediv.appendChild(iframe);

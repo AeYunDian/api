@@ -3,7 +3,7 @@
 // start:
 //   1. 先校验极验（发送验证码 / 创建反向任务前必须验证）
 //   2. 检查 send.undz.cn/health（D1 KV 缓存 10 分钟）
-//   3. 正常则走传统邮件；不可用或 1/7 随机则走反向邮件
+//   3. 正常则走传统邮件；不可用或 3/5 随机则走反向邮件
 //   4. 返回 method + verifySessionId，最终注册只认这个会话
 //
 // 最终注册不再二次要求 gt：极验通过后由 verifySessionId 绑定本次注册。
@@ -51,7 +51,7 @@ function healthUrl(env) {
 function randomReverseHit() {
   const values = new Uint32Array(1);
   crypto.getRandomValues(values);
-  return values[0] % 7 === 0;
+  return values[0] % 5 < 3;
 }
 
 async function isMailServiceHealthy(env) {

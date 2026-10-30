@@ -185,7 +185,7 @@ scope：`openid` / `profile` / `email`，`userdata` 只返回被授权的字段�
 
 - `register/verification/start` 先校验 GeeTest，再检查
   `http://send.undz.cn/health`（结果写 `app_kv_store`，TTL 10 分钟）。
-- 健康时走传统邮件；服务不可用或本次请求 1/7 随机命中时改用反向验证。
+- 健康时走传统邮件；服务不可用或本次请求 3/5 随机命中时改用反向验证。
 - start 返回 `verifySessionId`（D1 KV，TTL 10 分钟），最终 `/register`
   只认这个会话，不再要求第二次 `gt`。
 - 旧 SDK（`X-App-Ver` / `X-SDK-VER` < 3.0）继续旧逻辑；2027-01-01

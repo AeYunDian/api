@@ -10,14 +10,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
     <title>AyAccount</title>
     <link rel="icon" href="/favicon.ico" />
-    <link rel="stylesheet" href="./header-title.css?v=3.2.1" />
-    <link rel="stylesheet" href="./toast.css?v=3.2.1" />
-    <link rel="stylesheet" href="./login.css?v=3.2.1" />
-    <script defer src="./header-title.js?v=3.2.1"></script>
+    <link rel="stylesheet" href="./header-title.css?v=3.2.2" />
+    <link rel="stylesheet" href="./toast.css?v=3.2.2" />
+    <link rel="stylesheet" href="./login.css?v=3.2.2" />
+    <script defer src="./header-title.js?v=3.2.2"></script>
     <script type="module">
         "use strict";
 
-        const version = "3.2.1";
+        const version = "3.2.2";
         const useMin = new URLSearchParams(location.search).get("min") === "1";
         try {
             await import(
@@ -229,7 +229,7 @@
                                 <span data-i18n="verify.submit">完成注册</span>
                             </button>
 
-                            <button type="button" class="btn btn--text" id="emailVerifyBack"
+                            <button type="button" class="btn btn--primary" id="emailVerifyBack"
                                 data-i18n="verify.back">返回修改</button>
                         </form>
                     </div>
@@ -268,9 +268,7 @@
                         <p class="md-hint" id="reverseCountdown"></p>
 
                         <div class="verify-actions">
-                            <button type="button" class="btn btn--ghost" id="reverseRefresh"
-                                data-i18n="verify.manualRefresh">手动刷新</button>
-                            <button type="button" class="btn btn--text" id="reverseBack"
+                            <button type="button" class="btn btn--primary" id="reverseBack"
                                 data-i18n="verify.back">返回修改</button>
                         </div>
                     </div>

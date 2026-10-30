@@ -25,7 +25,7 @@ Open `/lib/ay-account/demo.html` for a ready-to-run playground.
 ## Usage (same API as before)
 
 ```html
-<script src="https://online.undz.cn/lib/ay-account/main.js?v=3.2.1"></script>
+<script src="https://online.undz.cn/lib/ay-account/main.js?v=3.2.2"></script>
 <script>
   "use strict";
   const account = new AyAccount({ appId: "your_app_id" });

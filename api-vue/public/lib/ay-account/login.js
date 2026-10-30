@@ -125,7 +125,7 @@
   const state = {
     config: {
       appId: "default",
-      sdkVersion: "3.2.1",
+      sdkVersion: "3.2.2",
       apiBase: API_BASE,
       inline: false,
       theme: "auto",
@@ -138,6 +138,7 @@
     },
     translations: {},
     page: "login",
+    openedMode: "login",
     busy: false,
     animating: false,
     configReady: false,
@@ -204,7 +205,6 @@
     reverseMailto: $("#reverseMailto"),
     reverseStatus: $("#reverseStatus"),
     reverseCountdown: $("#reverseCountdown"),
-    reverseRefresh: $("#reverseRefresh"),
     reverseBack: $("#reverseBack"),
     reverseCopyAddress: $("#reverseCopyAddress"),
     reverseCopyCode: $("#reverseCopyCode"),
@@ -959,8 +959,8 @@
       headers: {
         "Content-Type": "application/json",
         "X-App-Id": state.config.appId || "default",
-        "X-SDK-VER": state.config.sdkVersion || "3.2.1",
-        "X-App-Ver": state.config.sdkVersion || "3.2.1",
+        "X-SDK-VER": state.config.sdkVersion || "3.2.2",
+        "X-App-Ver": state.config.sdkVersion || "3.2.2",
         ...headers,
       },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -1097,6 +1097,7 @@
         expiresAt: data.expiresAt,
       };
       setBusy(false);
+      toast.hide();
       if (data.method === "email") {
         showEmailPage(data);
       } else if (data.method === "reverse") {
@@ -1370,9 +1371,28 @@
     }
   }
 
+  function switchToLoginAfterRegister() {
+    const pending = state.registerPending;
+    stopEmailCountdown();
+    stopReversePolling();
+    stopReverseCountdown();
+    state.registerPending = null;
+    if (pending) {
+      dom.loginAccount.value = pending.username || pending.email || "";
+      dom.loginPassword.value = "";
+      syncFieldLabels();
+    }
+    toast.success(t("common.register_success"));
+    navigate("login", "back");
+  }
+
   function handleAuthSuccess(type, payload) {
     state.user = (payload && (payload.user || payload.result)) || payload;
     setBusy(false);
+    if (type === "register" && state.openedMode === "login") {
+      switchToLoginAfterRegister();
+      return;
+    }
     toast.success(
       t(type === "login" ? "common.login_success" : "common.register_success"),
     );
@@ -1560,7 +1580,6 @@
     });
     dom.emailVerifyBack.addEventListener("click", backToRegisterFromVerify);
     dom.reverseBack.addEventListener("click", backToRegisterFromVerify);
-    dom.reverseRefresh.addEventListener("click", pollReverseOnce);
     dom.reverseCopyAddress.addEventListener("click", () => {
       copyText(dom.reverseAddress.textContent);
     });
@@ -1816,6 +1835,7 @@
     applyFill(fill === null ? mode === "inline" : fill === "1");
     if (enter) state.config.enterAnimation = enter;
     if (only === "login" || only === "register") {
+      state.openedMode = only;
       state.lockedPage = only;
       dom.card.setAttribute("data-only", only);
       dom.tabs.hidden = true;
@@ -1823,11 +1843,13 @@
       if (dom.toLogin) dom.toLogin.style.display = "none";
       setPageImmediate(only);
     } else if (tab === "register") {
+      state.openedMode = "register";
       pages.login.classList.remove("is-active");
       pages.register.classList.add("is-active");
       state.page = "register";
       updateChrome("register");
     } else {
+      state.openedMode = "login";
       updateChrome("login");
     }
   }

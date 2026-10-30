@@ -25,6 +25,17 @@
     "Microsoft New Tai Lue", "Microsoft PhagsPa", "Microsoft Tai Le",
     "Microsoft Yi Baiti", "Mongolian Baiti", "MV Boli", "Myanmar Text",
     "Cambria Math", -apple-system, sans-serif;
+  --md-font-mono:
+    "Roboto Mono", ui-monospace, "SFMono-Regular", "SF Mono", "Menlo", "Monaco",
+    "Cascadia Code", "Cascadia Mono", "Consolas", "Lucida Console",
+    "Liberation Mono", "DejaVu Sans Mono", "Ubuntu Mono", "JetBrains Mono",
+    "Fira Code", "Source Code Pro", "IBM Plex Mono", "Iosevka Term", "Iosevka",
+    "Monaspace Neon", "Sarasa Mono SC", "Noto Sans Mono CJK SC",
+    "Source Han Sans HW", "Microsoft YaHei UI", "PingFang SC",
+    "Symbols Nerd Font Mono", "Symbols Nerd Font", "Apple Color Emoji",
+    "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla",
+    "Twitter Color Emoji", "Symbola", "Courier New", "Courier", monospace,
+    monospace;
 
   --md-sys-shape-corner-none: 0;
   --md-sys-shape-corner-extra-small: 4px;
