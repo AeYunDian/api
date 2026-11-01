@@ -58,7 +58,7 @@ async function syncDevOptions() {
     }
 
     // 如果配置为开启，且实例不存在，则动态加载
-    if (config.vConsole) {
+    if (config.vConsole && config.devMode) {
         if (!vConsoleInstance) {
             const VConsole = (await import('vconsole')).default
             vConsoleInstance = new VConsole()

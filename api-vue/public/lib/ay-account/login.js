@@ -28,8 +28,8 @@
     google: true,
     cloudflare: true,
     jihulab: true,
-    facebook: false,
-    discord: false,
+    facebook: true,
+    discord: true,
   });
   const OAUTH_NO_EMAIL = new Set(["aliyun"]);
   const ALLOWED_EMAIL_DOMAINS = [
@@ -532,9 +532,7 @@
       (action === "login" || action === "oauth")
     );
     dom.registerSpinner.hidden = !(state.busy && action === "register");
-    dom.emailVerifySpinner.hidden = !(
-      state.busy && action === "emailVerify"
-    );
+    dom.emailVerifySpinner.hidden = !(state.busy && action === "emailVerify");
     if (!state.busy) {
       dom.loginSpinner.hidden = true;
       dom.registerSpinner.hidden = true;
@@ -1449,8 +1447,7 @@
     syncCodeButton();
     if (
       dom.regEmailCode &&
-      (dom.regEmailCode.dataset.touched === "1" ||
-        getVal(dom.regEmailCode))
+      (dom.regEmailCode.dataset.touched === "1" || getVal(dom.regEmailCode))
     ) {
       validateRegEmailCode(false);
     }
@@ -1498,8 +1495,7 @@
   function applyProviderVisibility() {
     let visible = 0;
     $$(".provider", dom.oauthPage).forEach((button) => {
-      const enabled =
-        OAUTH_PROVIDER_ENABLED[button.dataset.provider] === true;
+      const enabled = OAUTH_PROVIDER_ENABLED[button.dataset.provider] === true;
       button.hidden = !enabled;
       button.style.display = enabled ? "" : "none";
       if (enabled) visible += 1;
@@ -1582,7 +1578,8 @@
   }
 
   function installRipple() {
-    const selector = ".btn, .code-btn, .oauth-expand, .provider, .tab, .ay-close";
+    const selector =
+      ".btn, .code-btn, .oauth-expand, .provider, .tab, .ay-close";
     dom.card.addEventListener("pointerdown", (event) => {
       const target = event.target.closest(selector);
       if (!target) return;
@@ -1593,7 +1590,11 @@
       const target = event.target.closest(selector);
       if (!target) return;
       const rect = target.getBoundingClientRect();
-      spawnRipple(target, rect.left + rect.width / 2, rect.top + rect.height / 2);
+      spawnRipple(
+        target,
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2,
+      );
     });
   }
 
@@ -1637,12 +1638,12 @@
 
     dom.oauthWarningNo.addEventListener("click", () => {
       if (state.busy) return;
-      navigate("login", "back");
+      navigate("oauth", "back");
     });
     dom.oauthWarningYes.addEventListener("click", () => {
       const provider = state.oauthWarningProvider;
       if (!provider || state.busy) return;
-      navigate("login", "back");
+      navigate("oauth", "back");
       setTimeout(() => startOauth(provider), 460);
     });
 

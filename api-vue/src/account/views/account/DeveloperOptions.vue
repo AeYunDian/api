@@ -38,13 +38,8 @@ watch(isDevMode, (val) => {
     }
 })
 
-watch(isVConsoleEnabled, (val) => {
+watch(isVConsoleEnabled, () => {
     saveConfigAndBroadcast()
-    if (val) {
-        Snackbar.success('vConsole 已开启')
-    } else {
-        Snackbar.info('vConsole 已关闭')
-    }
 })
 
 function switchDevMode() { isDevMode.value = !isDevMode.value }

@@ -1365,7 +1365,6 @@ a:hover {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: var(--md-sys-color-inverse-surface);
   color: var(--md-sys-color-inverse-on-surface);
 }
 
@@ -1379,7 +1378,7 @@ a:hover {
   block-size: 24px;
   display: block;
 }
-
+/*
 .provider__logo--google {
   background: #ffffff;
 }
@@ -1412,7 +1411,7 @@ a:hover {
 .provider__logo--yzhyzxy {
   background: #0b0b0d;
   color: #ffffff;
-}
+} */
 
 .provider__text {
   display: flex;
@@ -1433,7 +1432,9 @@ a:hover {
   font-size: var(--md-sys-typescale-body-small-size);
   line-height: var(--md-sys-typescale-body-small-line-height);
 }
-
+#oauthWarningYes {
+  margin-bottom: 7px;
+}
 /* ---------- footer ---------- */
 
 .footer {
