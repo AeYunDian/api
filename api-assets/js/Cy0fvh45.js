@@ -1,0 +1,1 @@
+import{t as e}from"../vendor/BhsoGatp.js";export default e();

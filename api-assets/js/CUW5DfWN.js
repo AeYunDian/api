@@ -1,0 +1,1 @@
+import{t as e}from"../vendor/DB_G8APz.js";export default e();
