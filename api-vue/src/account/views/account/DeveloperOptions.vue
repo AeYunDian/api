@@ -17,7 +17,6 @@ const erudaPlugins = [
     { key: 'erudaOrientation', label: 'Orientation', desc: '设备方向 API 测试' },
 ]
 
-// 完整的默认配置
 const defaultConfig = {
     devMode: false,
     vConsole: false,
@@ -46,7 +45,6 @@ const isDevMode = ref(config.devMode)
 const isVConsoleEnabled = ref(config.vConsole)
 const isErudaEnabled = ref(config.eruda)
 
-// 动态生成插件状态字典
 const pluginStates = {}
 erudaPlugins.forEach(p => {
     pluginStates[p.key] = ref(config[p.key])
@@ -75,25 +73,21 @@ watch(isDevMode, (val) => {
     }
 })
 
-watch(isVConsoleEnabled, () => {
-    saveConfigAndBroadcast()
-})
-
-watch(isErudaEnabled, () => {
-    saveConfigAndBroadcast()
-})
-
-// 监听插件状态
-erudaPlugins.forEach(p => {
-    watch(pluginStates[p.key], () => {
-        saveConfigAndBroadcast()
-    })
-})
+watch(isVConsoleEnabled, () => saveConfigAndBroadcast())
+watch(isErudaEnabled, () => saveConfigAndBroadcast())
 
 function switchDevMode() { isDevMode.value = !isDevMode.value }
-function switchVConsole() { isVConsoleEnabled.value = !isVConsoleEnabled.value }
-function switchEruda() { isErudaEnabled.value = !isErudaEnabled.value }
-function switchPlugin(key) { pluginStates[key].value = !pluginStates[key].value }
+
+// ⭐ 核心修改：如果开发者模式未开启，直接 return 拦截
+function switchVConsole() {
+    if (!isDevMode.value) return
+    isVConsoleEnabled.value = !isVConsoleEnabled.value
+}
+
+function switchEruda() {
+    if (!isDevMode.value) return
+    isErudaEnabled.value = !isErudaEnabled.value
+}
 </script>
 
 <template>
@@ -121,33 +115,36 @@ function switchPlugin(key) { pluginStates[key].value = !pluginStates[key].value 
         <div class="custom-card var-elevation--1">
             <div class="meta-list">
                 <!-- vConsole 开关 -->
-                <div class="meta-row meta-row--action" v-ripple @click="switchVConsole">
+                <div class="meta-row meta-row--action" :class="{ 'meta-row--disabled': !isDevMode }" v-ripple
+                    @click="switchVConsole">
                     <div class="meta-row__text">
                         <span class="meta-row__label">vConsole</span>
                         <span class="meta-row__value">轻量级调试面板（腾讯）</span>
                     </div>
-                    <var-switch v-model="isVConsoleEnabled" @click.stop @mousedown.stop @touchstart.stop />
+                    <var-switch v-model="isVConsoleEnabled" @click.stop @mousedown.stop @touchstart.stop
+                        :disabled="!isDevMode" />
                 </div>
 
                 <!-- Eruda 主开关 -->
-                <div class="meta-row meta-row--action" v-ripple @click="switchEruda">
+                <div class="meta-row meta-row--action" :class="{ 'meta-row--disabled': !isDevMode }" v-ripple
+                    @click="switchEruda">
                     <div class="meta-row__text">
                         <span class="meta-row__label">Eruda</span>
                         <span class="meta-row__value">功能更强的调试面板</span>
                     </div>
-                    <var-switch v-model="isErudaEnabled" @click.stop @mousedown.stop @touchstart.stop />
+                    <var-switch v-model="isErudaEnabled" @click.stop @mousedown.stop @touchstart.stop
+                        :disabled="!isDevMode" />
                 </div>
 
-                <!-- Eruda 插件子开关（随主开关开启而显示） -->
+                <!-- Eruda 插件子开关（禁用态展示） -->
                 <template v-if="isErudaEnabled">
-                    <div class="meta-row meta-row--action" v-for="plugin in erudaPlugins" :key="plugin.key" v-ripple
-                        @click="switchPlugin(plugin.key)">
+                    <div class="meta-row meta-row--action meta-row--disabled" v-for="plugin in erudaPlugins"
+                        :key="plugin.key">
                         <div class="meta-row__text">
                             <span class="meta-row__label">{{ plugin.label }}</span>
                             <span class="meta-row__value">{{ plugin.desc }}</span>
                         </div>
-                        <var-switch v-model="pluginStates[plugin.key].value" @click.stop @mousedown.stop
-                            @touchstart.stop />
+                        <var-switch v-model="pluginStates[plugin.key].value" disabled />
                     </div>
                 </template>
             </div>
@@ -178,7 +175,6 @@ function switchPlugin(key) { pluginStates[key].value = !pluginStates[key].value 
     flex-direction: column;
 }
 
-/* 默认的上下布局 */
 .meta-row {
     user-select: none;
     display: flex;
@@ -190,7 +186,6 @@ function switchPlugin(key) { pluginStates[key].value = !pluginStates[key].value 
     border-bottom: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
 }
 
-/* 针对带开关的行：横向布局，两端对齐 */
 .meta-row--action {
     flex-direction: row;
     align-items: center;
@@ -198,7 +193,6 @@ function switchPlugin(key) { pluginStates[key].value = !pluginStates[key].value 
     cursor: pointer;
 }
 
-/* 包含文字内容的容器 */
 .meta-row__text {
     display: flex;
     flex-direction: column;
@@ -224,5 +218,27 @@ function switchPlugin(key) { pluginStates[key].value = !pluginStates[key].value 
     line-height: 16px;
     word-break: break-all;
     color: var(--color-on-surface-variant, rgba(0, 0, 0, 0.6));
+}
+
+/* ===== 新增：统一的禁用态样式 ===== */
+.meta-row--disabled {
+    cursor: not-allowed;
+    /* 禁止点击的鼠标样式 */
+    opacity: 0.5;
+    /* 整体降低透明度，视觉上直接体现不可用 */
+}
+
+/* 子插件专属样式 */
+.meta-row--disabled.meta-row--sub-style {
+    cursor: default;
+    opacity: 1;
+    /* 子插件是纯展示，不需要太虚 */
+    padding-left: calc(var(--md-space-4) + 20px);
+    background-color: rgba(0, 0, 0, 0.015);
+}
+
+/* 如果为了子插件单独拆分 */
+.meta-row--action.meta-row--disabled:not(.meta-row--sub-style) {
+    opacity: 0.5;
 }
 </style>
