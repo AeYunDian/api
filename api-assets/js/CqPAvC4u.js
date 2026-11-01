@@ -1,1 +1,0 @@
-import{c as e,w as t}from"../vendor/BUExOYrE.js";function n(){let n=t(`user`);return e(()=>n?.value?.sub===1)}export{n as t};

@@ -92,12 +92,13 @@ export default defineConfig({
       domains: ["*.undz.cn"],
       certDir: "./cert",
     }),
-    visualizer({
-      filename: "stats.html",
-      open: false,
-      gzipSize: true,
-      brotliSize: true,
-    }),
+    process.env.ANALYZE === "true" &&
+      visualizer({
+        filename: "stats.html",
+        open: false,
+        gzipSize: true,
+        brotliSize: true,
+      }),
     components({
       // 顺序很重要：先拦 VarDialog，再交给 Varlet 官方解析器
       resolvers: [
@@ -112,7 +113,7 @@ export default defineConfig({
   build: {
     outDir: "../api-assets",
     emptyOutDir: true,
-    rollupOptions: {
+    rrollupOptions: {
       output: {
         entryFileNames: "js/[hash].js",
         chunkFileNames: (chunkInfo) => {
@@ -123,6 +124,11 @@ export default defineConfig({
         },
         manualChunks(id) {
           if (id.includes("node_modules")) {
+            // ⭐ 关键修改：让调试工具自由拆分，不要合并成大块
+            if (id.includes("eruda") || id.includes("vconsole")) {
+              return; // 返回 undefined，让 Vite 自动根据动态 import() 按需拆分
+            }
+
             const parts = id.toString().split("node_modules/")[1].split("/");
             const pkgName = parts[0].startsWith("@")
               ? `${parts[0]}/${parts[1]}`
@@ -140,22 +146,22 @@ export default defineConfig({
     },
   },
   base: "/",
-  minify: "terser",
-  sourceMap: false,
-  terserOptions: {
-    compress: {
-      dead_code: true,
-      passes: 4,
-      unsafe: false,
-      unsafe_proto: false,
-    },
-    mangle: {
-      toplevel: true,
-    },
-    format: {
-      comments: false,
-    },
-  },
+  //   minify: "terser",
+  //   sourceMap: false,
+  //   terserOptions: {
+  //     compress: {
+  //       dead_code: true,
+  //       passes: 4,
+  //       unsafe: false,
+  //       unsafe_proto: false,
+  //     },
+  //     mangle: {
+  //       toplevel: true,
+  //     },
+  //     format: {
+  //       comments: false,
+  //     },
+  //   },
   define: {
     "import.meta.env.VITE_BUILD_TIME": JSON.stringify(new Date().toISOString()),
     "import.meta.env.VITE_BUILD_VERSION": JSON.stringify(

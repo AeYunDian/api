@@ -1,1 +1,0 @@
-import{t as e}from"../vendor/B8FB4nY_.js";export default e();
