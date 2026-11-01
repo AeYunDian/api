@@ -25,6 +25,7 @@
 | 文档 | 内容 |
 |---|---|
 | [github-login.md](github-login.md) | GitHub 登录接入方案（无备案、无审核，最轻） |
+| [oauth-providers.md](oauth-providers.md) | 多 OAuth 2.0 提供商（Google / Cloudflare / 极狐 GitLab / Facebook / Discord / 阿里云） |
 | [microsoft-login.md](microsoft-login.md) | Microsoft 登录接入方案（需 Azure 账号，无备案、无审核） |
 | [qq-login.md](qq-login.md) | QQ 登录/注册接入方案（个人开发者可用，需要 ICP 备案） |
 | [wechat-login.md](wechat-login.md) | 微信登录/注册接入方案（个人开发者：个人主体小程序 + 扫码登录） |

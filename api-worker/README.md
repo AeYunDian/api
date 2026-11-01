@@ -62,6 +62,12 @@ npx wrangler deploy --dry-run --outdir ../.dryrun-check
 | `GTCODEMAP` / `GTCODE` | 是 | GeeTest：`{captcha_id: private_key}` 的 JSON、`[register_id, login_id]` 的 JSON |
 | `YZHYZXY_CLIENT_ID` / `YZHYZXY_CLIENT_SECRET` | 第三方登录用 | Yzhyzxy OAuth |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITHUB_REDIRECT_URI` | GitHub 登录用 | OAuth App 凭证；未配置时 `/api/auth/github/start` 返回 1070 |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google 登录用 | 回调 `/api/auth/google/callback` |
+| `CLOUDFLARE_CLIENT_ID` / `CLOUDFLARE_CLIENT_SECRET` | Cloudflare 登录用 | 回调 `/api/auth/cloudflare/callback` |
+| `JIHULAB_CLIENT_ID` / `JIHULAB_CLIENT_SECRET` | 极狐 GitLab 登录用 | 回调 `/api/auth/gitlab-cn/callback` |
+| `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | Facebook 登录用 | 回调 `/api/auth/facebook/callback` |
+| `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | Discord 登录用 | 回调 `/api/auth/discord/callback` |
+| `ALIYUN_CLIENT_ID` / `ALIYUN_CLIENT_SECRET` | 阿里云登录用 | 回调 `/api/auth/aliyun/callback`；不返回邮箱 |
 | `CHAT_OAUTH_CLIENT_SECRET` | 聊天室用 | 聊天室换取/撤销 token |
 | `ADMIN_TOKEN` | 可选 | `uniAPI` 的 `X-Admin-Token`；不配则相关接口放行 |
 | `SHORTLINK_BLOCKED_HOSTS` | 可选 | 短链目标域名黑名单，逗号分隔 |

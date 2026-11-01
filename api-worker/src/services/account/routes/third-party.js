@@ -1,5 +1,5 @@
 // routes/third-party.js —— 由 ayOnline.js 拆分而来（逐行搬运，未改逻辑）
-// 第三方登录入口：/api/auth/yzhyzxy/start（发起授权）与 /api/oauth/callback（回调）。
+// 第三方登录入口：/api/auth/yzhyzxy/start（发起授权）与 /api/auth/yzhyzxy/callback（回调）。
 
 import { corsHeaders, jsonResponse } from "../http.js";
 import { checkAuth, signAccessToken } from "../auth/jwt.js";
@@ -17,6 +17,7 @@ import {
   YZHYZXY_SCOPE,
   YZHYZXY_TOKEN_URL,
   YZHYZXY_USERINFO_URL,
+  isAllowedEmailDomain,
 } from "../config.js";
 import { savePending } from "../oauth-pending.js";
 
@@ -51,7 +52,7 @@ export async function handleThirdPartyAuth({
     authUrl.searchParams.set("code_challenge_method", "S256");
     return jsonResponse({ url: authUrl.toString() }, 200, corsHeaders(request));
   }
-  if (path === "/api/oauth/callback" && method === "GET") {
+  if (path === "/api/auth/yzhyzxy/callback" && method === "GET") {
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
     const error = url.searchParams.get("error");
@@ -196,9 +197,18 @@ export async function handleThirdPartyAuth({
         });
       }
 
-      // 未绑定：有真实邮箱就走通用的「注册确认」中间页
+      // 未绑定：有真实邮箱且命中白名单才走注册确认页
       if (userData.email) {
         const pendingEmail = String(userData.email).toLowerCase();
+        if (!isAllowedEmailDomain(pendingEmail)) {
+          return new Response(null, {
+            status: 302,
+            headers: {
+              Location: `/oauth2/email_not_supported?provider=yzhyzxy&email=${encodeURIComponent(pendingEmail)}`,
+              "Cache-Control": "no-store",
+            },
+          });
+        }
         const emailExists = await env.db
           .prepare("SELECT sub FROM online_users WHERE email = ?")
           .bind(pendingEmail)

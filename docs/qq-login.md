@@ -11,15 +11,15 @@
 
 ## 0. 可行性速览
 
-| 项目 | 个人开发者 | 说明 |
-|---|---|---|
-| 注册 QQ 互联开发者 | ✅ | 注册页支持提交“公司或个人的基本资料” |
-| 创建网站应用 | ✅ | 需要网站名称、域名、回调地址、备案信息 |
-| 获取 AppID / AppKey | ✅ | 创建后立即可见 |
-| 审核前测试 | ⚠️ | 未审核通过时，**只有注册开发者本人的 QQ 能登录** |
-| 审核通过后全量 | ✅ | 审核约 1–3 个工作日 |
-| 需要独立服务器 | ❌ | Cloudflare Worker 即可，AppKey 放 secret |
-| ICP 备案 | ✅（大陆站点） | 网站地址和回调地址需在工信部备案，且与平台填写一致 |
+| 项目                | 个人开发者     | 说明                                               |
+| ------------------- | -------------- | -------------------------------------------------- |
+| 注册 QQ 互联开发者  | ✅             | 注册页支持提交“公司或个人的基本资料”               |
+| 创建网站应用        | ✅             | 需要网站名称、域名、回调地址、备案信息             |
+| 获取 AppID / AppKey | ✅             | 创建后立即可见                                     |
+| 审核前测试          | ⚠️             | 未审核通过时，**只有注册开发者本人的 QQ 能登录**   |
+| 审核通过后全量      | ✅             | 审核约 1–3 个工作日                                |
+| 需要独立服务器      | ❌             | Cloudflare Worker 即可，AppKey 放 secret           |
+| ICP 备案            | ✅（大陆站点） | 网站地址和回调地址需在工信部备案，且与平台填写一致 |
 
 官方依据：
 
@@ -70,14 +70,14 @@ api-worker (Cloudflare Workers)
 
 在 [管理中心](https://connect.qq.com/manage.html#/) → 创建应用 → 网站应用，填写：
 
-| 字段 | 示例 | 注意 |
-|---|---|---|
-| 应用名称 | AyAccount | 不要含“QQ/腾讯”等字样 |
-| 网站域名 | `undz.cn` | 与备案主体一致 |
-| 回调地址 | `https://online.undz.cn/api/auth/qq/callback` | 必须是主域名下的地址 |
-| 网站备案号 | `京ICP备...` | 与工信部一致 |
-| 网站分类 | 工具/其他 | 按实际 |
-| 验证代码 | 加到首页 `<head>` | 用于域名归属验证 |
+| 字段       | 示例                                          | 注意                  |
+| ---------- | --------------------------------------------- | --------------------- |
+| 应用名称   | AyAccount                                     | 不要含“QQ/腾讯”等字样 |
+| 网站域名   | `undz.cn`                                     | 与备案主体一致        |
+| 回调地址   | `https://online.undz.cn/api/auth/qq/callback` | 必须是主域名下的地址  |
+| 网站备案号 | `京ICP备...`                                  | 与工信部一致          |
+| 网站分类   | 工具/其他                                     | 按实际                |
+| 验证代码   | 加到首页 `<head>`                             | 用于域名归属验证      |
 
 提交后立即拿到 `AppID` / `AppKey`，但**审核通过前只有开发者 QQ 能登录**。
 
@@ -156,14 +156,14 @@ VALUES ('qq', ?, ?, ?);
 
 新增 `services/account/routes/qq.js`，在 `ayOnline.js` 的 `handleThirdPartyAuth` 之后调用。
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | `/api/auth/qq/start?mode=login\|bind` | 生成 state，返回授权 URL |
-| GET | `/api/auth/qq/callback` | 接收 code，换 token/openid，登录或进入绑定 |
-| POST | `/api/auth/qq/bind` | `{ bind_token, username, password }` 绑定已有账号 |
-| POST | `/api/auth/qq/register` | `{ bind_token, username, email, password, email_code, email_token }` |
-| GET | `/api/auth/qq/bindings` | 当前账号已绑定的 QQ |
-| POST | `/api/auth/qq/unbind` | 解绑 |
+| 方法 | 路径                                  | 说明                                                                 |
+| ---- | ------------------------------------- | -------------------------------------------------------------------- |
+| GET  | `/api/auth/qq/start?mode=login\|bind` | 生成 state，返回授权 URL                                             |
+| GET  | `/api/auth/qq/callback`               | 接收 code，换 token/openid，登录或进入绑定                           |
+| POST | `/api/auth/qq/bind`                   | `{ bind_token, username, password }` 绑定已有账号                    |
+| POST | `/api/auth/qq/register`               | `{ bind_token, username, email, password, email_code, email_token }` |
+| GET  | `/api/auth/qq/bindings`               | 当前账号已绑定的 QQ                                                  |
+| POST | `/api/auth/qq/unbind`                 | 解绑                                                                 |
 
 ### 4.3 start
 
@@ -258,13 +258,17 @@ const user = await authenticateUser(env.db, body.username, body.password);
 if (!user.success) return jsonResponse({ error: "账号或密码错误" }, 401, cors);
 
 const exists = await env.db
-  .prepare("SELECT user_sub FROM oauth_connections WHERE provider = 'qq' AND openid = ?")
+  .prepare(
+    "SELECT user_sub FROM oauth_connections WHERE provider = 'qq' AND openid = ?",
+  )
   .bind(payload.openid)
   .first();
 if (exists) return jsonResponse({ error: "该 QQ 已绑定其他账号" }, 409, cors);
 
 await env.db
-  .prepare("INSERT INTO oauth_connections (provider, openid, user_sub, created_at) VALUES ('qq', ?, ?, ?)")
+  .prepare(
+    "INSERT INTO oauth_connections (provider, openid, user_sub, created_at) VALUES ('qq', ?, ?, ?)",
+  )
   .bind(payload.openid, user.user.sub, Date.now())
   .run();
 ```
@@ -301,14 +305,14 @@ QQ_REDIRECT_URI = "https://online.undz.cn/api/auth/qq/callback"
 
 账号段 1044–1051 已被微信方案预留，QQ 从 1052 起：
 
-| 号 | 常量 | HTTP | 含义 |
-|---|---|---|---|
-| 1052 | `QQ_STATE_INVALID` | 400 | state 无效/过期 |
-| 1053 | `QQ_CODE_INVALID` | 400 | code 无效/已使用 |
-| 1054 | `QQ_UPSTREAM_ERROR` | 502 | QQ 上游失败 |
-| 1055 | `QQ_NOT_BOUND` | 409 | 该 QQ 尚未绑定 AY 账号 |
-| 1056 | `QQ_BIND_TOKEN_INVALID` | 401 | bind_token 无效/过期/已用 |
-| 1057 | `QQ_ALREADY_BOUND` | 409 | 该 QQ 已绑定其他账号 |
+| 号   | 常量                    | HTTP | 含义                      |
+| ---- | ----------------------- | ---- | ------------------------- |
+| 1052 | `QQ_STATE_INVALID`      | 400  | state 无效/过期           |
+| 1053 | `QQ_CODE_INVALID`       | 400  | code 无效/已使用          |
+| 1054 | `QQ_UPSTREAM_ERROR`     | 502  | QQ 上游失败               |
+| 1055 | `QQ_NOT_BOUND`          | 409  | 该 QQ 尚未绑定 AY 账号    |
+| 1056 | `QQ_BIND_TOKEN_INVALID` | 401  | bind_token 无效/过期/已用 |
+| 1057 | `QQ_ALREADY_BOUND`      | 409  | 该 QQ 已绑定其他账号      |
 
 同步补 `ERROR_CODES` / `ERROR_MESSAGES` / `ERROR_STATUS`。
 
@@ -319,7 +323,7 @@ QQ_REDIRECT_URI = "https://online.undz.cn/api/auth/qq/callback"
 项目里已有 `services/account/routes/third-party.js`，处理：
 
 - `/api/auth/yzhyzxy/start`
-- `/api/oauth/callback`
+- `/api/auth/yzhyzxy/callback`
 
 QQ 可以照这个结构写，但建议**单独文件** `routes/qq.js`，因为：
 
@@ -355,16 +359,16 @@ const accountApi = await handleAccountApi(...);
 
 ## 7. 安全清单
 
-| 风险 | 处理 |
-|---|---|
-| CSRF | `state` 随机 + KV 一次性 + 10 分钟过期 |
-| code 重放 | code 一次性，失败不重试同一个 code |
-| AppKey 泄露 | 只放 Worker secret，不进前端/仓库 |
-| 回调地址被改 | 与平台配置完全一致，不做动态 redirect |
-| openid 伪造 | 只信服务端 `/oauth2.0/me` 结果 |
-| 绑定劫持 | `bind_token` 一次性 + 10 分钟 + JWT 签名 |
-| 暴力注册 | 邮箱验证码 + IP/开放平台限流 |
-| 头像外链 | `http` 转 `https` 或代理，避免混合内容 |
+| 风险         | 处理                                     |
+| ------------ | ---------------------------------------- |
+| CSRF         | `state` 随机 + KV 一次性 + 10 分钟过期   |
+| code 重放    | code 一次性，失败不重试同一个 code       |
+| AppKey 泄露  | 只放 Worker secret，不进前端/仓库        |
+| 回调地址被改 | 与平台配置完全一致，不做动态 redirect    |
+| openid 伪造  | 只信服务端 `/oauth2.0/me` 结果           |
+| 绑定劫持     | `bind_token` 一次性 + 10 分钟 + JWT 签名 |
+| 暴力注册     | 邮箱验证码 + IP/开放平台限流             |
+| 头像外链     | `http` 转 `https` 或代理，避免混合内容   |
 
 ---
 
@@ -383,14 +387,14 @@ const accountApi = await handleAccountApi(...);
 
 ## 9. 和微信方案怎么选
 
-| 维度 | QQ | 微信（个人小程序） |
-|---|---|---|
-| 个人主体 | ✅ 网站应用 | ✅ 小程序 |
-| 网页内登录 | ✅ 直接 OAuth 跳转 | ❌ 需要小程序环境 |
-| 需要备案 | ✅ ICP | ✅ 小程序备案 |
-| 需要审核 | ✅ 1–3 天 | ✅ 小程序审核 |
-| 需要额外服务器 | ❌ Worker 足够 | ❌ Worker 足够 |
-| 用户覆盖 | QQ 用户 | 微信用户 |
+| 维度           | QQ                 | 微信（个人小程序） |
+| -------------- | ------------------ | ------------------ |
+| 个人主体       | ✅ 网站应用        | ✅ 小程序          |
+| 网页内登录     | ✅ 直接 OAuth 跳转 | ❌ 需要小程序环境  |
+| 需要备案       | ✅ ICP             | ✅ 小程序备案      |
+| 需要审核       | ✅ 1–3 天          | ✅ 小程序审核      |
+| 需要额外服务器 | ❌ Worker 足够     | ❌ Worker 足够     |
+| 用户覆盖       | QQ 用户            | 微信用户           |
 
 **建议**：先接 QQ（个人可做、网页直接跳转、改造成本最低）。
 微信等以后有企业/个体工商户主体，再补服务号网页授权或小程序。
@@ -399,15 +403,15 @@ const accountApi = await handleAccountApi(...);
 
 ## 10. 本项目落地清单
 
-| 文件 | 改动 |
-|---|---|
-| `services/account/routes/qq.js` | 新增：start / callback / bind / register / bindings / unbind |
-| `services/account/ayOnline.js` | 挂载 `handleQqAuth` |
-| `services/account/config.js` | 增加 QQ 常量与 TTL |
+| 文件                            | 改动                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------ |
+| `services/account/routes/qq.js` | 新增：start / callback / bind / register / bindings / unbind             |
+| `services/account/ayOnline.js`  | 挂载 `handleQqAuth`                                                      |
+| `services/account/config.js`    | 增加 QQ 常量与 TTL                                                       |
 | `services/account/db/schema.js` | 无需新表（复用 `oauth_connections`）；如需绑定票据可加 `qq_bind_tickets` |
-| `shared/error-codes.js` | 新增 1052–1057 |
-| `api-vue` 登录页 | 增加 QQ 登录按钮与绑定页 |
-| `wrangler.toml` 文档 | 记录 `QQ_APPID` / `QQ_APPKEY` / `QQ_REDIRECT_URI` |
+| `shared/error-codes.js`         | 新增 1052–1057                                                           |
+| `api-vue` 登录页                | 增加 QQ 登录按钮与绑定页                                                 |
+| `wrangler.toml` 文档            | 记录 `QQ_APPID` / `QQ_APPKEY` / `QQ_REDIRECT_URI`                        |
 
 ---
 
@@ -420,12 +424,12 @@ QQ 互联的审核规范要求网站地址和回调地址都完成工信部备�
 
 ### 11.1 三条现实路线
 
-| 路线 | 需要备案 | 需要审核 | 适合度 |
-|---|---|---|---|
-| GitHub OAuth | ❌ | ❌（创建即用） | **最推荐**（开发者用户） |
-| QQ 邮箱 + 密码/验证码 | ❌ | ❌ | 兜底，零外部依赖 |
-| 办 ICP 备案后再接 QQ | ✅ | ✅ | 想覆盖 QQ 用户才做 |
-| Google OAuth | ❌ | ⚠️（基础 scope 可用） | 国内用户少，不建议主推 |
+| 路线                  | 需要备案 | 需要审核              | 适合度                   |
+| --------------------- | -------- | --------------------- | ------------------------ |
+| GitHub OAuth          | ❌       | ❌（创建即用）        | **最推荐**（开发者用户） |
+| QQ 邮箱 + 密码/验证码 | ❌       | ❌                    | 兜底，零外部依赖         |
+| 办 ICP 备案后再接 QQ  | ✅       | ✅                    | 想覆盖 QQ 用户才做       |
+| Google OAuth          | ❌       | ⚠️（基础 scope 可用） | 国内用户少，不建议主推   |
 
 ### 11.2 推荐：先接 GitHub OAuth
 
@@ -481,9 +485,9 @@ VALUES ('github', ?, ?, ?);   -- openid 用 GitHub 的数值 id
 
 ### 11.5 不推荐的方案
 
-| 方案 | 问题 |
-|---|---|
-| 赌 QQ 互联“海外站点免备案” | 与审核规范冲突，容易只拿到测试权限 |
+| 方案                                 | 问题                                     |
+| ------------------------------------ | ---------------------------------------- |
+| 赌 QQ 互联“海外站点免备案”           | 与审核规范冲突，容易只拿到测试权限       |
 | 用第三方聚合登录（Authing/Logto 等） | 仍要你的应用资质，且把 openid 交给第三方 |
-| 借用别人的已备案域名做回调 | 主体不一致，审核会驳回，也有合规风险 |
-| 伪造备案号 | 直接违规，封号 |
+| 借用别人的已备案域名做回调           | 主体不一致，审核会驳回，也有合规风险     |
+| 伪造备案号                           | 直接违规，封号                           |

@@ -1374,6 +1374,36 @@ a:hover {
   block-size: 20px;
 }
 
+.provider__logo img {
+  inline-size: 24px;
+  block-size: 24px;
+  display: block;
+}
+
+.provider__logo--google {
+  background: #ffffff;
+}
+
+.provider__logo--aliyun {
+  background: #ff6a00;
+}
+
+.provider__logo--cloudflare {
+  background: #f38020;
+}
+
+.provider__logo--jihulab {
+  background: #fc6d26;
+}
+
+.provider__logo--facebook {
+  background: #1877f2;
+}
+
+.provider__logo--discord {
+  background: #5865f2;
+}
+
 .provider__logo--github {
   background: #24292f;
   color: #ffffff;

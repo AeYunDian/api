@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onUnmounted } from 'vue'
 import { formatTime } from '@/shared/utils/format'
+import { Snackbar, Dialog } from '@varlet/ui' // 引入 Snackbar
 
 const mode = import.meta.env.MODE
 const isProd = import.meta.env.PROD
@@ -13,12 +14,19 @@ const buildTime = computed(() => {
     return raw ? formatTime(raw) : '未注入'
 })
 
+const buildVersion = computed(() => {
+    return import.meta.env.VITE_BUILD_VERSION || '未注入'
+})
+
+const devOptKey = `devopt-config`;
+
 const items = computed(() => [
     { label: '应用名称', value: 'AyAccountCenter' },
     { label: '运行环境', value: isProd ? '生产' : '开发' },
     { label: '构建模式', value: mode },
     { label: '基础路径', value: baseUrl },
     { label: '目标网址', value: targetUrl },
+    { label: '版本号', value: buildVersion.value },
     { label: '构建时间', value: buildTime.value },
 ])
 
@@ -27,6 +35,59 @@ const links = []
 function openLink(path) {
     window.open(`${targetUrl}${path}`)
 }
+
+
+const clickCount = ref(0)
+let clickTimer = null
+
+function handleRowClick(item) {
+    // 仅处理“版本号”这一项
+    if (item.label !== '版本号') return
+
+    if (localStorage.getItem(devOptKey) === '1') {
+        Snackbar({ content: '您现在正处于开发者模式！', position: 'bottom' })
+        return
+    }
+
+    clickCount.value++
+
+    if (clickTimer) clearTimeout(clickTimer)
+    clickTimer = setTimeout(() => {
+        clickCount.value = 0
+    }, 1500)
+
+    if (clickCount.value >= 4 && clickCount.value <= 6) {
+        const remain = 7 - clickCount.value
+        //Snackbar.allowMultiple(true)
+        Snackbar({ content: `现在只需再执行 ${remain} 步操作即可开启开发者模式`, position: 'bottom' })
+    } else if (clickCount.value === 7) {
+        clickCount.value = 0
+        if (clickTimer) clearTimeout(clickTimer)
+        Dialog({
+            title: '开启开发者模式',
+            message: '开启开发者模式可能导致出现意外行为。您确定要开启吗？',
+            confirmButtonText: '开启',
+            cancelButtonText: '取消',
+            onConfirm: () => {
+                let config = { devMode: false, vConsole: false };
+                try {
+                    const raw = localStorage.getItem('devopt-config');
+                    if (raw) config = JSON.parse(raw);
+                } catch (e) { }
+
+                config.devMode = true;
+                localStorage.setItem('devopt-config', JSON.stringify(config));
+
+                Snackbar.success({ content: '您现在已处于开发者模式', position: 'bottom' });
+                window.dispatchEvent(new Event('devmode-changed')); // 通知全局
+            }
+        })
+    }
+}
+
+onUnmounted(() => {
+    if (clickTimer) clearTimeout(clickTimer)
+})
 </script>
 
 <template>
@@ -38,36 +99,28 @@ function openLink(path) {
             </div>
         </div>
 
-        <var-card class="about-card">
-            <template #title="{ slotClass }">
-                <div :class="slotClass" class="md-card-header">
-                    <my-icon icon="account-box-outline" size="1.2em" />
-                    <span class="md-card-title">AyAccountCenter</span>
-                </div>
-            </template>
 
+        <div class="custom-card var-elevation--1">
             <div class="meta-list">
-                <div v-for="item in items" :key="item.label" class="meta-row">
+                <div v-for="item in items" :key="item.label" class="meta-row" v-ripple @click="handleRowClick(item)">
                     <span class="meta-row__label">{{ item.label }}</span>
                     <span class="meta-row__value">{{ item.value }}</span>
                 </div>
             </div>
-        </var-card>
+        </div>
 
-        <var-card class="about-card" v-if="links.length > 0">
-            <template #title="{ slotClass }">
-                <div :class="slotClass" class="md-card-header">
-                    <my-icon icon="file-document-outline" size="1.2em" />
-                    <span class="md-card-title">相关文档</span>
-                </div>
-            </template>
+        <div class="custom-card" v-if="links.length > 0">
+            <div class="custom-card-header">
+                <my-icon icon="file-document-outline" size="1.2em" />
+                <span class="custom-card-title">相关文档</span>
+            </div>
             <var-cell v-for="link in links" :key="link.path" :title="link.label" :border="true" v-ripple
                 class="link-cell" @click="openLink(link.path)">
                 <template #extra>
                     <my-icon icon="arrow-right" />
                 </template>
             </var-cell>
-        </var-card>
+        </div>
 
         <p class="copyright">
             © {{ new Date().getFullYear() }} AyAccountCenter · All rights reserved.
@@ -80,8 +133,18 @@ function openLink(path) {
     padding-bottom: var(--md-space-8);
 }
 
-.about-card {
+.md-page-title {
+    font-weight: 600;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.custom-card {
+    background: var(--color-surface, #fff);
+    border-radius: var(--md-shape-lg, 16px);
+
     margin-bottom: var(--md-space-4);
+    overflow: hidden;
 }
 
 .meta-list {
@@ -90,36 +153,57 @@ function openLink(path) {
 }
 
 .meta-row {
+    user-select: none;
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--md-space-6);
-    padding: var(--md-space-3) 0;
-    border-bottom: 1px solid var(--color-outline);
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    padding: var(--md-space-3) var(--md-space-4);
+    border-bottom: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
 }
+
 
 .meta-row:last-child {
     border-bottom: none;
-    padding-bottom: 0;
+}
+
+.meta-row:first-child {
+    padding-top: var(--md-space-4);
+}
+
+.meta-row:last-child {
+    padding-bottom: var(--md-space-4);
+    border-bottom: none;
 }
 
 .meta-row__label {
-    font-size: 13px;
+    font-size: 14px;
     line-height: 20px;
-    color: var(--color-text-secondary);
-    flex: 0 0 auto;
 }
 
 .meta-row__value {
-    font-size: 13px;
-    line-height: 20px;
-    color: var(--color-text);
-    text-align: right;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--color-on-surface-variant, rgba(0, 0, 0, 0.6));
     word-break: break-all;
 }
 
+
+.custom-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: var(--md-space-3) var(--md-space-4);
+    padding-bottom: 0;
+}
+
+.custom-card-title {
+    font-size: 16px;
+    font-weight: 500;
+}
+
 .link-cell {
-    border-radius: var(--md-shape-sm);
     cursor: pointer;
 }
 

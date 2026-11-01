@@ -10,21 +10,21 @@
 
 ## 目录
 
-| 文件 | 职责 |
-|---|---|
-| `ayOnline.js` | 入口：建 KV、维护开关、OPTIONS、三段路由分发 |
-| `config.js` | TTL、PBKDF2 参数、OAuth 常量、跨域白名单 |
-| `http.js` | `jsonResponse` / `corsHeaders` / `handleOptions` |
-| `users.js` | 注册 / 口令登录 / 改密码（纯数据层） |
-| `auth/jwt.js` | 签发、校验 JWT；`checkAuth`（Cookie）、`verifyBearerToken`（Authorization） |
-| `auth/crypto.js` | PBKDF2 口令散列、HMAC-SHA256、base64、输入校验 |
-| `auth/tokens.js` | refresh token 的存取与撤销 |
-| `auth/kv.js` | 每次请求重建的 KV 实例（`setKv` / `getKv`） |
-| `oauth/clients.js` | OAuth 客户端注册/查询、`redirect_uri` 校验 |
-| `oauth/token.js` | 授权码交换、refresh 续期、令牌撤销 |
-| `db/schema.js` | 全部建表语句（`initDatabase`） |
-| `mail_verify/` | 邮箱验证码发送与校验 |
-| `routes/` | 路由层，按 URL 前缀切分 |
+| 文件               | 职责                                                                        |
+| ------------------ | --------------------------------------------------------------------------- |
+| `ayOnline.js`      | 入口：建 KV、维护开关、OPTIONS、三段路由分发                                |
+| `config.js`        | TTL、PBKDF2 参数、OAuth 常量、跨域白名单                                    |
+| `http.js`          | `jsonResponse` / `corsHeaders` / `handleOptions`                            |
+| `users.js`         | 注册 / 口令登录 / 改密码（纯数据层）                                        |
+| `auth/jwt.js`      | 签发、校验 JWT；`checkAuth`（Cookie）、`verifyBearerToken`（Authorization） |
+| `auth/crypto.js`   | PBKDF2 口令散列、HMAC-SHA256、base64、输入校验                              |
+| `auth/tokens.js`   | refresh token 的存取与撤销                                                  |
+| `auth/kv.js`       | 每次请求重建的 KV 实例（`setKv` / `getKv`）                                 |
+| `oauth/clients.js` | OAuth 客户端注册/查询、`redirect_uri` 校验                                  |
+| `oauth/token.js`   | 授权码交换、refresh 续期、令牌撤销                                          |
+| `db/schema.js`     | 全部建表语句（`initDatabase`）                                              |
+| `mail_verify/`     | 邮箱验证码发送与校验                                                        |
+| `routes/`          | 路由层，按 URL 前缀切分                                                     |
 
 ## 请求流程
 
@@ -35,24 +35,24 @@ online.undz.cn/*
   3. setKv(env.db)                 ← 每请求重建
   4. env.block === "true" ? 503 维护页
   5. OPTIONS → 204
-  6. handleThirdPartyAuth   /api/auth/*、/api/oauth/callback
+  6. handleThirdPartyAuth   /api/auth/*、/api/auth/yzhyzxy/callback
      handleAccountApi        /api/ayonline/*
      handleOAuthServer       /api/oauth/*
   7. 未命中 → env.assets.fetch()（前端 SPA）
 ```
 
-`/api/oauth/callback` 必须在 `/api/oauth/*` 之前；`/api/ayonline/init`、`/test` 必须在
+`/api/auth/yzhyzxy/callback` 必须在 `/api/oauth/*` 之前；`/api/ayonline/init`、`/test` 必须在
 appId + SDK 闸门之前。
 
 ## 鉴权模型
 
 三件套，全部 HS256 JWT，密钥 `env.JWT_KEY`：
 
-| 令牌 | 位置 | 有效期 | 用途 |
-|---|---|---|---|
-| `access_token` | Cookie `domain=.undz.cn` | 10 分钟 | 同域子服务直接带 Cookie |
-| `refresh_token` | Cookie 同上 | 30 天 | 换新的 access_token |
-| `Authorization: Bearer <access>` | 请求头 | 10 分钟 | 跨域 SDK 调用 |
+| 令牌                             | 位置                     | 有效期  | 用途                    |
+| -------------------------------- | ------------------------ | ------- | ----------------------- |
+| `access_token`                   | Cookie `domain=.undz.cn` | 10 分钟 | 同域子服务直接带 Cookie |
+| `refresh_token`                  | Cookie 同上              | 30 天   | 换新的 access_token     |
+| `Authorization: Bearer <access>` | 请求头                   | 10 分钟 | 跨域 SDK 调用           |
 
 Cookie：`httpOnly` + `secure` + `sameSite=Lax` + `domain=.undz.cn`。
 
@@ -66,83 +66,83 @@ const [status, user] = await checkAuth(request, env);
 
 ### 管理与健康检查（闸门之前）
 
-| 方法 | 路径 | 登录态 | 说明 |
-|---|---|---|---|
+| 方法 | 路径                 | 登录态                 | 说明         |
+| ---- | -------------------- | ---------------------- | ------------ |
 | POST | `/api/ayonline/init` | `X-Admin-Key: env.KEY` | 建表（幂等） |
-| any | `/api/ayonline/test` | — | 健康检查 |
+| any  | `/api/ayonline/test` | —                      | 健康检查     |
 
 ### 会话
 
-| 方法 | 路径 | 登录态 | 说明 |
-|---|---|---|---|
-| POST | `/api/ayonline/send-verification` | — | 旧发邮箱验证码接口；2027-01-01（北京时间）后停止并返回 1040 |
-| POST | `/api/ayonline/register/verification/start` | — | 新 SDK 注册验证：极验 → 检查发信服务 → 发信/反向任务，返回 `verifySessionId` |
-| POST | `/api/ayonline/register/verification/query` | — | 新 SDK 反向验证轮询 |
-| POST | `/api/ayonline/register` | — | 注册；<3.0 旧逻辑，>=3.0 用 `verifySessionId` 新逻辑 |
-| POST | `/api/ayonline/login` | — | 用户名/邮箱 + 密码 + `gt` |
-| POST | `/api/ayonline/change-password` | Cookie | 改密，成功后撤销全部 refresh token |
-| POST | `/api/ayonline/logout` | — | 清 Cookie，可选撤销 refresh token |
-| GET | `/api/ayonline/verify` | Cookie | 校验当前令牌 |
-| POST | `/api/ayonline/refresh` | Cookie/refresh | 换发 access_token，轮换 refresh_token |
+| 方法 | 路径                                        | 登录态         | 说明                                                                         |
+| ---- | ------------------------------------------- | -------------- | ---------------------------------------------------------------------------- |
+| POST | `/api/ayonline/send-verification`           | —              | 旧发邮箱验证码接口；2027-01-01（北京时间）后停止并返回 1040                  |
+| POST | `/api/ayonline/register/verification/start` | —              | 新 SDK 注册验证：极验 → 检查发信服务 → 发信/反向任务，返回 `verifySessionId` |
+| POST | `/api/ayonline/register/verification/query` | —              | 新 SDK 反向验证轮询                                                          |
+| POST | `/api/ayonline/register`                    | —              | 注册；<3.0 旧逻辑，>=3.0 用 `verifySessionId` 新逻辑                         |
+| POST | `/api/ayonline/login`                       | —              | 用户名/邮箱 + 密码 + `gt`                                                    |
+| POST | `/api/ayonline/change-password`             | Cookie         | 改密，成功后撤销全部 refresh token                                           |
+| POST | `/api/ayonline/logout`                      | —              | 清 Cookie，可选撤销 refresh token                                            |
+| GET  | `/api/ayonline/verify`                      | Cookie         | 校验当前令牌                                                                 |
+| POST | `/api/ayonline/refresh`                     | Cookie/refresh | 换发 access_token，轮换 refresh_token                                        |
 
 ### 资料与设备
 
-| 方法 | 路径 | 登录态 | 说明 |
-|---|---|---|---|
-| POST | `/api/ayonline/update-profile` | Cookie | 改用户名/头像/签名（邮箱仍走旧验证码流程） |
-| POST | `/api/ayonline/email-verify/create` | Cookie | 创建改邮箱的反向邮件验证任务，返回收件地址 + 验证码 |
-| POST | `/api/ayonline/email-verify/query` | Cookie | 轮询反向验证任务状态（前端每 3 秒一次） |
-| POST | `/api/ayonline/change-email` | Cookie | 凭 `emailVerifyId` 修改邮箱（新增接口，不动 `update-profile`） |
-| GET | `/api/ayonline/oauth-bindings` | Cookie | 已绑定的第三方平台 |
-| POST | `/api/ayonline/oauth-unbind` | Cookie | 解绑第三方平台 |
-| GET | `/api/ayonline/device-count` | Cookie | 登录设备数 |
-| POST | `/api/ayonline/revoke-all-devices` | Cookie | 退出所有设备 |
+| 方法 | 路径                                | 登录态 | 说明                                                           |
+| ---- | ----------------------------------- | ------ | -------------------------------------------------------------- |
+| POST | `/api/ayonline/update-profile`      | Cookie | 改用户名/头像/签名（邮箱仍走旧验证码流程）                     |
+| POST | `/api/ayonline/email-verify/create` | Cookie | 创建改邮箱的反向邮件验证任务，返回收件地址 + 验证码            |
+| POST | `/api/ayonline/email-verify/query`  | Cookie | 轮询反向验证任务状态（前端每 3 秒一次）                        |
+| POST | `/api/ayonline/change-email`        | Cookie | 凭 `emailVerifyId` 修改邮箱（新增接口，不动 `update-profile`） |
+| GET  | `/api/ayonline/oauth-bindings`      | Cookie | 已绑定的第三方平台                                             |
+| POST | `/api/ayonline/oauth-unbind`        | Cookie | 解绑第三方平台                                                 |
+| GET  | `/api/ayonline/device-count`        | Cookie | 登录设备数                                                     |
+| POST | `/api/ayonline/revoke-all-devices`  | Cookie | 退出所有设备                                                   |
 
 ### 我的应用
 
-| 方法 | 路径 | 登录态 | 说明 |
-|---|---|---|---|
-| GET | `/api/ayonline/oauth-apps` | Cookie | 我创建的 OAuth 应用 |
-| POST | `/api/ayonline/oauth/revoke-client` | Cookie | 撤销某应用对我的全部刷新令牌 |
-| POST | `/api/ayonline/revoke-oauth-app` | Cookie | 撤销应用并清理 refresh token |
+| 方法 | 路径                                | 登录态 | 说明                                 |
+| ---- | ----------------------------------- | ------ | ------------------------------------ |
+| GET  | `/api/ayonline/oauth-apps`          | Cookie | 我创建的 OAuth 应用                  |
+| POST | `/api/ayonline/oauth/revoke-client` | Cookie | 撤销某应用对我的全部刷新令牌         |
+| POST | `/api/ayonline/revoke-oauth-app`    | Cookie | 撤销应用并清理 refresh token         |
 | POST | `/api/ayonline/revoke-oauth-tokens` | Cookie | 批量撤销该用户的 OAuth refresh token |
 
 ### OAuth2 授权服务器
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | `/api/oauth/authorize` | 校验 client / redirect_uri / scope → 302 同意页 |
-| GET | `/api/oauth/consent-data` | 同意页读取待确认信息 |
-| POST | `/api/oauth/consent/approve` | 同意 → 发授权码 |
-| POST | `/api/oauth/consent/deny` | 拒绝 → 带 error 回跳 |
-| POST | `/api/oauth/token` | `authorization_code` / `refresh_token` |
-| GET | `/api/oauth/userinfo` | Bearer，按 scope 返回字段 |
-| GET | `/api/oauth/user/profile` | profile 子集 |
-| GET | `/api/oauth/user/email` | email 子集 |
-| GET | `/api/oauth/verify` | access_token 有效性 |
-| POST | `/api/oauth/revoke` | 撤销 refresh_token |
+| 方法 | 路径                         | 说明                                            |
+| ---- | ---------------------------- | ----------------------------------------------- |
+| GET  | `/api/oauth/authorize`       | 校验 client / redirect_uri / scope → 302 同意页 |
+| GET  | `/api/oauth/consent-data`    | 同意页读取待确认信息                            |
+| POST | `/api/oauth/consent/approve` | 同意 → 发授权码                                 |
+| POST | `/api/oauth/consent/deny`    | 拒绝 → 带 error 回跳                            |
+| POST | `/api/oauth/token`           | `authorization_code` / `refresh_token`          |
+| GET  | `/api/oauth/userinfo`        | Bearer，按 scope 返回字段                       |
+| GET  | `/api/oauth/user/profile`    | profile 子集                                    |
+| GET  | `/api/oauth/user/email`      | email 子集                                      |
+| GET  | `/api/oauth/verify`          | access_token 有效性                             |
+| POST | `/api/oauth/revoke`          | 撤销 refresh_token                              |
 
 scope：`openid` / `profile` / `email`，`userdata` 只返回被授权的字段。
 
 ### 第三方登录（本站作为客户端）
 
-`GET /api/auth/yzhyzxy/start` → 跳转 → `GET /api/oauth/callback`，回调里做账号绑定或直接登录。
+`GET /api/auth/yzhyzxy/start` → 跳转 → `GET /api/auth/yzhyzxy/callback`，回调里做账号绑定或直接登录。
 
 ## 数据表
 
-| 表 | 说明 |
-|---|---|
-| `online_users` | 账号主体，`sub` 自增主键 |
-| `oauth_clients` | 第三方应用，`user_sub` 为所有者 |
-| `oauth_auth_codes` | 授权码，`used` + `expires_at` 保证一次性 |
-| `oauth_consent_requests` | 同意页待确认请求 |
-| `oauth_connections` | 第三方账号绑定关系 |
-| `feedbacks` | 反馈（console 使用） |
-| `analytics_sites` / `analytics_events` | 站点统计（mysites 使用） |
-| `file_manager` | 文件记录（console / files 使用） |
-| `short_links` | 短链接（console / go 使用） |
-| `app_kv_store` | 用 D1 模拟的 KV |
-| `reverse_verify_tickets` | 反向邮箱验证任务（`shared/email-reverse-verify.js`，改邮箱用） |
+| 表                                     | 说明                                                           |
+| -------------------------------------- | -------------------------------------------------------------- |
+| `online_users`                         | 账号主体，`sub` 自增主键                                       |
+| `oauth_clients`                        | 第三方应用，`user_sub` 为所有者                                |
+| `oauth_auth_codes`                     | 授权码，`used` + `expires_at` 保证一次性                       |
+| `oauth_consent_requests`               | 同意页待确认请求                                               |
+| `oauth_connections`                    | 第三方账号绑定关系                                             |
+| `feedbacks`                            | 反馈（console 使用）                                           |
+| `analytics_sites` / `analytics_events` | 站点统计（mysites 使用）                                       |
+| `file_manager`                         | 文件记录（console / files 使用）                               |
+| `short_links`                          | 短链接（console / go 使用）                                    |
+| `app_kv_store`                         | 用 D1 模拟的 KV                                                |
+| `reverse_verify_tickets`               | 反向邮箱验证任务（`shared/email-reverse-verify.js`，改邮箱用） |
 
 ## 闸门顺序
 

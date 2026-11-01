@@ -1,6 +1,6 @@
 // views/UserPanel.vue
 <script setup>
-import { onMounted, onUnmounted, ref, provide, inject, computed } from 'vue';
+import { onMounted, onUnmounted, ref, provide, inject, computed, watch } from 'vue';
 import { isHostShell } from '@/shared/utils/device';
 import { useRouter, useRoute, RouterView } from 'vue-router';
 import { useDevice } from '@/shared/composables/useDevice';
@@ -9,6 +9,16 @@ import { formatTime } from '@/shared/utils/format';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
 
+const isDevMode = ref(false);
+
+const checkDevMode = () => {
+    try {
+        const config = JSON.parse(localStorage.getItem('devopt-config'));
+        isDevMode.value = !!config?.devMode;
+    } catch (e) {
+        isDevMode.value = false;
+    }
+};
 /* 悬停指令：按需注册（v 开头的变量会被识别为局部指令） */
 const vHover = Hover;
 
@@ -22,6 +32,8 @@ const channel = inject('channel');
 const sdk = inject('sdk');
 
 provide('user', user);
+
+watch(() => route.path, checkDevMode, { immediate: true });
 
 const refreshUser = async () => {
     const { valid, data } = await checkLogin();
@@ -87,21 +99,32 @@ onMounted(async () => {
         }
         user.value = data.user;
     }, 10000);
+
+    window.addEventListener('devmode-changed', checkDevMode);
 });
 
 onUnmounted(() => {
     if (intervalId) clearInterval(intervalId);
+    window.removeEventListener('devmode-changed', checkDevMode);
 });
 
 /* ---------- 导航数据 ---------- */
 
-const navItems = [
-    { path: '/account-overview', title: '账号概览', icon: 'application' },
-    { path: '/user-info', title: '个人信息', icon: 'account-circle' },
-    { path: '/link-account', title: '第三方账号绑定', icon: 'apache-kafka' },
-    { path: '/oauth', title: '授权管理', icon: 'account-secure' },
-    { path: '/security', title: '安全中心', icon: 'secure' },
-];
+const navItems = computed(() => {
+    const items = [
+        { path: '/account-overview', title: '账号概览', icon: 'application' },
+        { path: '/user-info', title: '个人信息', icon: 'account-circle' },
+        { path: '/link-account', title: '第三方账号绑定', icon: 'apache-kafka' },
+        { path: '/oauth', title: '授权管理', icon: 'account-secure' },
+        { path: '/security', title: '安全中心', icon: 'secure' },
+    ];
+
+    if (isDevMode.value) {
+        items.push({ path: '/devopt-config', title: '开发者选项', icon: 'cog' });
+    }
+
+    return items;
+});
 
 const footerItems = [
     { path: '/console', title: 'AyConsole', icon: 'console-line', handler: openConsole },
@@ -198,8 +221,7 @@ function openConsole() {
         <!-- 桌面端：常驻导航抽屉 -->
         <aside v-if="!mobileByWidth" class="md-nav-drawer">
             <!-- 悬停账号块：用 var-menu(trigger="hover") 弹出账号概览卡 -->
-            <var-menu trigger="hover" placement="right-start"
-                popover-class="md-account-popover">
+            <var-menu trigger="hover" placement="right-start" popover-class="md-account-popover">
                 <div class="md-nav-drawer__header">
                     <var-avatar v-if="user?.avatar" :src="user.avatar" :size="40" class="md-nav-avatar" />
                     <var-avatar v-else :size="40" class="md-nav-avatar">
@@ -241,8 +263,7 @@ function openConsole() {
                                 <span class="md-account-card__label">UID</span>
                                 <span class="md-account-card__value">
                                     {{ user.sub }}
-                                    <var-button text round class="md-account-copy" aria-label="复制 UID"
-                                        @click="copyUid">
+                                    <var-button text round class="md-account-copy" aria-label="复制 UID" @click="copyUid">
                                         <my-icon icon="content-copy" size="16px" />
                                     </var-button>
                                 </span>

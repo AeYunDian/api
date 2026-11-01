@@ -17,6 +17,7 @@ const router = useRouter()
 const themeStore = useThemeStore()
 const channel = ref(null)
 const leftPopup = ref(false)
+let vConsoleInstance = null
 
 try {
     initSdk(import.meta.env.VITE_ONLINE_APP_ID, 'zh-cn')
@@ -47,13 +48,42 @@ async function handleBroadcast(event) {
     }
 }
 
+async function syncDevOptions() {
+    let config = { vConsole: false }
+    try {
+        const raw = localStorage.getItem('devopt-config')
+        if (raw) config = JSON.parse(raw)
+    } catch (e) {
+        console.error('解析开发者配置失败', e)
+    }
+
+    // 如果配置为开启，且实例不存在，则动态加载
+    if (config.vConsole) {
+        if (!vConsoleInstance) {
+            const VConsole = (await import('vconsole')).default
+            vConsoleInstance = new VConsole()
+        }
+    } else {
+        // 如果配置为关闭，且实例存在，则销毁
+        if (vConsoleInstance) {
+            vConsoleInstance.destroy()
+            vConsoleInstance = null
+        }
+    }
+}
+
+
 onMounted(() => {
+    syncDevOptions()
+    window.addEventListener('devmode-changed', syncDevOptions)
+
     channel.value = new BroadcastChannel('ayaccountcenter_data')
     channel.value.addEventListener('message', handleBroadcast)
 })
 
 onUnmounted(() => {
     channel.value?.close()
+    window.removeEventListener('devmode-changed', syncDevOptions)
 })
 </script>
 
@@ -93,5 +123,4 @@ onUnmounted(() => {
     cursor: pointer;
     user-select: none;
 }
-
 </style>

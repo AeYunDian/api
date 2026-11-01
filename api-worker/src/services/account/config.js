@@ -24,9 +24,9 @@ const YZHYZXY_AUTH_URL = "https://yzhyzxy.cn/oauth/authorize";
 const YZHYZXY_TOKEN_URL = "https://yzhyzxy.cn/oauth/token";
 const YZHYZXY_USERINFO_URL = "https://yzhyzxy.cn/oauth/userinfo";
 const YZHYZXY_REVOKE_URL = "https://yzhyzxy.cn/api/oauth/revoke";
-const YZHYZXY_REDIRECT_URI = "https://online.undz.cn/api/oauth/callback";
+const YZHYZXY_REDIRECT_URI = "https://online.undz.cn/api/auth/yzhyzxy/callback";
 const YZHYZXY_SCOPE = "openid profile email";
-const DEFAULT_USER_DESC = "这片星空，只有流行划过……";
+const DEFAULT_USER_DESC = "无";
 const DEFAULT_USER_AVATAR = "https://online.undz.cn/default-avatar.svg";
 const KV_PREFIX = {
   REFRESH: "refresh:",
@@ -37,9 +37,38 @@ const KV_PREFIX = {
 
 // 平台名称映射
 const providerMap = {
-  yzhyzxy: { name: "Yzhyzxy", icon: "https://online.undz.cn/yzhyzxy.svg" },
-  github: { name: "GitHub", icon: "https://online.undz.cn/github.svg" },
-  google: { name: "Google", icon: "https://online.undz.cn/google.svg" },
+  yzhyzxy: {
+    name: "Yzhyzxy",
+    icon: "https://online.undz.cn/lib/ay-account/icon/yzhyzxy.svg",
+  },
+  github: {
+    name: "GitHub",
+    icon: "https://online.undz.cn/lib/ay-account/icon/github.svg",
+  },
+  google: {
+    name: "Google",
+    icon: "https://online.undz.cn/lib/ay-account/icon/google.svg",
+  },
+  aliyun: {
+    name: "阿里云",
+    icon: "https://online.undz.cn/lib/ay-account/icon/aliyun.svg",
+  },
+  cloudflare: {
+    name: "Cloudflare",
+    icon: "https://online.undz.cn/lib/ay-account/icon/cloudflare.svg",
+  },
+  jihulab: {
+    name: "极狐 GitLab",
+    icon: "https://online.undz.cn/lib/ay-account/icon/gitlab.svg",
+  },
+  facebook: {
+    name: "Facebook",
+    icon: "https://online.undz.cn/lib/ay-account/icon/facebook.svg",
+  },
+  discord: {
+    name: "Discord",
+    icon: "https://online.undz.cn/lib/ay-account/icon/discord.svg",
+  },
 };
 const allowedEmailDomains = [
   "aliyun.com", // 虽然国内已不开放个人注册业务，但还是支持
@@ -86,6 +115,17 @@ const allowedEmailDomains = [
   "gov.cn",
   "yzhyzxy.cn",
 ];
+
+/** 严格校验邮箱域名是否在白名单内（避免 evilgmail.com 之类的后缀绕过） */
+function isAllowedEmailDomain(email) {
+  const value = String(email || "").toLowerCase();
+  const at = value.lastIndexOf("@");
+  if (at < 1 || at === value.length - 1) return false;
+  const domain = value.slice(at + 1);
+  return allowedEmailDomains.some(
+    (allowed) => domain === allowed || domain.endsWith(`.${allowed}`),
+  );
+}
 // 允许跨域的子服务域名（白名单）
 const ALLOWED_ORIGINS = [
   "https://api.undz.cn",
@@ -148,5 +188,6 @@ export {
   KV_PREFIX,
   providerMap,
   allowedEmailDomains,
+  isAllowedEmailDomain,
   ALLOWED_ORIGINS,
 };

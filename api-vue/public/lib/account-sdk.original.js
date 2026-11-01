@@ -10,7 +10,10 @@
 if (typeof window === "undefined") {
   throw new Error("AyAccountSDK requires browser environment");
 }
-
+console.warn(
+  "%cTHIS SDK IS ABOUT TO BE DEPRECATED, PLEASE MIGRATE TO THE NEW SDK AS SOON AS POSSIBLE.",
+  "color: red; font-weight: bold; font-size: 16px;",
+);
 const VERSION = "2.2.0";
 const PRODUCE = false;
 

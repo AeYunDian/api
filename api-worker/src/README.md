@@ -4,32 +4,32 @@
 
 ## 文档索引
 
-| 文档 | 内容 |
-|---|---|
-| [../README.md](../README.md) | 顶层：命令、绑定、密钥、发布检查单 |
-| [../../docs/README.md](../../docs/README.md) | **全部子服务文档索引**（一个子服务一篇） |
-| [../../docs/account.md](../../docs/account.md) | **账号中心**：鉴权模型、口令与验证码、OAuth2 流程、数据表、闸门顺序 |
-| [../../docs/console.md](../../docs/console.md) | **管理后台**：权限模型、端点表、配额、反馈状态机、R2 文件管理 |
-| [../../docs/shortlink.md](../../docs/shortlink.md) | **短链接**：`go.undz.cn` 跳转、密码、配额、字符集、屏蔽词 |
-| [shared/README.md](shared/README.md) | 错误码注册表、D1-KV 适配器、通用工具 |
+| 文档                                               | 内容                                                                |
+| -------------------------------------------------- | ------------------------------------------------------------------- |
+| [../README.md](../README.md)                       | 顶层：命令、绑定、密钥、发布检查单                                  |
+| [../../docs/README.md](../../docs/README.md)       | **全部子服务文档索引**（一个子服务一篇）                            |
+| [../../docs/account.md](../../docs/account.md)     | **账号中心**：鉴权模型、口令与验证码、OAuth2 流程、数据表、闸门顺序 |
+| [../../docs/console.md](../../docs/console.md)     | **管理后台**：权限模型、端点表、配额、反馈状态机、R2 文件管理       |
+| [../../docs/shortlink.md](../../docs/shortlink.md) | **短链接**：`go.undz.cn` 跳转、密码、配额、字符集、屏蔽词           |
+| [shared/README.md](shared/README.md)               | 错误码注册表、D1-KV 适配器、通用工具                                |
 
 ## 域名 → 服务
 
-| 域名 | 模块 | 说明 |
-|---|---|---|
-| `online.undz.cn` | `services/account/ayOnline.js` | 统一账号 / OAuth2（全站登录态的根） |
-| `console.undz.cn` | `services/console/ayConsole.js` | 管理后台 API + 短链接管理 |
-| `go.undz.cn` | `services/console/shortlink.js` | 短链接公开跳转（`/{code}`） |
-| `mysites.undz.cn` | `services/analytics/ayAnalytics.js` | 埋点采集 + 统计查询 |
-| `files.undz.cn` | `services/files/ayFiles.js` | R2 文件分发（`/files/{code}`） |
-| `relay.undz.cn` | `services/relay/wsRelay.js` | WebSocket 中继（PSP 1.0） |
-| `ai.undz.cn` / `yzh.ai.undz.cn` | `services/ai/*` | Workers AI 代理 |
-| `api.undz.cn` / `api.io.hb.cn` | `services/gateway/uniAPI.js` | 二维码 / IP / 毕业纪念册 |
-| `chat.undz.cn` / `c.undz.cn` | `services/chat/ayChatRoom.js` | 聊天室（数据层在 `chat_room.js`） |
-| `cdn.undz.cn` | `services/cdn/jsdelivrCDN.js` | jsDelivr / gstatic 代理 |
-| `i0/i1/i2.undz.cn` | `services/image/*` | 图床反代（三份仅换 host） |
-| `kv.undz.cn` | `index.js` 内联 | 运维端点：`/initdb`、`/runtask`（需 `X-Admin-Key: env.KEY`） |
-| 其它 / `undz.cn` / `mail.*` | `env.assets` | 前端 SPA 与静态页兜底 |
+| 域名                            | 模块                                | 说明                                                         |
+| ------------------------------- | ----------------------------------- | ------------------------------------------------------------ |
+| `online.undz.cn`                | `services/account/ayOnline.js`      | 统一账号 / OAuth2（全站登录态的根）                          |
+| `console.undz.cn`               | `services/console/ayConsole.js`     | 管理后台 API + 短链接管理                                    |
+| `go.undz.cn`                    | `services/console/shortlink.js`     | 短链接公开跳转（`/{code}`）                                  |
+| `mysites.undz.cn`               | `services/analytics/ayAnalytics.js` | 埋点采集 + 统计查询                                          |
+| `files.undz.cn`                 | `services/files/ayFiles.js`         | R2 文件分发（`/files/{code}`）                               |
+| `relay.undz.cn`                 | `services/relay/wsRelay.js`         | WebSocket 中继（PSP 1.0）                                    |
+| `ai.undz.cn` / `yzh.ai.undz.cn` | `services/ai/*`                     | Workers AI 代理                                              |
+| `api.undz.cn` / `api.io.hb.cn`  | `services/gateway/uniAPI.js`        | 二维码 / IP / 毕业纪念册                                     |
+| `chat.undz.cn` / `c.undz.cn`    | `services/chat/ayChatRoom.js`       | 聊天室（数据层在 `chat_room.js`）                            |
+| `cdn.undz.cn`                   | `services/cdn/jsdelivrCDN.js`       | jsDelivr / gstatic 代理                                      |
+| `i0/i1/i2.undz.cn`              | `services/image/*`                  | 图床反代（三份仅换 host）                                    |
+| `kv.undz.cn`                    | `index.js` 内联                     | 运维端点：`/initdb`、`/runtask`（需 `X-Admin-Key: env.KEY`） |
+| 其它 / `undz.cn` / `mail.*`     | `env.assets`                        | 前端 SPA 与静态页兜底                                        |
 
 新增域名时：**`index.js` 里加一行 + 在 `services/` 建目录**，两处都要改。
 
@@ -51,7 +51,7 @@ src/
 │   │   ├── db/schema.js          # D1 建表语句（initDatabase）
 │   │   ├── mail_verify/          # 邮箱验证码：send.js 发送、verify.js 校验
 │   │   └── routes/               # 路由层，按 URL 前缀切分，逐个 if 块原样搬运
-│   │       ├── third-party.js    # /api/auth/*、/api/oauth/callback
+│   │       ├── third-party.js    # /api/auth/*、/api/auth/yzhyzxy/callback
 │   │       ├── account-api.js    # /api/ayonline/* 分发器（前缀判定 + 闸门）
 │   │       ├── account-admin.js  # /api/ayonline/init、/test（闸门之前）
 │   │       ├── account-session.js# 发码 / 注册 / 登录 / 改密 / 登出 / 校验 / 刷新
@@ -112,5 +112,3 @@ src/
 
    ⚠️ 1024、1027–1039 已被前端 SDK 占用（取消人机验证、验证码发送、邮件与登录窗口），
    服务端不要选这些号。账号段新号从 **1040** 起，1040–1043 已被拆号占用。
-
-

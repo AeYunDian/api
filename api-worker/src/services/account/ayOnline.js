@@ -10,6 +10,7 @@ import { jsonResponse, corsHeaders, handleOptions } from "./http.js";
 import { setKv } from "./auth/kv.js";
 import { TAG_LOGGEDIN, TAG_NOT_LOGGEDIN, TAG_BANNED } from "./config.js";
 import { handleThirdPartyAuth } from "./routes/third-party.js";
+import { handleOAuthProviders } from "./routes/oauth-providers.js";
 import { handleGithubAuth } from "./routes/github.js";
 import { handleAccountApi } from "./routes/account-api.js";
 import { handleOAuthServer } from "./routes/oauth-server.js";
@@ -67,6 +68,9 @@ export default {
     try {
       const thirdParty = await handleThirdPartyAuth({ request, env, url, path, method, cors });
       if (thirdParty) return thirdParty;
+
+      const oauthProviders = await handleOAuthProviders({ request, env, url, path, method, cors });
+      if (oauthProviders) return oauthProviders;
 
       const github = await handleGithubAuth({ request, env, url, path, method, cors });
       if (github) return github;

@@ -9,6 +9,9 @@ const buildTime = computed(() => {
     const raw = import.meta.env.VITE_BUILD_TIME
     return raw ? formatTime(raw) : '未注入'
 })
+const buildVersion = computed(() => {
+    return import.meta.env.VITE_BUILD_VERSION || '未注入'
+})
 
 const items = computed(() => [
     { label: '应用名称', value: 'AyConsole' },
@@ -16,6 +19,7 @@ const items = computed(() => [
     { label: '构建模式', value: mode },
     { label: '基础路径', value: baseUrl },
     { label: '目标网址', value: isProd ? 'https://console.undz.cn' : 'https://console-dev.undz.cn' },
+    { label: '版本号', value: buildVersion.value },
     { label: '构建时间', value: buildTime.value },
 ])
 
@@ -36,39 +40,30 @@ function openLink(path) {
             </div>
         </div>
 
-        <var-card class="about-card">
-            <template #title="{ slotClass }">
-                <div :class="slotClass" class="md-card-header">
-                    <my-icon icon="console-line" size="1.2em" />
-                    <span class="md-card-title">AyConsole</span>
-                </div>
-            </template>
-
+        <div class="custom-card var-elevation--1">
             <div class="meta-list">
-                <div v-for="item in items" :key="item.label" class="meta-row">
+                <div v-for="item in items" :key="item.label" class="meta-row" v-ripple>
                     <span class="meta-row__label">{{ item.label }}</span>
                     <span class="meta-row__value">{{ item.value }}</span>
                 </div>
             </div>
-        </var-card>
+        </div>
 
-        <var-card class="about-card" v-if="links.length > 0">
-            <template #title="{ slotClass }">
-                <div :class="slotClass" class="md-card-header">
-                    <my-icon icon="file-document-outline" size="1.2em" />
-                    <span class="md-card-title">相关文档</span>
-                </div>
-            </template>
+        <div class="custom-card" v-if="links.length > 0">
+            <div class="custom-card-header">
+                <my-icon icon="file-document-outline" size="1.2em" />
+                <span class="custom-card-title">相关文档</span>
+            </div>
             <var-cell v-for="link in links" :key="link.path" :title="link.label" :border="true" v-ripple
                 class="link-cell" @click="openLink(link.path)">
                 <template #extra>
                     <my-icon icon="arrow-right" />
                 </template>
             </var-cell>
-        </var-card>
+        </div>
 
         <p class="copyright">
-            © {{ new Date().getFullYear() }} AyConsole · All rights reserved.
+            © {{ new Date().getFullYear() }} AyAccountCenter · All rights reserved.
         </p>
     </div>
 </template>
@@ -78,8 +73,18 @@ function openLink(path) {
     padding-bottom: var(--md-space-8);
 }
 
-.about-card {
+.md-page-title {
+    font-weight: 600;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.custom-card {
+    background: var(--color-surface, #fff);
+    border-radius: var(--md-shape-lg, 16px);
+
     margin-bottom: var(--md-space-4);
+    overflow: hidden;
 }
 
 .meta-list {
@@ -88,36 +93,56 @@ function openLink(path) {
 }
 
 .meta-row {
+    user-select: none;
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--md-space-6);
-    padding: var(--md-space-3) 0;
-    border-bottom: 1px solid var(--color-outline);
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    padding: var(--md-space-3) var(--md-space-4);
+    border-bottom: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
 }
+
 
 .meta-row:last-child {
     border-bottom: none;
-    padding-bottom: 0;
+}
+
+.meta-row:first-child {
+    padding-top: var(--md-space-4);
+}
+
+.meta-row:last-child {
+    padding-bottom: var(--md-space-4);
+    border-bottom: none;
 }
 
 .meta-row__label {
-    font-size: 13px;
+    font-size: 14px;
     line-height: 20px;
-    color: var(--color-text-secondary);
-    flex: 0 0 auto;
 }
 
 .meta-row__value {
-    font-size: 13px;
-    line-height: 20px;
-    color: var(--color-text);
-    text-align: right;
+    font-size: 12px;
+    line-height: 16px;
     word-break: break-all;
 }
 
+
+.custom-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: var(--md-space-3) var(--md-space-4);
+    padding-bottom: 0;
+}
+
+.custom-card-title {
+    font-size: 16px;
+    font-weight: 500;
+}
+
 .link-cell {
-    border-radius: var(--md-shape-sm);
     cursor: pointer;
 }
 

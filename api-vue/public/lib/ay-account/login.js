@@ -19,6 +19,19 @@
     REGISTER_QUERY: "/api/ayonline/register/verification/query",
     SENDMAILCODE: "/api/ayonline/send-verification",
   };
+
+  // 与 SDK 主文件保持一致；关闭的提供商只在登录页隐藏，后端仍可用
+  const OAUTH_PROVIDER_ENABLED = Object.freeze({
+    yzhyzxy: true,
+    github: true,
+    aliyun: true,
+    google: true,
+    cloudflare: true,
+    jihulab: true,
+    facebook: false,
+    discord: false,
+  });
+  const OAUTH_NO_EMAIL = new Set(["aliyun"]);
   const ALLOWED_EMAIL_DOMAINS = [
     "aliyun.com",
     "qq.com",
@@ -149,6 +162,7 @@
     codeSending: false,
     user: null,
     lockedPage: null,
+    oauthWarningProvider: "",
     registerPending: null,
     pendingParents: new Map(),
     parentSeq: 0,
@@ -214,6 +228,10 @@
     oauthYzhyzxy: $("#oauthYzhyzxy"),
     oauthGithub: $("#oauthGithub"),
     oauthPage: $("#page-oauth"),
+    oauthWarningPage: $("#page-oauth-warning"),
+    oauthWarningProvider: $("#oauthWarningProvider"),
+    oauthWarningYes: $("#oauthWarningYes"),
+    oauthWarningNo: $("#oauthWarningNo"),
     faqLink: $("#faqLink"),
     footer: $(".footer"),
     toLogin: $("#toLogin"),
@@ -226,6 +244,7 @@
     email: $("#page-email"),
     reverse: $("#page-reverse"),
     oauth: dom.oauthPage,
+    oauthWarning: dom.oauthWarningPage,
   };
 
   /* ---------------- toast (iframe-local, same visual language) ---------------- */
@@ -400,6 +419,10 @@
     pages.email.setAttribute("aria-hidden", String(page !== "email"));
     pages.reverse.setAttribute("aria-hidden", String(page !== "reverse"));
     pages.oauth.setAttribute("aria-hidden", String(page !== "oauth"));
+    pages.oauthWarning.setAttribute(
+      "aria-hidden",
+      String(page !== "oauthWarning"),
+    );
   }
 
   function shouldAutoFocus() {
@@ -415,6 +438,7 @@
       state.lockedPage &&
       next !== state.lockedPage &&
       next !== "oauth" &&
+      next !== "oauthWarning" &&
       !(
         state.lockedPage === "register" &&
         (next === "email" || next === "reverse")
@@ -452,7 +476,7 @@
       state.page = next;
       state.animating = false;
       scheduleHeight();
-      if (next !== "oauth" && shouldAutoFocus()) {
+      if (next !== "oauth" && next !== "oauthWarning" && shouldAutoFocus()) {
         let first = null;
         if (next === "login") first = dom.loginAccount;
         else if (next === "register") first = dom.regUsername;
@@ -1465,10 +1489,48 @@
   }
 
   function startOauth(provider) {
-    if (state.busy) return;
+    if (state.busy || OAUTH_PROVIDER_ENABLED[provider] !== true) return;
     setBusy(true, "oauth");
     toast.loading(t("common.oauth_opening"));
     postToParent({ action: "oauth_login", provider });
+  }
+
+  function applyProviderVisibility() {
+    let visible = 0;
+    $$(".provider", dom.oauthPage).forEach((button) => {
+      const enabled =
+        OAUTH_PROVIDER_ENABLED[button.dataset.provider] === true;
+      button.hidden = !enabled;
+      button.style.display = enabled ? "" : "none";
+      if (enabled) visible += 1;
+    });
+
+    const hide = state.config.hideOauthClient || visible === 0;
+    if (dom.oauthExpand) {
+      dom.oauthExpand.hidden = hide;
+      dom.oauthExpand.style.display = hide ? "none" : "";
+    }
+    if (hide && (state.page === "oauth" || state.page === "oauthWarning")) {
+      navigate(state.lockedPage || "login", "down");
+    }
+  }
+
+  function handleProviderClick(provider) {
+    if (state.busy || OAUTH_PROVIDER_ENABLED[provider] !== true) return;
+    if (OAUTH_NO_EMAIL.has(provider)) {
+      state.oauthWarningProvider = provider;
+      if (dom.oauthWarningProvider) {
+        const nameEl = $(
+          `.provider[data-provider="${provider}"] .provider__name`,
+          dom.oauthPage,
+        );
+        dom.oauthWarningProvider.textContent =
+          (nameEl && nameEl.textContent) || t(`oauth.${provider}.name`);
+      }
+      navigate("oauthWarning", "next");
+      return;
+    }
+    startOauth(provider);
   }
 
   /* ---------------- agreement / events ---------------- */
@@ -1567,8 +1629,22 @@
       if (state.busy) return;
       navigate(state.lockedPage || "login", "down");
     });
-    dom.oauthYzhyzxy.addEventListener("click", () => startOauth("yzhyzxy"));
-    dom.oauthGithub.addEventListener("click", () => startOauth("github"));
+    $$(".provider", dom.oauthPage).forEach((button) => {
+      button.addEventListener("click", () =>
+        handleProviderClick(button.dataset.provider),
+      );
+    });
+
+    dom.oauthWarningNo.addEventListener("click", () => {
+      if (state.busy) return;
+      navigate("login", "back");
+    });
+    dom.oauthWarningYes.addEventListener("click", () => {
+      const provider = state.oauthWarningProvider;
+      if (!provider || state.busy) return;
+      navigate("login", "back");
+      setTimeout(() => startOauth(provider), 460);
+    });
 
     if (dom.sendCodeBtn) {
       dom.sendCodeBtn.addEventListener("click", sendEmailCode);
@@ -1697,7 +1773,11 @@
     if (typeof config.hideOauthClient === "boolean") {
       state.config.hideOauthClient = config.hideOauthClient;
       dom.oauthExpand.hidden = config.hideOauthClient;
-      if (config.hideOauthClient && state.page === "oauth") {
+      applyProviderVisibility();
+      if (
+        config.hideOauthClient &&
+        (state.page === "oauth" || state.page === "oauthWarning")
+      ) {
         navigate(state.lockedPage || "login", "down");
       }
     }
@@ -1861,6 +1941,7 @@
     window.addEventListener("message", onMessage);
     translatePage();
     updateChrome(state.page);
+    applyProviderVisibility();
     syncFieldLabels();
     postToParent({ action: "isReady" });
     scheduleHeight();

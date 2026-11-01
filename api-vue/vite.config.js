@@ -158,6 +158,9 @@ export default defineConfig({
   },
   define: {
     "import.meta.env.VITE_BUILD_TIME": JSON.stringify(new Date().toISOString()),
+    "import.meta.env.VITE_BUILD_VERSION": JSON.stringify(
+      Math.random().toString(16).substring(2, 8).padEnd(6, "0"),
+    ),
   },
   resolve: {
     alias: {

@@ -1,20 +1,25 @@
 <script setup>
-import { ref, onMounted, inject } from 'vue';
+import { ref, onMounted } from 'vue';
 import { Dialog, Snackbar } from '@varlet/ui';
 import { formatTime } from '@/shared/utils/format';
 import { getBindings, unbindProvider, getBindUrl } from '@/account/utils/api';
 import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
 
-const sdk = inject('sdk');
-const user = inject('user');
+// const sdk = inject('sdk');
+// const user = inject('user');
 const refreshState = ref(false);
 const loading = ref(false);
 const bindings = ref([]);
 const supportedProviders = ref([
-    { id: 'yzhyzxy', name: 'Yzhyzxy', icon: '/yzhyzxy.svg' },
-    { id: 'github', name: 'GitHub', icon: '/github.svg' },
-    // { id: 'google', name: 'Google', icon: '/google.svg' },
+    { id: 'yzhyzxy', name: 'Yzhyzxy', icon: '/lib/ay-account/icon/yzhyzxy.svg' },
+    { id: 'github', name: 'GitHub', icon: '/lib/ay-account/icon/github.svg' },
+    { id: 'google', name: 'Google', icon: '/lib/ay-account/icon/google.svg' },
+    { id: 'aliyun', name: '阿里云', icon: '/lib/ay-account/icon/aliyun.svg' },
+    { id: 'cloudflare', name: 'Cloudflare', icon: '/lib/ay-account/icon/cloudflare.svg' },
+    { id: 'jihulab', name: '极狐 GitLab', icon: '/lib/ay-account/icon/gitlab.svg' },
+    { id: 'facebook', name: 'Facebook', icon: '/lib/ay-account/icon/facebook.svg' },
+    { id: 'discord', name: 'Discord', icon: '/lib/ay-account/icon/discord.svg' },
 ]);
 
 async function fetchBindings() {

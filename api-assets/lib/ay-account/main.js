@@ -32,6 +32,18 @@
   const API_BASE = ONLINE_BASE;
   const API_ORIGIN = new URL(API_BASE).origin;
 
+  // 内置开关：外部不可修改；关闭的提供商只在登录页隐藏，后端仍可用
+  const OAUTH_PROVIDER_ENABLED = Object.freeze({
+    yzhyzxy: true,
+    github: true,
+    aliyun: true,
+    google: true,
+    cloudflare: true,
+    jihulab: true,
+    facebook: true,
+    discord: true,
+  });
+
   const SCRIPT_URL = (() => {
     try {
       const src = document.currentScript && document.currentScript.src;
@@ -273,6 +285,23 @@
       "oauth.yzhyzxy.hint": "使用 Yzhyzxy 账号继续",
       "oauth.github.name": "GitHub",
       "oauth.github.hint": "使用 GitHub 账号继续",
+      "oauth.google.name": "Google",
+      "oauth.google.hint": "使用 Google 账号继续",
+      "oauth.aliyun.name": "阿里云",
+      "oauth.aliyun.hint": "使用阿里云账号继续",
+      "oauth.cloudflare.name": "Cloudflare",
+      "oauth.cloudflare.hint": "使用 Cloudflare 账号继续",
+      "oauth.jihulab.name": "极狐 GitLab",
+      "oauth.jihulab.hint": "使用极狐 GitLab 账号继续",
+      "oauth.facebook.name": "Facebook",
+      "oauth.facebook.hint": "使用 Facebook 账号继续",
+      "oauth.discord.name": "Discord",
+      "oauth.discord.hint": "使用 Discord 账号继续",
+      "oauth.warning.title": "暂不支持快捷注册",
+      "oauth.warning.desc":
+        "该登录方式不会返回邮箱，无法直接创建 AyAccount。要继续使用它登录或绑定已有账号吗？",
+      "oauth.warning.continue": "继续",
+      "oauth.warning.cancel": "取消",
       "login.success": "登录成功",
       "logout.success": "已登出",
       "register.success": "注册成功",
@@ -416,6 +445,23 @@
       "oauth.yzhyzxy.hint": "Continue with your Yzhyzxy account",
       "oauth.github.name": "GitHub",
       "oauth.github.hint": "Continue with your GitHub account",
+      "oauth.google.name": "Google",
+      "oauth.google.hint": "Continue with your Google account",
+      "oauth.aliyun.name": "Alibaba Cloud",
+      "oauth.aliyun.hint": "Continue with your Alibaba Cloud account",
+      "oauth.cloudflare.name": "Cloudflare",
+      "oauth.cloudflare.hint": "Continue with your Cloudflare account",
+      "oauth.jihulab.name": "JiHu GitLab",
+      "oauth.jihulab.hint": "Continue with your JiHu GitLab account",
+      "oauth.facebook.name": "Facebook",
+      "oauth.facebook.hint": "Continue with your Facebook account",
+      "oauth.discord.name": "Discord",
+      "oauth.discord.hint": "Continue with your Discord account",
+      "oauth.warning.title": "Quick registration unavailable",
+      "oauth.warning.desc":
+        "This provider does not return an email address, so it cannot create an AyAccount directly. Continue to sign in or link an existing account?",
+      "oauth.warning.continue": "Continue",
+      "oauth.warning.cancel": "Cancel",
       "login.success": "Login successful",
       "logout.success": "Logged out",
       "register.success": "Registration successful",
@@ -558,6 +604,23 @@
       "oauth.yzhyzxy.hint": "使用 Yzhyzxy 帳號繼續",
       "oauth.github.name": "GitHub",
       "oauth.github.hint": "使用 GitHub 帳號繼續",
+      "oauth.google.name": "Google",
+      "oauth.google.hint": "使用 Google 帳號繼續",
+      "oauth.aliyun.name": "阿里雲",
+      "oauth.aliyun.hint": "使用阿里雲帳號繼續",
+      "oauth.cloudflare.name": "Cloudflare",
+      "oauth.cloudflare.hint": "使用 Cloudflare 帳號繼續",
+      "oauth.jihulab.name": "極狐 GitLab",
+      "oauth.jihulab.hint": "使用極狐 GitLab 帳號繼續",
+      "oauth.facebook.name": "Facebook",
+      "oauth.facebook.hint": "使用 Facebook 帳號繼續",
+      "oauth.discord.name": "Discord",
+      "oauth.discord.hint": "使用 Discord 帳號繼續",
+      "oauth.warning.title": "暫不支援快捷註冊",
+      "oauth.warning.desc":
+        "該登入方式不會回傳電郵，無法直接建立 AyAccount。要繼續使用它登入或綁定已有帳號嗎？",
+      "oauth.warning.continue": "繼續",
+      "oauth.warning.cancel": "取消",
       "login.success": "登錄成功",
       "logout.success": "已登出",
       "register.success": "註冊成功",
@@ -1352,7 +1415,7 @@
               break;
 
             case "oauth_login":
-              if (data.provider === "yzhyzxy" || data.provider === "github") {
+              if (OAUTH_PROVIDER_ENABLED[data.provider] === true) {
                 this._loginWithOAuthPopup(data.provider)
                   .then((result) => {
                     userInfo = result;
@@ -1420,18 +1483,14 @@
                   this._postToIframe({
                     action: "registerStartFailure",
                     messageId: data.messageId,
-                    message:
-                      err.message || this._t("common.register_failure"),
+                    message: err.message || this._t("common.register_failure"),
                     code: err.error_code || "unknown",
                   });
                 });
               break;
 
             case "registerQuery":
-              this._queryRegisterVerification(
-                data.verifyRequestId,
-                data.email,
-              )
+              this._queryRegisterVerification(data.verifyRequestId, data.email)
                 .then((result) => {
                   this._postToIframe({
                     action: "registerQuerySuccess",
@@ -1443,8 +1502,7 @@
                   this._postToIframe({
                     action: "registerQueryFailure",
                     messageId: data.messageId,
-                    message:
-                      err.message || this._t("common.network_error"),
+                    message: err.message || this._t("common.network_error"),
                     code: err.error_code || "unknown",
                   });
                 });
@@ -1463,8 +1521,7 @@
                   this._postToIframe({
                     action: "registerCompleteFailure",
                     messageId: data.messageId,
-                    message:
-                      err.message || this._t("common.register_failure"),
+                    message: err.message || this._t("common.register_failure"),
                     code: err.error_code || "unknown",
                   });
                 });
@@ -1611,13 +1668,12 @@
 
     _loginWithOAuthPopup(provider) {
       const self = this;
-      const endpoints = {
-        yzhyzxy: URLPATH.MODALPAGE.LOGIN_YZH_OAUTH,
-        github: URLPATH.MODALPAGE.LOGIN_GITHUB_OAUTH,
-      };
-      if (!endpoints[provider])
+      if (
+        !Object.prototype.hasOwnProperty.call(OAUTH_PROVIDER_ENABLED, provider)
+      ) {
         return Promise.reject(new Error("Unsupported provider"));
-      const endpoint = endpoints[provider];
+      }
+      const endpoint = `/api/auth/${provider}/start?mode=login`;
 
       return new Promise((resolve, reject) => {
         fetch(`${API_BASE}${endpoint}`, { credentials: "include" })

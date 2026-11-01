@@ -1,5 +1,5 @@
 // routes/third-party.js —— 由 ayOnline.js 拆分而来（逐行搬运，未改逻辑）
-// 第三方登录入口：/api/auth/yzhyzxy/start（发起授权）与 /api/oauth/callback（回调）。
+// 第三方登录入口：/api/auth/yzhyzxy/start（发起授权）与 /api/auth/yzhyzxy/callback（回调）。
 
 import { corsHeaders, jsonResponse } from "../http.js";
 import { checkAuth, signAccessToken } from "../auth/jwt.js";
@@ -51,7 +51,7 @@ export async function handleThirdPartyAuth({
     authUrl.searchParams.set("code_challenge_method", "S256");
     return jsonResponse({ url: authUrl.toString() }, 200, corsHeaders(request));
   }
-  if (path === "/api/oauth/callback" && method === "GET") {
+  if (path === "/api/auth/yzhyzxy/callback" && method === "GET") {
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
     const error = url.searchParams.get("error");

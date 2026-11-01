@@ -41,6 +41,12 @@ const router = createRouter({
           meta: { title: "安全中心" },
         },
         {
+          path: "devopt-config",
+          component: () =>
+            import("@/account/views/account/DeveloperOptions.vue"),
+          meta: { title: "开发者选项" },
+        },
+        {
           path: "about",
           component: () => import("@/account/views/account/About.vue"),
           meta: { title: "关于" },
@@ -64,6 +70,20 @@ router.beforeEach((to, from, next) => {
   const appName = "AyAccountCenter";
   const pageTitle = to.meta?.title || "";
   document.title = pageTitle ? `${pageTitle} - ${appName}` : appName;
+
+  if (to.path === "/user-panel/developer-options") {
+    let devMode = false;
+    try {
+      const config = JSON.parse(localStorage.getItem("devopt-config"));
+      if (config) devMode = config.devMode;
+    } catch (e) {}
+
+    if (!devMode) {
+      next("/user-panel/account-overview");
+      return;
+    }
+  }
+
   next();
 });
 

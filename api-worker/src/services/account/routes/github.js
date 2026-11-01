@@ -17,6 +17,7 @@ import {
   REFRESH_TOKEN_TTL,
   SALT_LENGTH,
   TAG_LOGGEDIN,
+  isAllowedEmailDomain,
 } from "../config.js";
 import { hashPassword, toBase64, validatePassword } from "../auth/crypto.js";
 import {
@@ -79,7 +80,7 @@ function jsonHeaders(cookies = []) {
  * 在弹窗里给 opener 发消息并关闭。
  * action: login_success | login_fail | bind_success | bind_failed
  */
-function messagePage({
+export function messagePage({
   action,
   provider = PROVIDER,
   user = null,
@@ -139,11 +140,11 @@ p{font-size:13px;line-height:1.6;color:#49454f;margin:0}
   return new Response(html, { status, headers: htmlHeaders(cookies) });
 }
 
-function failPage(message, code, status = 400, provider = PROVIDER) {
+export function failPage(message, code, status = 400, provider = PROVIDER) {
   return messagePage({ action: "login_fail", provider, message, code, status });
 }
 
-function bindFailPage(message, error, code, status = 400, provider = PROVIDER) {
+export function bindFailPage(message, error, code, status = 400, provider = PROVIDER) {
   return messagePage({
     action: "bind_failed",
     provider,
@@ -197,7 +198,7 @@ async function issueTokens(env, user) {
   };
 }
 
-async function loginResponse(env, user, registered = false, provider = PROVIDER) {
+export async function loginResponse(env, user, registered = false, provider = PROVIDER) {
   const tokens = await issueTokens(env, user);
   return messagePage({
     action: "login_success",
@@ -523,7 +524,17 @@ export async function handleGithubAuth({
       return loginResponse(env, user, false);
     }
 
-    /* ---- 未绑定：跳中间页，用户填用户名/密码后注册 ---- */
+    /* ---- 未绑定：邮箱必须在白名单内，否则提示不支持 ---- */
+    if (!isAllowedEmailDomain(ghUser.email)) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: `/oauth2/email_not_supported?provider=github&email=${encodeURIComponent(ghUser.email)}`,
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+
     const emailExists = await env.db
       .prepare("SELECT sub FROM online_users WHERE email = ?")
       .bind(ghUser.email)
