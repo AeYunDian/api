@@ -1402,7 +1402,7 @@ a:hover {
 .provider__logo--discord {
   background: #5865f2;
 }
-
+*/
 .provider__logo--github {
   background: #24292f;
   color: #ffffff;
@@ -1411,7 +1411,7 @@ a:hover {
 .provider__logo--yzhyzxy {
   background: #0b0b0d;
   color: #ffffff;
-} */
+}
 
 .provider__text {
   display: flex;
@@ -1433,7 +1433,7 @@ a:hover {
   line-height: var(--md-sys-typescale-body-small-line-height);
 }
 #oauthWarningYes {
-  margin-bottom: 7px;
+  margin-bottom: 13px;
 }
 /* ---------- footer ---------- */
 

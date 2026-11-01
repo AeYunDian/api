@@ -280,19 +280,7 @@
                         <p class="oauth-page__desc" data-i18n="oauth.description">使用第三方账号登录或注册 AyAccount。</p>
 
                         <div class="provider-list">
-                            <button type="button" class="provider" id="oauthYzhyzxy" data-provider="yzhyzxy">
-                                <span class="provider__logo provider__logo--yzhyzxy" aria-hidden="true">
-                                    <svg viewBox="0 0 28 28" fill="none">
-                                        <rect width="28" height="28" rx="6" fill="#0b0b0d" />
-                                        <path d="M8 9L14 15L20 9M14 15V20" stroke="#ffffff" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round" />
-                                    </svg>
-                                </span>
-                                <span class="provider__text">
-                                    <span class="provider__name" data-i18n="oauth.yzhyzxy.name">Yzhyzxy</span>
-                                    <span class="provider__hint" data-i18n="oauth.yzhyzxy.hint">使用 Yzhyzxy 账号继续</span>
-                                </span>
-                            </button>
+
 
                             <button type="button" class="provider" id="oauthGithub" data-provider="github">
                                 <span class="provider__logo provider__logo--github" aria-hidden="true">
@@ -326,7 +314,19 @@
                                     <span class="provider__hint" data-i18n="oauth.aliyun.hint">使用阿里云账号继续</span>
                                 </span>
                             </button>
-
+                            <button type="button" class="provider" id="oauthYzhyzxy" data-provider="yzhyzxy">
+                                <span class="provider__logo provider__logo--yzhyzxy" aria-hidden="true">
+                                    <svg viewBox="0 0 28 28" fill="none">
+                                        <rect width="28" height="28" rx="6" fill="#0b0b0d" />
+                                        <path d="M8 9L14 15L20 9M14 15V20" stroke="#ffffff" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                </span>
+                                <span class="provider__text">
+                                    <span class="provider__name" data-i18n="oauth.yzhyzxy.name">Yzhyzxy</span>
+                                    <span class="provider__hint" data-i18n="oauth.yzhyzxy.hint">使用 Yzhyzxy 账号继续</span>
+                                </span>
+                            </button>
                             <button type="button" class="provider" data-provider="cloudflare">
                                 <span class="provider__logo provider__logo--cloudflare" aria-hidden="true">
                                     <img src="/lib/ay-account/icon/cloudflare.svg" alt="" />
@@ -387,7 +387,7 @@
 
                         <button type="button" class="btn btn--primary" id="oauthWarningYes"
                             data-i18n="oauth.warning.continue">继续</button>
-                        <button type="button" class="btn btn--text" id="oauthWarningNo"
+                        <button type="button" class="btn btn--ghost" id="oauthWarningNo"
                             data-i18n="oauth.warning.cancel">取消</button>
                     </div>
                 </section>
