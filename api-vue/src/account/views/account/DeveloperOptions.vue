@@ -6,25 +6,62 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const configKey = 'devopt-config'
 
-// 统一获取配置
+// 定义所有 Eruda 插件列表
+const erudaPlugins = [
+    { key: 'erudaVue', label: 'Vue', desc: '查看 Vue 组件树和状态' },
+    { key: 'erudaMonitor', label: 'Monitor', desc: 'FPS、内存和 DOM 节点监控' },
+    { key: 'erudaFeatures', label: 'Features', desc: '浏览器特性/API 检测' },
+    { key: 'erudaTiming', label: 'Timing', desc: '性能与资源加载耗时' },
+    { key: 'erudaBenchmark', label: 'Benchmark', desc: 'JS 性能测试' },
+    { key: 'erudaGeolocation', label: 'Geolocation', desc: '地理位置 API 测试' },
+    { key: 'erudaOrientation', label: 'Orientation', desc: '设备方向 API 测试' },
+]
+
+// 完整的默认配置
+const defaultConfig = {
+    devMode: false,
+    vConsole: false,
+    eruda: false,
+    erudaVue: false,
+    erudaMonitor: false,
+    erudaFeatures: false,
+    erudaTiming: false,
+    erudaBenchmark: false,
+    erudaGeolocation: false,
+    erudaOrientation: false,
+}
+
 const getConfig = () => {
     try {
-        return JSON.parse(localStorage.getItem(configKey)) || { devMode: false, vConsole: false }
+        const raw = localStorage.getItem(configKey)
+        return raw ? { ...defaultConfig, ...JSON.parse(raw) } : { ...defaultConfig }
     } catch {
-        return { devMode: false, vConsole: false }
+        return { ...defaultConfig }
     }
 }
 
 const config = getConfig()
+
 const isDevMode = ref(config.devMode)
 const isVConsoleEnabled = ref(config.vConsole)
+const isErudaEnabled = ref(config.eruda)
 
-// 保存配置并广播事件
+// 动态生成插件状态字典
+const pluginStates = {}
+erudaPlugins.forEach(p => {
+    pluginStates[p.key] = ref(config[p.key])
+})
+
 const saveConfigAndBroadcast = () => {
-    localStorage.setItem(configKey, JSON.stringify({
+    const newConfig = {
         devMode: isDevMode.value,
-        vConsole: isVConsoleEnabled.value
-    }))
+        vConsole: isVConsoleEnabled.value,
+        eruda: isErudaEnabled.value,
+    }
+    erudaPlugins.forEach(p => {
+        newConfig[p.key] = pluginStates[p.key].value
+    })
+    localStorage.setItem(configKey, JSON.stringify(newConfig))
     window.dispatchEvent(new Event('devmode-changed'))
 }
 
@@ -42,8 +79,21 @@ watch(isVConsoleEnabled, () => {
     saveConfigAndBroadcast()
 })
 
+watch(isErudaEnabled, () => {
+    saveConfigAndBroadcast()
+})
+
+// 监听插件状态
+erudaPlugins.forEach(p => {
+    watch(pluginStates[p.key], () => {
+        saveConfigAndBroadcast()
+    })
+})
+
 function switchDevMode() { isDevMode.value = !isDevMode.value }
 function switchVConsole() { isVConsoleEnabled.value = !isVConsoleEnabled.value }
+function switchEruda() { isErudaEnabled.value = !isErudaEnabled.value }
+function switchPlugin(key) { pluginStates[key].value = !pluginStates[key].value }
 </script>
 
 <template>
@@ -54,6 +104,7 @@ function switchVConsole() { isVConsoleEnabled.value = !isVConsoleEnabled.value }
             </div>
         </div>
 
+        <!-- 开发者模式开关 -->
         <div class="custom-card var-elevation--1">
             <div class="meta-list">
                 <div class="meta-row meta-row--action" v-ripple @click="switchDevMode">
@@ -66,15 +117,39 @@ function switchVConsole() { isVConsoleEnabled.value = !isVConsoleEnabled.value }
             </div>
         </div>
 
+        <!-- 调试工具开关组 -->
         <div class="custom-card var-elevation--1">
             <div class="meta-list">
+                <!-- vConsole 开关 -->
                 <div class="meta-row meta-row--action" v-ripple @click="switchVConsole">
                     <div class="meta-row__text">
                         <span class="meta-row__label">vConsole</span>
-                        <span class="meta-row__value">调试控制台</span>
+                        <span class="meta-row__value">轻量级调试面板（腾讯）</span>
                     </div>
                     <var-switch v-model="isVConsoleEnabled" @click.stop @mousedown.stop @touchstart.stop />
                 </div>
+
+                <!-- Eruda 主开关 -->
+                <div class="meta-row meta-row--action" v-ripple @click="switchEruda">
+                    <div class="meta-row__text">
+                        <span class="meta-row__label">Eruda</span>
+                        <span class="meta-row__value">功能更强的调试面板</span>
+                    </div>
+                    <var-switch v-model="isErudaEnabled" @click.stop @mousedown.stop @touchstart.stop />
+                </div>
+
+                <!-- Eruda 插件子开关（随主开关开启而显示） -->
+                <template v-if="isErudaEnabled">
+                    <div class="meta-row meta-row--action" v-for="plugin in erudaPlugins" :key="plugin.key" v-ripple
+                        @click="switchPlugin(plugin.key)">
+                        <div class="meta-row__text">
+                            <span class="meta-row__label">{{ plugin.label }}</span>
+                            <span class="meta-row__value">{{ plugin.desc }}</span>
+                        </div>
+                        <var-switch v-model="pluginStates[plugin.key].value" @click.stop @mousedown.stop
+                            @touchstart.stop />
+                    </div>
+                </template>
             </div>
         </div>
     </div>

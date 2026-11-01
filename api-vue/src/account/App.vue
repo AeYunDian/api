@@ -18,7 +18,7 @@ const themeStore = useThemeStore()
 const channel = ref(null)
 const leftPopup = ref(false)
 let vConsoleInstance = null
-
+let erudaInstance = null
 try {
     initSdk(import.meta.env.VITE_ONLINE_APP_ID, 'zh-cn')
 } catch (error) {
@@ -49,25 +49,72 @@ async function handleBroadcast(event) {
 }
 
 async function syncDevOptions() {
-    let config = { vConsole: false }
+    let config = {
+        devMode: false, vConsole: false, eruda: false,
+        erudaVue: false, erudaMonitor: false, erudaFeatures: false,
+        erudaTiming: false, erudaBenchmark: false, erudaGeolocation: false, erudaOrientation: false
+    }
     try {
         const raw = localStorage.getItem('devopt-config')
-        if (raw) config = JSON.parse(raw)
+        if (raw) config = { ...config, ...JSON.parse(raw) }
     } catch (e) {
         console.error('解析开发者配置失败', e)
     }
 
-    // 如果配置为开启，且实例不存在，则动态加载
+    // ===== vConsole 逻辑 =====
     if (config.vConsole && config.devMode) {
         if (!vConsoleInstance) {
             const VConsole = (await import('vconsole')).default
             vConsoleInstance = new VConsole()
         }
     } else {
-        // 如果配置为关闭，且实例存在，则销毁
         if (vConsoleInstance) {
             vConsoleInstance.destroy()
             vConsoleInstance = null
+        }
+    }
+
+    // ===== Eruda 逻辑 =====
+    if (config.eruda && config.devMode) {
+        // 如果实例已存在，先移除旧容器和实例，因为无法动态移除插件
+        if (erudaInstance) {
+            const erudaContainer = document.querySelector('#eruda')
+            if (erudaContainer) erudaContainer.remove()
+            erudaInstance = null
+        }
+
+        const eruda = (await import('eruda')).default
+
+        // 定义插件动态导入映射
+        const pluginsMap = {
+            erudaVue: () => import('eruda-vue'),
+            erudaMonitor: () => import('eruda-monitor'),
+            erudaFeatures: () => import('eruda-features'),
+            erudaTiming: () => import('eruda-timing'),
+            erudaBenchmark: () => import('eruda-benchmark'),
+            erudaGeolocation: () => import('eruda-geolocation'),
+            erudaOrientation: () => import('eruda-orientation'),
+        }
+
+        // 遍历并加载用户选中的插件
+        for (const [key, importFn] of Object.entries(pluginsMap)) {
+            if (config[key]) {
+                try {
+                    const mod = await importFn()
+                    eruda.add(mod.default || mod)
+                } catch (err) {
+                    console.error(`加载 Eruda 插件 ${key} 失败`, err)
+                }
+            }
+        }
+
+        eruda.init()
+        erudaInstance = eruda
+    } else {
+        if (erudaInstance) {
+            const erudaContainer = document.querySelector('#eruda')
+            if (erudaContainer) erudaContainer.remove()
+            erudaInstance = null
         }
     }
 }
