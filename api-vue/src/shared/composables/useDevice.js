@@ -1,5 +1,5 @@
 // src/shared/composables/useDevice.js
-import { computed, ref, readonly } from "vue";
+import { computed, ref } from "vue";
 import {
   isMobileByUA,
   isMobileByWidth,

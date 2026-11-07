@@ -1,0 +1,19 @@
+/**
+ * @file AyAccountSDK — AyAccount login / registration surface
+ * @license MIT
+ *
+ * Public API is compatible with account-sdk.js 2.2.0:
+ *   window.AyAccount, window.createAyAccount
+ *   new AyAccount({ appId, i18n, theme? })
+ *   login(config?), register(config?), logout(), testServer(), verify(),
+ *   refresh(), changePassword(old, new), close(), updateI18n(), changeLanguage()
+ *
+ * Extra optional config (all backwards compatible):
+ *   theme: "auto" | "light" | "dark"   (default "auto")
+ *   lang: string                        (per-open language override)
+ *   autoClose: boolean                  (default true)
+ *   zIndex: number                      (fullscreen iframe stack)
+ *   height: string                      (inline container height)
+ *
+ * Toast is integrated into this SDK (shadow DOM, no global AyShowResult).
+ */

@@ -132,7 +132,8 @@ function expandIPv6(addr) {
 
   return result;
 }
-const notBase64 = /[^A-Z0-9+\/=]/i;
+const notBase64 =
+  /^(?!(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$)/;
 export function generateRandomBytes(length) {
   const buffer = new Uint8Array(length);
   crypto.getRandomValues(buffer);
@@ -200,28 +201,44 @@ export const corsHeaders_GPO = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
+export function random19() {
+  let s = "";
+  while (s.length < 19) {
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    for (const b of bytes) {
+      if (b < 250) {
+        // 250 = 10*25，丢弃 250~255 消除偏差
+        s += b % 10;
+        if (s.length === 19) break;
+      }
+    }
+  }
+  return s;
+}
 export async function proxyStaticFile(url) {
   try {
     const response = await fetch(url, { method: "GET" });
 
     if (response.status === 304) return response;
 
-    // 对 4xx 返回明确状态码，而不是抛给 catch
-    if (response.status === 404) {
-      return new Response(`Web Server Down`, {
-        status: 404,
-        headers: { "Content-Type": "text/plain" },
-      });
-    }
-    if (response.status >= 400 && response.status < 500) {
-      return new Response(`Web Server Down ${response.status}`, {
-        status: response.status,
-        headers: { "Content-Type": "text/plain" },
-      });
-    }
-    if (!response.ok) throw new Error(`Web Server Down ${response.status}`);
+    if (!response.ok)
+      return new Response(
+        `<Error>
+<Code>WebServerError</Code>
+<Message>${response.status}</Message>
+<Resource>${new URL(url).pathname}</Resource>
+<RequestId>${random19}</RequestId>
+<HostId></HostId>
+</Error>`,
+        {
+          status: 503,
+          headers: {
+            "Content-Type": "text/plain",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+          },
+        },
+      );
 
-    // 成功响应（2xx）：透传所有头，并添加缓存头（若无）
     const headers = new Headers(response.headers);
     if (!headers.has("Cache-Control")) {
       headers.set("Cache-Control", "public, max-age=86400");
@@ -231,15 +248,24 @@ export async function proxyStaticFile(url) {
       headers.set("Content-Type", "image/x-icon");
     }
     return new Response(response.body, { headers });
-  } catch {
+  } catch (e) {
     // 网络错误或 5xx：返回 503，并告知不可缓存
-    return new Response("`Web server is down", {
-      status: 503,
-      headers: {
-        "Content-Type": "text/plain",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
+    return new Response(
+      `<Error>
+<Code>WebServerError</Code>
+<Message>${e.message || "unknown"}</Message>
+<Resource>${new URL(url).pathname}</Resource>
+<RequestId>${random19}</RequestId>
+<HostId></HostId>
+</Error>`,
+      {
+        status: 503,
+        headers: {
+          "Content-Type": "text/plain",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
       },
-    });
+    );
   }
 }
 

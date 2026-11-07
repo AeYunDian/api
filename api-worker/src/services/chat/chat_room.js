@@ -1,5 +1,5 @@
 import { escapeHtml, anonymizeIp } from "../../shared/utils.js";
-import { serialize } from 'cookie';
+// import { serialize } from 'cookie';
 
 // ========== 配置 ==========
 const MAX_MESSAGES = 200;
@@ -16,8 +16,18 @@ const CHAT_TBL_SETTING = `${CHAT_TABLE_PREFIX}setting`;
 const CHAT_TBL_FILTER_WORDS = `${CHAT_TABLE_PREFIX}filter_words`;
 
 // 默认敏感词列表
-const CHAT_DEFAULT_FILTER_WORDS = ["sb", "cnm", "fuck", "傻逼", "操你妈", "妈逼", "尼玛", "草泥马", "nmsl", "脑残"];
-
+const CHAT_DEFAULT_FILTER_WORDS = [
+  "sb",
+  "cnm",
+  "fuck",
+  "傻逼",
+  "操你妈",
+  "妈逼",
+  "尼玛",
+  "草泥马",
+  "nmsl",
+  "脑残",
+];
 
 export async function chat_checkServiceSuspended(db) {
   // const stmt = await db.prepare(`SELECT value FROM ${CHAT_TBL_SETTING} WHERE key = 'service_suspended'`);
@@ -28,7 +38,9 @@ export async function chat_checkServiceSuspended(db) {
 
 // 检查是否包含敏感词（从数据库读取）
 async function chat_containsFilterWord(db, text, isAdmin) {
-  if (isAdmin) { return false };
+  if (isAdmin) {
+    return false;
+  }
   const stmt = await db.prepare(`SELECT word FROM ${CHAT_TBL_FILTER_WORDS}`);
   const { results } = await stmt.all();
   const lowerText = text.toLowerCase();
@@ -40,8 +52,17 @@ async function chat_containsFilterWord(db, text, isAdmin) {
 
 // 检查是否为无效昵称
 function chat_isInvalidNickname(nick, isAdminRequest) {
-  if (isAdminRequest) { return false };
-  const reserved = ["admin", "root", "administrator", "null", "undefined", "system"];
+  if (isAdminRequest) {
+    return false;
+  }
+  const reserved = [
+    "admin",
+    "root",
+    "administrator",
+    "null",
+    "undefined",
+    "system",
+  ];
   const lower = nick.toLowerCase();
   if (reserved.includes(lower)) return true;
   // 昵称长度限制
@@ -76,7 +97,8 @@ async function chat_isValidMessage(db, room, nick, text, isAdmin) {
   // 简单清理：每次记录时，遍历删除超过 10 分钟的条目（可根据实际情况调整）
   const now = Date.now();
   for (const [key, value] of globalLastMsgCache) {
-    if (now - value.time > 600000) {  // 10 分钟无活动
+    if (now - value.time > 600000) {
+      // 10 分钟无活动
       globalLastMsgCache.delete(key);
     }
   }
@@ -87,22 +109,47 @@ async function chat_isValidMessage(db, room, nick, text, isAdmin) {
 export async function chat_initTables(db, envKey, providedKey) {
   if (providedKey !== envKey) return { error: "Unauthorized" };
   try {
-    await db.exec(`CREATE TABLE IF NOT EXISTS ${CHAT_TBL_MESSAGES} (id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT NOT NULL, nick TEXT NOT NULL, msg TEXT NOT NULL, is_admin INTEGER DEFAULT 0, created_at INTEGER NOT NULL);`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_room ON ${CHAT_TBL_MESSAGES}(room);`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_created_at ON ${CHAT_TBL_MESSAGES}(created_at);`);
-    await db.exec(`CREATE TABLE IF NOT EXISTS ${CHAT_TBL_ADMIN_KEYS} (key TEXT PRIMARY KEY, created_at INTEGER NOT NULL, expires_at INTEGER, status TEXT DEFAULT 'active');`);
-    await db.exec(`CREATE TABLE IF NOT EXISTS ${CHAT_TBL_USERS} (username TEXT PRIMARY KEY, password TEXT NOT NULL, created_by_key TEXT, created_at INTEGER);`);
-    await db.exec(`CREATE TABLE IF NOT EXISTS ${CHAT_TBL_CLEAN_TIME} (room TEXT PRIMARY KEY, clean_time INTEGER);`);
-    await db.exec(`CREATE TABLE IF NOT EXISTS ${CHAT_TBL_FILTER_WORDS} (word TEXT PRIMARY KEY);`);
-    await db.exec(`CREATE TABLE IF NOT EXISTS ${CHAT_TBL_SETTING} (key TEXT PRIMARY KEY, value TEXT NOT NULL);`);
+    await db.exec(
+      `CREATE TABLE IF NOT EXISTS ${CHAT_TBL_MESSAGES} (id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT NOT NULL, nick TEXT NOT NULL, msg TEXT NOT NULL, is_admin INTEGER DEFAULT 0, created_at INTEGER NOT NULL);`,
+    );
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_room ON ${CHAT_TBL_MESSAGES}(room);`,
+    );
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_created_at ON ${CHAT_TBL_MESSAGES}(created_at);`,
+    );
+    await db.exec(
+      `CREATE TABLE IF NOT EXISTS ${CHAT_TBL_ADMIN_KEYS} (key TEXT PRIMARY KEY, created_at INTEGER NOT NULL, expires_at INTEGER, status TEXT DEFAULT 'active');`,
+    );
+    await db.exec(
+      `CREATE TABLE IF NOT EXISTS ${CHAT_TBL_USERS} (username TEXT PRIMARY KEY, password TEXT NOT NULL, created_by_key TEXT, created_at INTEGER);`,
+    );
+    await db.exec(
+      `CREATE TABLE IF NOT EXISTS ${CHAT_TBL_CLEAN_TIME} (room TEXT PRIMARY KEY, clean_time INTEGER);`,
+    );
+    await db.exec(
+      `CREATE TABLE IF NOT EXISTS ${CHAT_TBL_FILTER_WORDS} (word TEXT PRIMARY KEY);`,
+    );
+    await db.exec(
+      `CREATE TABLE IF NOT EXISTS ${CHAT_TBL_SETTING} (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
+    );
     // 插入默认暂停状态为关闭
-    await db.prepare(`INSERT OR IGNORE INTO ${CHAT_TBL_SETTING} (key, value) VALUES ('service_suspended', '0')`).run();
+    await db
+      .prepare(
+        `INSERT OR IGNORE INTO ${CHAT_TBL_SETTING} (key, value) VALUES ('service_suspended', '0')`,
+      )
+      .run();
     // 插入默认敏感词（如果表为空）
-    const countStmt = await db.prepare(`SELECT COUNT(*) as cnt FROM ${CHAT_TBL_FILTER_WORDS}`);
+    const countStmt = await db.prepare(
+      `SELECT COUNT(*) as cnt FROM ${CHAT_TBL_FILTER_WORDS}`,
+    );
     const { results } = await countStmt.all();
     if (results[0].cnt === 0) {
       for (const w of CHAT_DEFAULT_FILTER_WORDS) {
-        await db.prepare(`INSERT INTO ${CHAT_TBL_FILTER_WORDS} (word) VALUES (?)`).bind(w).run();
+        await db
+          .prepare(`INSERT INTO ${CHAT_TBL_FILTER_WORDS} (word) VALUES (?)`)
+          .bind(w)
+          .run();
       }
     }
     return { success: true, message: "Tables initialized" };
@@ -113,62 +160,107 @@ export async function chat_initTables(db, envKey, providedKey) {
 
 // ========== 消息操作 ==========
 async function chat_getMessages(db, roomId, afterTime = 0, afterId = 0) {
-  const stmt = await db.prepare(
-    `SELECT id, nick, msg, created_at as time, is_admin
+  const stmt = await db
+    .prepare(
+      `SELECT id, nick, msg, created_at as time, is_admin
      FROM ${CHAT_TBL_MESSAGES}
      WHERE room = ? AND (created_at > ? OR (created_at = ? AND id > ?))
      ORDER BY created_at ASC, id ASC
-     LIMIT 200`
-  ).bind(roomId, afterTime, afterTime, afterId);
+     LIMIT 200`,
+    )
+    .bind(roomId, afterTime, afterTime, afterId);
   const { results } = await stmt.all();
-  return results.map(row => ({
+  return results.map((row) => ({
     id: row.id,
-    type: row.nick === "1f1494b0-3331-6412-8ed8-39d5825fb60e" ? "system" : "message",
+    type:
+      row.nick === "1f1494b0-3331-6412-8ed8-39d5825fb60e"
+        ? "system"
+        : "message",
     // nick: row.nick,
-    nick: row.nick === "1f1494b0-3331-6412-8ed8-39d5825fb60e" ? "系统" : row.nick,
+    nick:
+      row.nick === "1f1494b0-3331-6412-8ed8-39d5825fb60e" ? "系统" : row.nick,
     text: row.msg,
     time: row.time,
-    isAdmin: row.is_admin === 1
+    isAdmin: row.is_admin === 1,
   }));
 }
 
-async function chat_addMessage(db, roomId, nick, text, isAdmin, timestamp = Date.now()) {
-  const stmt = await db.prepare(`INSERT INTO ${CHAT_TBL_MESSAGES} (room, nick, msg, is_admin, created_at) VALUES (?, ?, ?, ?, ?)`).bind(roomId, nick, text, isAdmin ? 1 : 0, timestamp);
+async function chat_addMessage(
+  db,
+  roomId,
+  nick,
+  text,
+  isAdmin,
+  timestamp = Date.now(),
+) {
+  const stmt = await db
+    .prepare(
+      `INSERT INTO ${CHAT_TBL_MESSAGES} (room, nick, msg, is_admin, created_at) VALUES (?, ?, ?, ?, ?)`,
+    )
+    .bind(roomId, nick, text, isAdmin ? 1 : 0, timestamp);
   const result = await stmt.run();
   const newId = result.meta.last_row_id;
   // 清理旧消息
-  const countStmt = await db.prepare(`SELECT COUNT(*) as cnt FROM ${CHAT_TBL_MESSAGES} WHERE room = ?`).bind(roomId);
+  const countStmt = await db
+    .prepare(`SELECT COUNT(*) as cnt FROM ${CHAT_TBL_MESSAGES} WHERE room = ?`)
+    .bind(roomId);
   const { results: countRes } = await countStmt.all();
   const cnt = countRes[0].cnt;
   if (cnt > MAX_MESSAGES) {
     const toDelete = cnt - MAX_MESSAGES;
-    await db.prepare(`DELETE FROM ${CHAT_TBL_MESSAGES} WHERE id IN (SELECT id FROM ${CHAT_TBL_MESSAGES} WHERE room = ? ORDER BY id ASC LIMIT ?)`).bind(roomId, toDelete).run();
+    await db
+      .prepare(
+        `DELETE FROM ${CHAT_TBL_MESSAGES} WHERE id IN (SELECT id FROM ${CHAT_TBL_MESSAGES} WHERE room = ? ORDER BY id ASC LIMIT ?)`,
+      )
+      .bind(roomId, toDelete)
+      .run();
   }
-  return { id: newId, nick: escapeHtml(nick), text: isAdmin ? text : escapeHtml(text), time: timestamp, isAdmin };
+  return {
+    id: newId,
+    nick: escapeHtml(nick),
+    text: isAdmin ? text : escapeHtml(text),
+    time: timestamp,
+    isAdmin,
+  };
 }
 
 async function chat_cleanRoom(db, roomId) {
-  await db.prepare(`DELETE FROM ${CHAT_TBL_MESSAGES} WHERE room = ?`).bind(roomId).run();
-  await db.prepare(`INSERT OR REPLACE INTO ${CHAT_TBL_CLEAN_TIME} (room, clean_time) VALUES (?, ?)`).bind(roomId, Date.now()).run();
+  await db
+    .prepare(`DELETE FROM ${CHAT_TBL_MESSAGES} WHERE room = ?`)
+    .bind(roomId)
+    .run();
+  await db
+    .prepare(
+      `INSERT OR REPLACE INTO ${CHAT_TBL_CLEAN_TIME} (room, clean_time) VALUES (?, ?)`,
+    )
+    .bind(roomId, Date.now())
+    .run();
 }
 
 async function chat_getCleanTime(db, roomId) {
-  const stmt = await db.prepare(`SELECT clean_time FROM ${CHAT_TBL_CLEAN_TIME} WHERE room = ?`).bind(roomId);
+  const stmt = await db
+    .prepare(`SELECT clean_time FROM ${CHAT_TBL_CLEAN_TIME} WHERE room = ?`)
+    .bind(roomId);
   const { results } = await stmt.all();
   return results.length ? results[0].clean_time : 0;
 }
 
 async function chat_hasRecentEnterMessage(db, roomId, nick, limit = 15) {
-  const stmt = await db.prepare(
-    `SELECT nick, msg, created_at FROM ${CHAT_TBL_MESSAGES}
+  const stmt = await db
+    .prepare(
+      `SELECT nick, msg, created_at FROM ${CHAT_TBL_MESSAGES}
      WHERE room = ?
      ORDER BY created_at DESC, id DESC
-     LIMIT ?`
-  ).bind(roomId, limit);
+     LIMIT ?`,
+    )
+    .bind(roomId, limit);
   const { results } = await stmt.all();
   const enterPrefix = `<span class="nickname">${nick}</span>&nbsp;进入了房间`;
   for (const row of results) {
-    if (row.nick === "1f1494b0-3331-6412-8ed8-39d5825fb60e" && row.msg.indexOf(enterPrefix) !== -1) {
+    if (
+      row.nick === "1f1494b0-3331-6412-8ed8-39d5825fb60e" &&
+      row.msg.indexOf(enterPrefix) !== -1
+    ) {
       return row.created_at; // 返回最近进入消息的时间
     }
   }
@@ -182,13 +274,22 @@ export function chat_isSuperAdmin(env, key) {
 
 // ========== 动态密钥（仅用于自定义房间用户创建）==========
 async function chat_isDynamicKeyValid(db, key) {
-  const stmt = await db.prepare(`SELECT * FROM ${CHAT_TBL_ADMIN_KEYS} WHERE key = ? AND status = 'active'`).bind(key);
+  const stmt = await db
+    .prepare(
+      `SELECT * FROM ${CHAT_TBL_ADMIN_KEYS} WHERE key = ? AND status = 'active'`,
+    )
+    .bind(key);
   const { results } = await stmt.all();
   if (results.length === 0) return false;
   const keyData = results[0];
   const now = Math.floor(Date.now() / 1000);
   if (keyData.expires_at !== null && now > keyData.expires_at) {
-    await db.prepare(`UPDATE ${CHAT_TBL_ADMIN_KEYS} SET status = 'expired' WHERE key = ?`).bind(key).run();
+    await db
+      .prepare(
+        `UPDATE ${CHAT_TBL_ADMIN_KEYS} SET status = 'expired' WHERE key = ?`,
+      )
+      .bind(key)
+      .run();
     return false;
   }
   return true;
@@ -197,64 +298,106 @@ async function chat_isDynamicKeyValid(db, key) {
 async function chat_createDynamicKey(db, newKey, expiresInSeconds = null) {
   const now = Math.floor(Date.now() / 1000);
   let expires_at = null;
-  if (expiresInSeconds !== null && expiresInSeconds > 0) expires_at = now + expiresInSeconds;
-  await db.prepare(`INSERT OR REPLACE INTO ${CHAT_TBL_ADMIN_KEYS} (key, created_at, expires_at, status) VALUES (?, ?, ?, 'active')`).bind(newKey, now, expires_at).run();
+  if (expiresInSeconds !== null && expiresInSeconds > 0)
+    expires_at = now + expiresInSeconds;
+  await db
+    .prepare(
+      `INSERT OR REPLACE INTO ${CHAT_TBL_ADMIN_KEYS} (key, created_at, expires_at, status) VALUES (?, ?, ?, 'active')`,
+    )
+    .bind(newKey, now, expires_at)
+    .run();
   return true;
 }
 
 async function chat_deleteDynamicKey(db, key) {
-  await db.prepare(`DELETE FROM ${CHAT_TBL_ADMIN_KEYS} WHERE key = ?`).bind(key).run();
+  await db
+    .prepare(`DELETE FROM ${CHAT_TBL_ADMIN_KEYS} WHERE key = ?`)
+    .bind(key)
+    .run();
 }
 
 async function chat_listDynamicKeys(db) {
-  const stmt = await db.prepare(`SELECT key, created_at, expires_at, status FROM ${CHAT_TBL_ADMIN_KEYS}`);
+  const stmt = await db.prepare(
+    `SELECT key, created_at, expires_at, status FROM ${CHAT_TBL_ADMIN_KEYS}`,
+  );
   const { results } = await stmt.all();
   const now = Math.floor(Date.now() / 1000);
   const list = {};
   for (const row of results) {
     let status = row.status;
-    if (status === "active" && row.expires_at !== null && now > row.expires_at) status = "expired";
-    list[row.key] = { created_at: row.created_at, expires_at: row.expires_at, status };
+    if (status === "active" && row.expires_at !== null && now > row.expires_at)
+      status = "expired";
+    list[row.key] = {
+      created_at: row.created_at,
+      expires_at: row.expires_at,
+      status,
+    };
   }
   return list;
 }
 
 // ========== 自定义房间用户 ==========
 async function chat_createUser(db, username, password, createdByKey) {
-  await db.prepare(`INSERT INTO ${CHAT_TBL_USERS} (username, password, created_by_key, created_at) VALUES (?, ?, ?, ?)`).bind(username, password, createdByKey, Date.now()).run();
+  await db
+    .prepare(
+      `INSERT INTO ${CHAT_TBL_USERS} (username, password, created_by_key, created_at) VALUES (?, ?, ?, ?)`,
+    )
+    .bind(username, password, createdByKey, Date.now())
+    .run();
 }
 async function chat_verifyUser(db, username, password) {
-  const stmt = await db.prepare(`SELECT password FROM ${CHAT_TBL_USERS} WHERE username = ?`).bind(username);
+  const stmt = await db
+    .prepare(`SELECT password FROM ${CHAT_TBL_USERS} WHERE username = ?`)
+    .bind(username);
   const { results } = await stmt.all();
   if (results.length === 0) return false;
   return results[0].password === password;
 }
 async function chat_deleteUser(db, username) {
-  await db.prepare(`DELETE FROM ${CHAT_TBL_USERS} WHERE username = ?`).bind(username).run();
+  await db
+    .prepare(`DELETE FROM ${CHAT_TBL_USERS} WHERE username = ?`)
+    .bind(username)
+    .run();
 }
 async function chat_listUsers(db) {
-  const stmt = await db.prepare(`SELECT username, created_by_key, created_at FROM ${CHAT_TBL_USERS}`);
+  const stmt = await db.prepare(
+    `SELECT username, created_by_key, created_at FROM ${CHAT_TBL_USERS}`,
+  );
   const { results } = await stmt.all();
   return results;
 }
 // ========== 敏感词管理 ==========
 async function chat_addFilterWord(db, word) {
-  await db.prepare(`INSERT OR IGNORE INTO ${CHAT_TBL_FILTER_WORDS} (word) VALUES (?)`).bind(word).run();
+  await db
+    .prepare(`INSERT OR IGNORE INTO ${CHAT_TBL_FILTER_WORDS} (word) VALUES (?)`)
+    .bind(word)
+    .run();
 }
 async function chat_removeFilterWord(db, word) {
-  await db.prepare(`DELETE FROM ${CHAT_TBL_FILTER_WORDS} WHERE word = ?`).bind(word).run();
+  await db
+    .prepare(`DELETE FROM ${CHAT_TBL_FILTER_WORDS} WHERE word = ?`)
+    .bind(word)
+    .run();
 }
 async function chat_listFilterWords(db) {
   const stmt = await db.prepare(`SELECT word FROM ${CHAT_TBL_FILTER_WORDS}`);
   const { results } = await stmt.all();
-  return results.map(r => r.word);
+  return results.map((r) => r.word);
 }
 export async function chat_clean(db, url, isSuper) {
-  if (!isSuper) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  if (!isSuper)
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+    });
   const room = url.searchParams.get("room");
-  if (!room || (room !== MAIN_ROOM && room !== CUSTOM_ROOM)) return new Response(JSON.stringify({ error: "Invalid room" }), { status: 400 });
+  if (!room || (room !== MAIN_ROOM && room !== CUSTOM_ROOM))
+    return new Response(JSON.stringify({ error: "Invalid room" }), {
+      status: 400,
+    });
   await chat_cleanRoom(db, room);
-  return new Response(JSON.stringify({ success: true, message: `Room ${room} cleaned` }));
+  return new Response(
+    JSON.stringify({ success: true, message: `Room ${room} cleaned` }),
+  );
 }
 export async function chat_poll(db, url) {
   const room = url.searchParams.get("room");
@@ -263,20 +406,24 @@ export async function chat_poll(db, url) {
   if (!room) return new Response("Missing room", { status: 400 });
   const cleanTime = await chat_getCleanTime(db, room);
   const now = Date.now();
-  if (cleanTime > 0 && (now - cleanTime) < CLEAN_WINDOW_MS) {
+  if (cleanTime > 0 && now - cleanTime < CLEAN_WINDOW_MS) {
     // 管理员操作触发的强制刷新
     const fakeMsg = {
       id: -1,
       type: "system",
       nick: "系统",
-      text: '<img src=x onerror=location.reload(true)>',
+      text: "<img src=x onerror=location.reload(true)>",
       time: now,
       isAdmin: true,
     };
-    return new Response(JSON.stringify({ messages: [fakeMsg] }), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ messages: [fakeMsg] }), {
+      headers: { "Content-Type": "application/json" },
+    });
   }
   const messages = await chat_getMessages(db, room, afterTime, afterId);
-  return new Response(JSON.stringify({ messages }), { headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({ messages }), {
+    headers: { "Content-Type": "application/json" },
+  });
 }
 export async function chat_userLogin(clientIP, isAdminUser, url, db) {
   const room = url.searchParams.get("room");
@@ -284,31 +431,65 @@ export async function chat_userLogin(clientIP, isAdminUser, url, db) {
   if (!room || !nick) return new Response("无效参数", { status: 400 });
   if (!isAdminUser) {
     const nickInvalid = await chat_isInvalidNickname(nick, isAdminUser);
-    const nickContainsFilter = await chat_containsFilterWord(db, nick, isAdminUser);
+    const nickContainsFilter = await chat_containsFilterWord(
+      db,
+      nick,
+      isAdminUser,
+    );
     if (nickInvalid || nickContainsFilter) {
-      return new Response(JSON.stringify({ error: "昵称无效或包含敏感词" }), { status: 403, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "昵称无效或包含敏感词" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      });
     }
   }
-  const ipv6Regex = /(^(?:(?:(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){6}:[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){5}:([0-9A-Fa-f]{1,4}:)?[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){4}:([0-9A-Fa-f]{1,4}:){0,2}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){3}:([0-9A-Fa-f]{1,4}:){0,3}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){2}:([0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){6}((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|(([0-9A-Fa-f]{1,4}:){0,5}:((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|(::([0-9A-Fa-f]{1,4}:){0,5}((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|([0-9A-Fa-f]{1,4}::([0-9A-Fa-f]{1,4}:){0,5}[0-9A-Fa-f]{1,4})|(::([0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,7}:))$)|(^\[(?:(?:(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){6}:[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){5}:([0-9A-Fa-f]{1,4}:)?[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){4}:([0-9A-Fa-f]{1,4}:){0,2}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){3}:([0-9A-Fa-f]{1,4}:){0,3}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){2}:([0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){6}((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|(([0-9A-Fa-f]{1,4}:){0,5}:((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|(::([0-9A-Fa-f]{1,4}:){0,5}((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|([0-9A-Fa-f]{1,4}::([0-9A-Fa-f]{1,4}:){0,5}[0-9A-Fa-f]{1,4})|(::([0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,7}:))\](?::(?:[0-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?$)/i;
-  const ipv4Regex = /^((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])(?::(?:[0-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?$/;
+  const ipv6Regex =
+    /(^(?:(?:(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){6}:[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){5}:([0-9A-Fa-f]{1,4}:)?[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){4}:([0-9A-Fa-f]{1,4}:){0,2}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){3}:([0-9A-Fa-f]{1,4}:){0,3}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){2}:([0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){6}((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|(([0-9A-Fa-f]{1,4}:){0,5}:((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|(::([0-9A-Fa-f]{1,4}:){0,5}((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|([0-9A-Fa-f]{1,4}::([0-9A-Fa-f]{1,4}:){0,5}[0-9A-Fa-f]{1,4})|(::([0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,7}:))$)|(^\[(?:(?:(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){6}:[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){5}:([0-9A-Fa-f]{1,4}:)?[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){4}:([0-9A-Fa-f]{1,4}:){0,2}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){3}:([0-9A-Fa-f]{1,4}:){0,3}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){2}:([0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){6}((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|(([0-9A-Fa-f]{1,4}:){0,5}:((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|(::([0-9A-Fa-f]{1,4}:){0,5}((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|([0-9A-Fa-f]{1,4}::([0-9A-Fa-f]{1,4}:){0,5}[0-9A-Fa-f]{1,4})|(::([0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,7}:))\](?::(?:[0-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?$)/i;
+  const ipv4Regex =
+    /^((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])(?::(?:[0-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?$/;
   if (ipv6Regex.test(clientIP) || ipv4Regex.test(clientIP)) {
     clientIP = anonymizeIp(clientIP);
   } else {
     clientIP = null; // 无法识别的IP格式，直接置空
   }
   const lastRecent = await chat_hasRecentEnterMessage(db, room, nick, 100);
-  if (lastRecent !== null && Date.now() - lastRecent < 1800000) { // 现在的逻辑：30分钟内有进入消息，就跳过
-    return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
+  if (lastRecent !== null && Date.now() - lastRecent < 1800000) {
+    // 现在的逻辑：30分钟内有进入消息，就跳过
+    return new Response(JSON.stringify({ code: 200 }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } else {
-    await chat_addMessage(db, room, "1f1494b0-3331-6412-8ed8-39d5825fb60e", `<span class="nickname">${nick}</span>&nbsp;进入了房间&nbsp;&nbsp;${clientIP ? `|&nbsp;&nbsp;IP: &nbsp;${clientIP}` : ''}`, true, Date.now());
+    await chat_addMessage(
+      db,
+      room,
+      "1f1494b0-3331-6412-8ed8-39d5825fb60e",
+      `<span class="nickname">${nick}</span>&nbsp;进入了房间&nbsp;&nbsp;${clientIP ? `|&nbsp;&nbsp;IP: &nbsp;${clientIP}` : ""}`,
+      true,
+      Date.now(),
+    );
   }
   const lastIn15 = await chat_hasRecentEnterMessage(db, room, nick, 15);
-  if (lastIn15 !== null) { // 之前的逻辑：15条消息内有进入消息，就跳过
-    return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
+  if (lastIn15 !== null) {
+    // 之前的逻辑：15条消息内有进入消息，就跳过
+    return new Response(JSON.stringify({ code: 200 }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   }
-  await chat_addMessage(db, room, "1f1494b0-3331-6412-8ed8-39d5825fb60e", `<span class="nickname">${nick}</span>&nbsp;进入了房间&nbsp;&nbsp;${clientIP ? `|&nbsp;&nbsp;IP: &nbsp;${clientIP}` : ''}`, true, Date.now());
+  await chat_addMessage(
+    db,
+    room,
+    "1f1494b0-3331-6412-8ed8-39d5825fb60e",
+    `<span class="nickname">${nick}</span>&nbsp;进入了房间&nbsp;&nbsp;${clientIP ? `|&nbsp;&nbsp;IP: &nbsp;${clientIP}` : ""}`,
+    true,
+    Date.now(),
+  );
 
-  return new Response(JSON.stringify({ code: 200 }), { status: 200, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({ code: 200 }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 export async function chat_sendMessage(db, url, env) {
@@ -325,14 +506,22 @@ export async function chat_sendMessage(db, url, env) {
   // 昵称校验（管理员可使用保留名）
   if (!isAdminUser) {
     const nickInvalid = await chat_isInvalidNickname(nick, isAdminUser);
-    const nickContainsFilter = await chat_containsFilterWord(db, nick, isAdminUser);
+    const nickContainsFilter = await chat_containsFilterWord(
+      db,
+      nick,
+      isAdminUser,
+    );
     if (nickInvalid || nickContainsFilter) {
-      return new Response(JSON.stringify({ error: "昵称无效或包含敏感词" }), { status: 403, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "昵称无效或包含敏感词" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      });
     }
   }
   // 房间权限
   if (room === CUSTOM_ROOM) {
-    if (!username || !password) return new Response("自定义房间需要凭证", { status: 401 });
+    if (!username || !password)
+      return new Response("自定义房间需要凭证", { status: 401 });
     const valid = await chat_verifyUser(db, username, password);
     if (!valid) return new Response("无效的凭证", { status: 403 });
   } else if (room !== MAIN_ROOM) {
@@ -341,93 +530,150 @@ export async function chat_sendMessage(db, url, env) {
   // 消息有效性（重复、单字符、敏感词）
   const isValid = await chat_isValidMessage(db, room, nick, msg, isAdminUser);
   if (!isAdminUser && !isValid) {
-    return new Response(JSON.stringify({ error: "消息无效（重复、含敏感词或单字符）" }), { status: 400, headers: { "Content-Type": "application/json" } });
+    return new Response(
+      JSON.stringify({ error: "消息无效（重复、含敏感词或单字符）" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
   }
   const finalMsg = isAdminUser ? msg : escapeHtml(msg); // 管理员不转义
   const newMsg = await chat_addMessage(db, room, nick, finalMsg, isAdminUser);
-  return new Response(JSON.stringify({ success: true, msg: newMsg }), { headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({ success: true, msg: newMsg }), {
+    headers: { "Content-Type": "application/json" },
+  });
 }
 export async function chat_verifyUserRequest(db, url) {
   const room = url.searchParams.get("room");
-  if (room !== CUSTOM_ROOM) return new Response(JSON.stringify({ valid: true }), { headers: { "Content-Type": "application/json" } });
+  if (room !== CUSTOM_ROOM)
+    return new Response(JSON.stringify({ valid: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
   const username = url.searchParams.get("username");
   const password = url.searchParams.get("password");
-  if (!username || !password) return new Response(JSON.stringify({ valid: false, error: "Missing credentials" }), { status: 401 });
+  if (!username || !password)
+    return new Response(
+      JSON.stringify({ valid: false, error: "Missing credentials" }),
+      { status: 401 },
+    );
   const valid = await chat_verifyUser(db, username, password);
-  return new Response(JSON.stringify({ valid }), { headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({ valid }), {
+    headers: { "Content-Type": "application/json" },
+  });
 }
 export async function chat_createUserPublic(db, url, isSuper, keyParam) {
   const dynamicValid = await chat_isDynamicKeyValid(db, keyParam);
-  if (!dynamicValid && !isSuper) return new Response("未授权的请求", { status: 403 });
+  if (!dynamicValid && !isSuper)
+    return new Response("未授权的请求", { status: 403 });
   const username = url.searchParams.get("username");
   const password = url.searchParams.get("password");
   if (!username || !password) return new Response("无效参数", { status: 400 });
-  if (username.length < 3 || username.length > 20 || !/^[a-zA-Z0-9_]+$/.test(username)) return new Response("无效用户名", { status: 400 });
+  if (
+    username.length < 3 ||
+    username.length > 20 ||
+    !/^[a-zA-Z0-9_]+$/.test(username)
+  )
+    return new Response("无效用户名", { status: 400 });
   if (password.length < 4) return new Response("密码太短了", { status: 400 });
   await chat_createUser(db, username, password, keyParam);
   return new Response(`已创建账户：${username}`);
 }
 export async function chat_handleAdminRequest(db, path, url, isSuper) {
-  if (!isSuper) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
+  if (!isSuper)
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
   const action = path.replace("/api/admin/", "");
   if (action === "list_keys") {
     const keys = await chat_listDynamicKeys(db);
-    return new Response(JSON.stringify(keys), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify(keys), {
+      headers: { "Content-Type": "application/json" },
+    });
   }
   if (action === "create_key") {
     const newKey = url.searchParams.get("new_key");
     const ttl = parseInt(url.searchParams.get("ttl") || "0");
-    if (!newKey || newKey.length < 6) return new Response(JSON.stringify({ error: "密钥长度至少6位" }), { status: 400 });
+    if (!newKey || newKey.length < 6)
+      return new Response(JSON.stringify({ error: "密钥长度至少6位" }), {
+        status: 400,
+      });
     await chat_createDynamicKey(db, newKey, ttl > 0 ? ttl : null);
     return new Response(JSON.stringify({ success: true }));
   }
   if (action === "delete_key") {
     const targetKey = url.searchParams.get("target_key");
-    if (!targetKey) return new Response(JSON.stringify({ error: "缺少参数" }), { status: 400 });
+    if (!targetKey)
+      return new Response(JSON.stringify({ error: "缺少参数" }), {
+        status: 400,
+      });
     await chat_deleteDynamicKey(db, targetKey);
     return new Response(JSON.stringify({ success: true }));
   }
   if (action === "get_setting") {
     const suspended = await chat_checkServiceSuspended(db);
-    return new Response(JSON.stringify({ service_suspended: suspended }), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ service_suspended: suspended }), {
+      headers: { "Content-Type": "application/json" },
+    });
   }
   if (action === "update_setting") {
     const setting_key = url.searchParams.get("setting_key");
     const value = url.searchParams.get("value");
-    if (!setting_key || value === null) return new Response(JSON.stringify({ error: "缺少参数" }), { status: 400 });
-    await db.prepare(`INSERT OR REPLACE INTO ${CHAT_TBL_SETTING} (key, value) VALUES (?, ?)`).bind(setting_key, value).run();
+    if (!setting_key || value === null)
+      return new Response(JSON.stringify({ error: "缺少参数" }), {
+        status: 400,
+      });
+    await db
+      .prepare(
+        `INSERT OR REPLACE INTO ${CHAT_TBL_SETTING} (key, value) VALUES (?, ?)`,
+      )
+      .bind(setting_key, value)
+      .run();
     return new Response(JSON.stringify({ success: true }));
   }
   if (action === "list_users") {
     const users = await chat_listUsers(db);
-    return new Response(JSON.stringify(users), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify(users), {
+      headers: { "Content-Type": "application/json" },
+    });
   }
   if (action === "delete_user") {
     const username = url.searchParams.get("username");
-    if (!username) return new Response(JSON.stringify({ error: "缺少用户名" }), { status: 400 });
+    if (!username)
+      return new Response(JSON.stringify({ error: "缺少用户名" }), {
+        status: 400,
+      });
     await chat_deleteUser(db, username);
     return new Response(JSON.stringify({ success: true }));
   }
   if (action === "list_filter") {
     const words = await chat_listFilterWords(db);
-    return new Response(JSON.stringify({ words }), { headers: { "Content-Type": "application/json" } });
-
+    return new Response(JSON.stringify({ words }), {
+      headers: { "Content-Type": "application/json" },
+    });
   }
   if (action === "add_filter") {
     const word = url.searchParams.get("word");
-    if (!word || word.length < 1) return new Response(JSON.stringify({ error: "无效敏感词" }), { status: 400 });
+    if (!word || word.length < 1)
+      return new Response(JSON.stringify({ error: "无效敏感词" }), {
+        status: 400,
+      });
     await chat_addFilterWord(db, word);
     return new Response(JSON.stringify({ success: true }));
   }
   if (action === "remove_filter") {
     const word = url.searchParams.get("word");
-    if (!word) return new Response(JSON.stringify({ error: "缺少参数" }), { status: 400 });
+    if (!word)
+      return new Response(JSON.stringify({ error: "缺少参数" }), {
+        status: 400,
+      });
     await chat_removeFilterWord(db, word);
     return new Response(JSON.stringify({ success: true }));
   }
   if (action === "clean_room") {
     const room = url.searchParams.get("room");
-    if (room !== MAIN_ROOM && room !== CUSTOM_ROOM) return new Response(JSON.stringify({ error: "无效房间" }), { status: 400 });
+    if (room !== MAIN_ROOM && room !== CUSTOM_ROOM)
+      return new Response(JSON.stringify({ error: "无效房间" }), {
+        status: 400,
+      });
     await chat_cleanRoom(db, room);
     return new Response(JSON.stringify({ success: true }));
   }
@@ -436,35 +682,70 @@ export async function chat_handleAdminRequest(db, path, url, isSuper) {
     const page = parseInt(url.searchParams.get("page") || "1");
     const limit = 20;
     const offset = (page - 1) * limit;
-    const countStmt = await db.prepare(`SELECT COUNT(*) as cnt FROM ${CHAT_TBL_MESSAGES} WHERE room = ?`).bind(room);
+    const countStmt = await db
+      .prepare(
+        `SELECT COUNT(*) as cnt FROM ${CHAT_TBL_MESSAGES} WHERE room = ?`,
+      )
+      .bind(room);
     const { results: countRes } = await countStmt.all();
     const total = countRes[0].cnt;
-    const stmt = await db.prepare(`SELECT id, room, nick, msg, created_at, is_admin FROM ${CHAT_TBL_MESSAGES} WHERE room = ? ORDER BY id ASC LIMIT ? OFFSET ?`).bind(room, limit, offset);
+    const stmt = await db
+      .prepare(
+        `SELECT id, room, nick, msg, created_at, is_admin FROM ${CHAT_TBL_MESSAGES} WHERE room = ? ORDER BY id ASC LIMIT ? OFFSET ?`,
+      )
+      .bind(room, limit, offset);
     const { results } = await stmt.all();
-    return new Response(JSON.stringify({ messages: results, total, page, limit }), { headers: { "Content-Type": "application/json" } });
-
+    return new Response(
+      JSON.stringify({ messages: results, total, page, limit }),
+      { headers: { "Content-Type": "application/json" } },
+    );
   }
   if (action === "delete_message") {
     const msgId = parseInt(url.searchParams.get("id"));
-    if (!msgId) return new Response(JSON.stringify({ error: "缺少消息ID" }), { status: 400 });
-    await db.prepare(`DELETE FROM ${CHAT_TBL_MESSAGES} WHERE id = ?`).bind(msgId).run();
+    if (!msgId)
+      return new Response(JSON.stringify({ error: "缺少消息ID" }), {
+        status: 400,
+      });
+    await db
+      .prepare(`DELETE FROM ${CHAT_TBL_MESSAGES} WHERE id = ?`)
+      .bind(msgId)
+      .run();
     return new Response(JSON.stringify({ success: true }));
   }
   if (action === "refresh_room") {
     const room = url.searchParams.get("room") || MAIN_ROOM;
-    if (!room) return new Response(JSON.stringify({ error: "缺少房间值" }), { status: 400 });
-    await db.prepare(`INSERT OR REPLACE INTO ${CHAT_TBL_CLEAN_TIME} (room, clean_time) VALUES (?, ?)`).bind(room, Date.now()).run();
+    if (!room)
+      return new Response(JSON.stringify({ error: "缺少房间值" }), {
+        status: 400,
+      });
+    await db
+      .prepare(
+        `INSERT OR REPLACE INTO ${CHAT_TBL_CLEAN_TIME} (room, clean_time) VALUES (?, ?)`,
+      )
+      .bind(room, Date.now())
+      .run();
     return new Response(JSON.stringify({ success: true }));
   }
   if (action === "edit_message") {
     const msgId = parseInt(url.searchParams.get("id"));
     const newText = url.searchParams.get("text");
     const newNick = url.searchParams.get("nick");
-    if (!msgId || !newText) return new Response(JSON.stringify({ error: "缺少参数" }), { status: 400 });
+    if (!msgId || !newText)
+      return new Response(JSON.stringify({ error: "缺少参数" }), {
+        status: 400,
+      });
     if (newNick) {
-      await db.prepare(`UPDATE ${CHAT_TBL_MESSAGES} SET msg = ?, nick = ? WHERE id = ?`).bind(newText, newNick, msgId).run();
+      await db
+        .prepare(
+          `UPDATE ${CHAT_TBL_MESSAGES} SET msg = ?, nick = ? WHERE id = ?`,
+        )
+        .bind(newText, newNick, msgId)
+        .run();
     } else {
-      await db.prepare(`UPDATE ${CHAT_TBL_MESSAGES} SET msg = ? WHERE id = ?`).bind(newText, msgId).run();
+      await db
+        .prepare(`UPDATE ${CHAT_TBL_MESSAGES} SET msg = ? WHERE id = ?`)
+        .bind(newText, msgId)
+        .run();
     }
     return new Response(JSON.stringify({ success: true }));
   }
@@ -474,11 +755,19 @@ export async function chat_handleAdminRequest(db, path, url, isSuper) {
     const nick = url.searchParams.get("nick") || "管理员";
     const targetId = parseInt(url.searchParams.get("target_id"));
     const position = url.searchParams.get("position") || "after"; // before 或 after
-    if (!text || !targetId) return new Response(JSON.stringify({ error: "缺少参数" }), { status: 400 });
+    if (!text || !targetId)
+      return new Response(JSON.stringify({ error: "缺少参数" }), {
+        status: 400,
+      });
     // 获取目标消息的时间戳
-    const targetStmt = await db.prepare(`SELECT created_at FROM ${CHAT_TBL_MESSAGES} WHERE id = ?`).bind(targetId);
+    const targetStmt = await db
+      .prepare(`SELECT created_at FROM ${CHAT_TBL_MESSAGES} WHERE id = ?`)
+      .bind(targetId);
     const { results: targetRes } = await targetStmt.all();
-    if (!targetRes.length) return new Response(JSON.stringify({ error: "目标消息不存在" }), { status: 400 });
+    if (!targetRes.length)
+      return new Response(JSON.stringify({ error: "目标消息不存在" }), {
+        status: 400,
+      });
     let newTime = targetRes[0].created_at;
     newTime = position === "before" ? newTime - 100 : newTime + 100; // 微调时间戳
     // 插入新消息（管理员消息，自动转义）
@@ -486,9 +775,10 @@ export async function chat_handleAdminRequest(db, path, url, isSuper) {
     return new Response(JSON.stringify({ success: true }));
   }
 
-  return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400 });
+  return new Response(JSON.stringify({ error: "Unknown action" }), {
+    status: 400,
+  });
 }
-
 
 // ========== IE8 完全兼容的页面 ==========
 export function chat_getIndexHtml() {
@@ -545,8 +835,8 @@ export function chat_getIndexHtml() {
     }
     .about-page h2 {
       display: inline-block;
-      vertical-align: middle; 
-      margin: 0 0 0 12px; 
+      vertical-align: middle;
+      margin: 0 0 0 12px;
     }
     input, button {
       background: #ffffff;
@@ -826,7 +1116,7 @@ export function chat_getChatHtml() {
     if (msg.type === 'system') {
       var timeStr = new Date(msg.time);
       timeStr = timeStr.toLocaleString("zh-CN", { hour12: false });
-      
+
       div.className = 'message system';
       div.innerHTML = '[系统] ' + msg.text + ' <span style="font-size:11px;">' + timeStr + '</span>';
     } else {
@@ -1209,12 +1499,12 @@ function loadKeys(){
       var cellExpires = row.insertCell(2);
       var cellStatus = row.insertCell(3);
       var cellAction = row.insertCell(4);
-      
+
       cellKey.innerText = k;
       cellCreated.innerText = new Date(data[k].created_at * 1000).toLocaleString();
       cellExpires.innerText = data[k].expires_at ? new Date(data[k].expires_at * 1000).toLocaleString() : '永不过期';
       cellStatus.innerText = data[k].status;
-      
+
       var btn = document.createElement('button');
       btn.innerText = '删除';
       btn.onclick = (function(key){
@@ -1239,11 +1529,11 @@ function loadUsers(){
       var cellCreator = row.insertCell(1);
       var cellCreated = row.insertCell(2);
       var cellAction = row.insertCell(3);
-      
+
       cellUser.innerText = u.username;
       cellCreator.innerText = u.created_by_key;
       cellCreated.innerText = new Date(u.created_at).toLocaleString();
-      
+
       var btn = document.createElement('button');
       btn.innerText = '删除';
       btn.onclick = (function(un){
@@ -1267,7 +1557,7 @@ function loadFilterWords(){
       var row = tbody.insertRow(-1);
       var cellWord = row.insertCell(0);
       var cellAction = row.insertCell(1);
-      
+
       cellWord.innerText = w;
       var btn = document.createElement('button');
       btn.innerText = '删除';

@@ -6,7 +6,6 @@ import '@varlet/ui/es/dialog/style';
 import '@varlet/ui/es/snackbar/style';
 import { isEmailDomainAllowed } from '@/account/utils/validators';
 import { updateProfile, createEmailVerify, queryEmailVerify, changeEmail } from '@/account/utils/api';
-const sdk = inject('sdk');
 const user = inject('user');
 const refreshUser = inject('refreshUser');
 const usernameInput = ref('');

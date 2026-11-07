@@ -42,7 +42,7 @@ const UA = NAV?.userAgent ?? "";
 const UA_LOWER = UA.toLowerCase();
 const PLATFORM = NAV?.platform ?? "";
 const MAX_TOUCH_POINTS = NAV?.maxTouchPoints ?? 0;
-const UA_DATA = NAV?.userAgentData ?? null;
+// const UA_DATA = NAV?.userAgentData ?? null;
 
 // ============================================================
 // 宿主外壳（AyHostShell）

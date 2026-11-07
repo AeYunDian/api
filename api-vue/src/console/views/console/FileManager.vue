@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch, inject } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Dialog, Snackbar } from '@varlet/ui'
 import { useIsAdmin } from '@/console/composables/useIsAdmin'
@@ -15,7 +15,6 @@ import '@varlet/ui/es/fab/style'
 
 const route = useRoute()
 const router = useRouter()
-const user = inject('user')
 const isAdmin = useIsAdmin()
 
 const BASE = 'https://console.undz.cn'

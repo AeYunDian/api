@@ -9,7 +9,6 @@ import '@varlet/ui/es/form/style';
 
 const router = useRouter();
 const sdk = inject('sdk');
-const user = inject('user');
 const channel = inject('channel');
 const deviceCount = ref(0);
 const refreshState = ref(false);
@@ -156,14 +155,16 @@ async function onPullRefresh() {
                 <var-form class="md-dialog-form" scroll-to-error="start" @submit="handleChangePassword">
                     <var-input type="password" variant="outlined" placeholder="旧密码" v-model="oldPassword"
                         :rules="[v => !!v || '请填写旧密码']" />
-                    <var-input type="password" variant="outlined" placeholder="新密码（至少 6 位）" v-model="newPassword" :rules="[
-                        v => !!v || '请填写新密码',
-                        v => v.length >= 6 || '密码至少6位'
-                    ]" />
-                    <var-input type="password" variant="outlined" placeholder="再次输入新密码" v-model="confirmPassword" :rules="[
-                        v => !!v || '请再次输入新密码',
-                        v => v === newPassword || '两次密码不一致'
-                    ]" />
+                    <var-input type="password" variant="outlined" placeholder="新密码（至少 6 位）" v-model="newPassword"
+                        :rules="[
+                            v => !!v || '请填写新密码',
+                            v => v.length >= 6 || '密码至少6位'
+                        ]" />
+                    <var-input type="password" variant="outlined" placeholder="再次输入新密码" v-model="confirmPassword"
+                        :rules="[
+                            v => !!v || '请再次输入新密码',
+                            v => v === newPassword || '两次密码不一致'
+                        ]" />
 
                     <div class="form-actions">
                         <var-button type="primary" native-type="submit" :loading="passwordLoading">

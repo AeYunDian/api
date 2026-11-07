@@ -1,0 +1,31 @@
+{
+    "name": "ay-account",
+    "version": "3.2.2",
+    "description": "A self-contained Material Design 3 login surface for AyAccount. The surface uses MD3 color / type / shape / elevation / state tokens, with logical CSS properties (`inline-start` / `inline-end`) throughout.",
+    "main": "main.js",
+    "scripts": {
+        "dev": "webpack --mode development --watch",
+        "build": "webpack --mode production",
+        "postbuild": "node scripts/copy-aliases.mjs",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
+    },
+    "keywords": [],
+    "type": "module",
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "copy-webpack-plugin": "^14.0.0",
+        "css-minimizer-webpack-plugin": "^8.0.0",
+        "eslint": "^10.14.0",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-webpack-plugin": "^6.0.0",
+        "globals": "^17.14.0",
+        "html-minimizer-webpack-plugin": "^6.0.0",
+        "prettier": "^3.9.10",
+        "terser-webpack-plugin": "^5.6.1",
+        "webpack": "^5.112.2",
+        "webpack-cli": "^7.3.1"
+    }
+}

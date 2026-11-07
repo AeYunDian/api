@@ -3,7 +3,7 @@ import {
   chat_getChatHtml,
   chat_getSettingLoginHtml,
   chat_getSettingHtml,
-  chat_checkServiceSuspended,
+  //   chat_checkServiceSuspended,
   chat_isSuperAdmin,
   chat_verifyUserRequest,
   chat_createUserPublic,

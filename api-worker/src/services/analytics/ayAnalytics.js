@@ -6,7 +6,7 @@
 
 import {
   checkAuth,
-  TAG_LOGGEDIN,
+  //   TAG_LOGGEDIN,
   TAG_BANNED,
   TAG_NOT_LOGGEDIN,
 } from "../account/ayOnline.js";
@@ -21,8 +21,8 @@ const ALLOWED_ORIGINS = [
 ];
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{20,80}$/;
-const DOMAIN_PATTERN =
-  /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+// const DOMAIN_PATTERN =
+//   /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 const MAX_BODY_BYTES = 4096;
 
 /* ───────────────────────── helpers ───────────────────────── */

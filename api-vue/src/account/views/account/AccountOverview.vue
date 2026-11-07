@@ -1,5 +1,5 @@
 <script setup>
-import { inject, ref } from 'vue';
+import { inject } from 'vue';
 import { useRouter } from 'vue-router';
 import { Dialog, Snackbar } from '@varlet/ui'
 import { formatTime } from '@/shared/utils/format';
@@ -9,7 +9,6 @@ const sdk = inject('sdk');
 const user = inject('user');
 const channel = inject('channel');
 const router = useRouter();
-const loading = ref(false);
 
 async function logout() {
     const action = await Dialog({
@@ -68,12 +67,12 @@ function maskEmail(email) {
 
         <div v-else class="overview">
             <div class="profile-head">
-                    <var-avatar v-if="user.avatar" :src="user.avatar" :size="56" class="profile-avatar" />
-                    <div class="profile-text">
-                        <p class="profile-name">{{ user.username || '未命名用户' }}</p>
-                        <p v-if="user.email" class="profile-email">{{ maskEmail(user.email) }}</p>
-                    </div>
+                <var-avatar v-if="user.avatar" :src="user.avatar" :size="56" class="profile-avatar" />
+                <div class="profile-text">
+                    <p class="profile-name">{{ user.username || '未命名用户' }}</p>
+                    <p v-if="user.email" class="profile-email">{{ maskEmail(user.email) }}</p>
                 </div>
+            </div>
 
             <div class="meta-list">
                 <div v-if="user.description" class="meta-row">
@@ -87,8 +86,8 @@ function maskEmail(email) {
             </div>
 
             <div class="overview-actions">
-                    <var-button type="danger" tonal @click="logout">退出登录</var-button>
-                </div>
+                <var-button type="danger" tonal @click="logout">退出登录</var-button>
+            </div>
         </div>
     </div>
 </template>
