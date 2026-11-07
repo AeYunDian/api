@@ -144,7 +144,7 @@ function switchEruda() {
         </div>
 
         <p>Eruda 插件</p>
-        <div class="custom-card var-elevation--1" v-if="isErudaEnabled">
+        <div class="custom-card var-elevation--1">
             <div class="meta-list">
                 <div class="meta-row meta-row--action meta-row--disabled" v-for="plugin in erudaPlugins"
                     :key="plugin.key">
