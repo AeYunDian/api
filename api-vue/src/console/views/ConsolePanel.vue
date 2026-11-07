@@ -1,7 +1,6 @@
 // views/ConsolePanel.vue
 <script setup>
-import { onMounted, onUnmounted, ref, provide, inject, computed } from 'vue';
-import { isHostShell } from '@/shared/utils/device';
+import { onMounted, onUnmounted, ref, watch, provide, inject, computed } from 'vue'; import { isHostShell } from '@/shared/utils/device';
 import { useRouter, useRoute, RouterView } from 'vue-router';
 import { useDevice } from '@/shared/composables/useDevice';
 import { Dialog, Hover, Snackbar } from '@varlet/ui';
@@ -22,6 +21,16 @@ const channel = inject('channel');
 const sdk = inject('sdk');
 
 provide('user', user);
+const isDevMode = ref(false);
+const checkDevMode = () => {
+    try {
+        const config = JSON.parse(localStorage.getItem('devopt-config'));
+        isDevMode.value = !!config?.devMode;
+    } catch (e) {
+        isDevMode.value = false;
+    }
+};
+watch(() => route.path, checkDevMode, { immediate: true });
 
 const refreshUser = async () => {
     const { valid, data } = await checkLogin();
@@ -87,10 +96,14 @@ onMounted(async () => {
         }
         user.value = data.user;
     }, 10000);
+    window.addEventListener('devmode-changed', checkDevMode);
+
 });
 
 onUnmounted(() => {
     if (intervalId) clearInterval(intervalId);
+    window.removeEventListener('devmode-changed', checkDevMode);
+
 });
 
 /* ---------- 导航数据 ---------- */
@@ -108,6 +121,9 @@ const navItems = computed(() => {
             { path: '/users-manager', title: '用户管理', icon: 'account-circle' },
             { path: '/file-manager', title: '文件管理', icon: 'folder' }
         );
+    }
+    if (isDevMode.value) {
+        items.push({ path: '/devopt-config', title: '开发者选项', icon: 'cog' });
     }
     return items;
 });

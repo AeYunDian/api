@@ -101,12 +101,14 @@ function switchEruda() {
         <!-- 开发者模式开关 -->
         <div class="custom-card var-elevation--1">
             <div class="meta-list">
-                <div class="meta-row meta-row--action" v-ripple @click="switchDevMode">
+                <div class="meta-row meta-row--action" :class="{ 'meta-row--disabled': !isDevMode }" v-ripple
+                    @click="switchDevMode">
                     <div class="meta-row__text">
                         <span class="meta-row__label">开发者选项</span>
                         <span class="meta-row__value">启用开发者模式</span>
                     </div>
-                    <var-switch v-model="isDevMode" @click.stop @mousedown.stop @touchstart.stop />
+                    <var-switch v-model="isDevMode" @click.stop @mousedown.stop @touchstart.stop
+                        :disabled="!isDevMode" />
                 </div>
             </div>
         </div>
@@ -135,18 +137,20 @@ function switchEruda() {
                     <var-switch v-model="isErudaEnabled" @click.stop @mousedown.stop @touchstart.stop
                         :disabled="!isDevMode" />
                 </div>
+            </div>
+        </div>
 
-                <!-- Eruda 插件子开关（禁用态展示） -->
-                <template v-if="isErudaEnabled">
-                    <div class="meta-row meta-row--action meta-row--disabled" v-for="plugin in erudaPlugins"
-                        :key="plugin.key">
-                        <div class="meta-row__text">
-                            <span class="meta-row__label">{{ plugin.label }}</span>
-                            <span class="meta-row__value">{{ plugin.desc }}</span>
-                        </div>
-                        <var-switch v-model="pluginStates[plugin.key].value" disabled />
+        <div class="custom-card var-elevation--1" v-if="isErudaEnabled">
+            <div class="meta-list">
+                <p>Eruda 插件</p>
+                <div class="meta-row meta-row--action meta-row--disabled" v-for="plugin in erudaPlugins"
+                    :key="plugin.key">
+                    <div class="meta-row__text">
+                        <span class="meta-row__label">{{ plugin.label }}</span>
+                        <span class="meta-row__value">{{ plugin.desc }}</span>
                     </div>
-                </template>
+                    <var-switch v-model="pluginStates[plugin.key].value" disabled />
+                </div>
             </div>
         </div>
     </div>

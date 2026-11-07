@@ -52,6 +52,12 @@ const router = createRouter({
           meta: { title: "文件管理" },
         },
         {
+          path: "devopt-config",
+          component: () =>
+            import("@/console/views/console/DeveloperOptions.vue"),
+          meta: { title: "开发者选项" },
+        },
+        {
           path: "about",
           component: () => import("@/console/views/console/About.vue"),
           meta: { title: "关于" },
