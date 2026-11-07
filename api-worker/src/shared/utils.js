@@ -234,7 +234,7 @@ export async function proxyStaticFile(url) {
     return new Response(errorXml(400, "Invalid URL", url), {
       status: 400,
       headers: {
-        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Type": "application/xml; charset=utf-8",
         "Cache-Control": "no-store",
       },
     });
@@ -256,7 +256,7 @@ export async function proxyStaticFile(url) {
         {
           status: response.status,
           headers: {
-            "Content-Type": "text/plain; charset=utf-8",
+            "Content-Type": "application/xml; charset=utf-8",
             "Cache-Control": "no-store",
           },
         },
@@ -273,7 +273,7 @@ export async function proxyStaticFile(url) {
         {
           status: 503,
           headers: {
-            "Content-Type": "text/plain; charset=utf-8",
+            "Content-Type": "application/xml; charset=utf-8",
             "Cache-Control": "no-cache, no-store, must-revalidate",
           },
         },
@@ -291,7 +291,7 @@ export async function proxyStaticFile(url) {
     return new Response(errorXml(503, e.message || "unknown", pathname), {
       status: 503,
       headers: {
-        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Type": "application/xml; charset=utf-8",
         "Cache-Control": "no-cache, no-store, must-revalidate",
       },
     });
