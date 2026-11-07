@@ -76,7 +76,10 @@ watch(isDevMode, (val) => {
 watch(isVConsoleEnabled, () => saveConfigAndBroadcast())
 watch(isErudaEnabled, () => saveConfigAndBroadcast())
 
-function switchDevMode() { isDevMode.value = !isDevMode.value }
+function switchDevMode() {
+    if (!isDevMode.value) return
+    isDevMode.value = !isDevMode.value
+}
 
 // ⭐ 核心修改：如果开发者模式未开启，直接 return 拦截
 function switchVConsole() {
@@ -140,9 +143,9 @@ function switchEruda() {
             </div>
         </div>
 
+        <p>Eruda 插件</p>
         <div class="custom-card var-elevation--1" v-if="isErudaEnabled">
             <div class="meta-list">
-                <p>Eruda 插件</p>
                 <div class="meta-row meta-row--action meta-row--disabled" v-for="plugin in erudaPlugins"
                     :key="plugin.key">
                     <div class="meta-row__text">
