@@ -215,57 +215,86 @@ export function random19() {
   }
   return s;
 }
+
+function errorXml(status, message, pathname) {
+  return `<Error>
+<Code>WebServerError</Code>
+<Message>${status} ${message}</Message>
+<Resource>${pathname}</Resource>
+<RequestId>${random19()}</RequestId>
+<HostId></HostId>
+</Error>`;
+}
+
 export async function proxyStaticFile(url) {
+  let pathname = "";
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    return new Response(errorXml(400, "Invalid URL", url), {
+      status: 400,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
   try {
     const response = await fetch(url, { method: "GET" });
-
+    headers.delete("Content-Length");
+    headers.delete("Content-Encoding");
     if (response.status === 304) return response;
 
-    if (!response.ok)
+    if (response.status >= 400 && response.status < 500) {
       return new Response(
-        `<Error>
-<Code>WebServerError</Code>
-<Message>${response.status}</Message>
-<Resource>${new URL(url).pathname}</Resource>
-<RequestId>${random19}</RequestId>
-<HostId></HostId>
-</Error>`,
+        errorXml(
+          response.status,
+          response.statusText || "Client Error",
+          pathname,
+        ),
+        {
+          status: response.status,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-store",
+          },
+        },
+      );
+    }
+
+    if (!response.ok) {
+      return new Response(
+        errorXml(
+          response.status,
+          response.statusText || "Upstream Error",
+          pathname,
+        ),
         {
           status: 503,
           headers: {
-            "Content-Type": "text/plain",
+            "Content-Type": "text/plain; charset=utf-8",
             "Cache-Control": "no-cache, no-store, must-revalidate",
           },
         },
       );
+    }
 
     const headers = new Headers(response.headers);
-    if (!headers.has("Cache-Control")) {
+    if (!headers.has("Cache-Control"))
       headers.set("Cache-Control", "public, max-age=86400");
-    }
-    // 确保 Content-Type 有合理默认值
-    if (!headers.has("Content-Type")) {
-      headers.set("Content-Type", "image/x-icon");
-    }
-    return new Response(response.body, { headers });
+    if (!headers.has("Content-Type"))
+      headers.set("Content-Type", "application/octet-stream");
+
+    return new Response(response.body, { status: 200, headers });
   } catch (e) {
-    // 网络错误或 5xx：返回 503，并告知不可缓存
-    return new Response(
-      `<Error>
-<Code>WebServerError</Code>
-<Message>${e.message || "unknown"}</Message>
-<Resource>${new URL(url).pathname}</Resource>
-<RequestId>${random19}</RequestId>
-<HostId></HostId>
-</Error>`,
-      {
-        status: 503,
-        headers: {
-          "Content-Type": "text/plain",
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-        },
+    return new Response(errorXml(503, e.message || "unknown", pathname), {
+      status: 503,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
       },
-    );
+    });
   }
 }
 
