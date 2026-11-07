@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, onUnmounted } from 'vue'
 import { formatTime } from '@/shared/utils/format'
-import { Snackbar, Dialog } from '@varlet/ui' // 引入 Snackbar
+import { Snackbar } from '@varlet/ui' // 引入 Snackbar
 
 const mode = import.meta.env.MODE
 const isProd = import.meta.env.PROD
@@ -63,25 +63,21 @@ function handleRowClick(item) {
     } else if (clickCount.value === 7) {
         clickCount.value = 0
         if (clickTimer) clearTimeout(clickTimer)
-        Dialog({
-            title: '开启开发者模式',
-            message: '开启开发者模式可能导致出现意外行为。您确定要开启吗？',
-            confirmButtonText: '开启',
-            cancelButtonText: '取消',
-            onConfirm: () => {
-                let config = { devMode: false, vConsole: false };
-                try {
-                    const raw = localStorage.getItem('devopt-config');
-                    if (raw) config = JSON.parse(raw);
-                } catch (e) { }
 
-                config.devMode = true;
-                localStorage.setItem('devopt-config', JSON.stringify(config));
 
-                Snackbar.success({ content: '您现在已处于开发者模式', position: 'bottom' });
-                window.dispatchEvent(new Event('devmode-changed')); // 通知全局
-            }
-        })
+        let config = { devMode: false, vConsole: false };
+        try {
+            const raw = localStorage.getItem('devopt-config');
+            if (raw) config = JSON.parse(raw);
+        } catch (e) { }
+
+        config.devMode = true;
+        localStorage.setItem('devopt-config', JSON.stringify(config));
+
+        Snackbar.success({ content: '您现在已处于开发者模式', position: 'bottom' });
+        window.dispatchEvent(new Event('devmode-changed')); // 通知全局
+
+
     }
 }
 

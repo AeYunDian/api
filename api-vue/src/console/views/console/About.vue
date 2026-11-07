@@ -1,10 +1,12 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { formatTime } from '@/shared/utils/format'
+import { Snackbar } from '@varlet/ui' // 引入 Snackbar
 const mode = import.meta.env.MODE
 const isProd = import.meta.env.PROD
 const baseUrl = import.meta.env.BASE_URL
-
+const clickCount = ref(0)
+let clickTimer = null
 const buildTime = computed(() => {
     const raw = import.meta.env.VITE_BUILD_TIME
     return raw ? formatTime(raw) : '未注入'
@@ -12,7 +14,7 @@ const buildTime = computed(() => {
 const buildVersion = computed(() => {
     return import.meta.env.VITE_BUILD_VERSION || '未注入'
 })
-
+const devOptKey = `devopt-config`;
 const items = computed(() => [
     { label: '应用名称', value: 'AyConsole' },
     { label: '运行环境', value: isProd ? '生产' : '开发' },
@@ -25,6 +27,45 @@ const items = computed(() => [
 
 const links = []
 
+function handleRowClick(item) {
+    // 仅处理“版本号”这一项
+    if (item.label !== '版本号') return
+
+    if (localStorage.getItem(devOptKey) === '1') {
+        Snackbar({ content: '您现在正处于开发者模式！', position: 'bottom' })
+        return
+    }
+
+    clickCount.value++
+
+    if (clickTimer) clearTimeout(clickTimer)
+    clickTimer = setTimeout(() => {
+        clickCount.value = 0
+    }, 1500)
+
+    if (clickCount.value >= 4 && clickCount.value <= 6) {
+        const remain = 7 - clickCount.value
+        //Snackbar.allowMultiple(true)
+        Snackbar({ content: `现在只需再执行 ${remain} 步操作即可开启开发者模式`, position: 'bottom' })
+    } else if (clickCount.value === 7) {
+        clickCount.value = 0
+        if (clickTimer) clearTimeout(clickTimer)
+
+        let config = { devMode: false, vConsole: false };
+        try {
+            const raw = localStorage.getItem('devopt-config');
+            if (raw) config = JSON.parse(raw);
+        } catch (e) { }
+
+        config.devMode = true;
+        localStorage.setItem('devopt-config', JSON.stringify(config));
+
+        Snackbar.success({ content: '您现在已处于开发者模式', position: 'bottom' });
+        window.dispatchEvent(new Event('devmode-changed')); // 通知全局
+
+
+    }
+}
 function openLink(path) {
     const base = isProd ? 'https://console.undz.cn' : 'https://console-dev.undz.cn'
     window.open(`${base}${path}`)
@@ -42,7 +83,7 @@ function openLink(path) {
 
         <div class="custom-card var-elevation--1">
             <div class="meta-list">
-                <div v-for="item in items" :key="item.label" class="meta-row" v-ripple>
+                <div v-for="item in items" :key="item.label" class="meta-row" v-ripple @click="handleRowClick(item)">
                     <span class="meta-row__label">{{ item.label }}</span>
                     <span class="meta-row__value">{{ item.value }}</span>
                 </div>
