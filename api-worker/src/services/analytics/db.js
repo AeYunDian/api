@@ -73,7 +73,7 @@ export function listPublicSites(db, { viewerSub = null, isAdmin = false, limit }
   if (isAdmin) {
     return db
       .prepare(
-        `SELECT id, name, domains, domain FROM ${TABLES.sites}
+        `SELECT id, name, domain, domains, domain FROM ${TABLES.sites}
           ORDER BY created_at DESC LIMIT ?`,
       )
       .bind(limit)
@@ -82,7 +82,7 @@ export function listPublicSites(db, { viewerSub = null, isAdmin = false, limit }
   if (viewerSub) {
     return db
       .prepare(
-        `SELECT id, name, domains, domain FROM ${TABLES.sites}
+        `SELECT id, name, domain, domains, domain FROM ${TABLES.sites}
           WHERE listed = 1 AND visibility = 'public' AND user_sub <> ?
           ORDER BY created_at DESC LIMIT ?`,
       )
@@ -91,7 +91,7 @@ export function listPublicSites(db, { viewerSub = null, isAdmin = false, limit }
   }
   return db
     .prepare(
-      `SELECT id, name, domains, domain FROM ${TABLES.sites}
+      `SELECT id, name, domain, domains, domain FROM ${TABLES.sites}
         WHERE listed = 1 AND visibility = 'public'
         ORDER BY created_at DESC LIMIT ?`,
     )
@@ -103,7 +103,7 @@ export function listPublicSites(db, { viewerSub = null, isAdmin = false, limit }
 export function listSitesByUser(db, userSub, limit) {
   return db
     .prepare(
-      `SELECT id, name, domains, domain FROM ${TABLES.sites}
+      `SELECT id, name, domain, domains, domain FROM ${TABLES.sites}
         WHERE user_sub = ? ORDER BY created_at DESC LIMIT ?`,
     )
     .bind(userSub, limit)

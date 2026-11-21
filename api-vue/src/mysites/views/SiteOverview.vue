@@ -431,6 +431,14 @@ function tipStyle() {
     else transform = 'translateX(-50%)'
     return { left, transform }
 }
+
+function primaryDomain(site) {
+    if (!site) return ''
+    if (Array.isArray(site.domains) && site.domains.length > 0) {
+        return site.domains.join(', ')
+    }
+    return site.domain || ''
+}
 </script>
 
 <template>
@@ -470,7 +478,7 @@ function tipStyle() {
                     <div class="title-block">
                         <h2 class="md-page-title">{{ stats?.site?.name || '站点数据' }}</h2>
                         <p class="domain md-page-subtitle">
-                            {{ stats?.site?.domain || '' }}
+                            {{ primaryDomain(stats?.site) }}
                             <span v-if="creatorName" class="creator"> · 创建者 {{ creatorName }}</span>
                             <span v-if="isShared" class="shared-badge">只读分享</span>
                             <span v-if="lastUpdated" class="updated">
@@ -575,7 +583,7 @@ function tipStyle() {
                             <g class="grid">
                                 <g v-for="(t, i) in chart.xTicks" :key="'x' + i">
                                     <text :x="t.x" :y="chart.H - 10" text-anchor="middle" class="tick-label">{{ t.label
-                                    }}</text>
+                                        }}</text>
                                 </g>
                             </g>
 

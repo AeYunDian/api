@@ -56,8 +56,13 @@ function tryRedirect() {
 }
 
 function primaryDomain(site) {
-    return (site.domains && site.domains[0]) || ''
+    if (!site) return ''
+    if (Array.isArray(site.domains) && site.domains.length > 0) {
+        return site.domains.join(', ')
+    }
+    return site.domain || ''
 }
+
 
 function openSite(site) {
     router.push(`/sites/${site.id}`)
@@ -141,8 +146,7 @@ watch(
                 <h2 class="section-title">公开站点</h2>
                 <p class="section-desc">站点所有者公开了分享内容的站点；点开即可查看。</p>
 
-                <var-result v-if="!publicSites.length" type="empty" title="暂无公开站点"
-                    description="还没有站点公开分享统计数据。" />
+                <var-result v-if="!publicSites.length" type="empty" title="暂无公开站点" description="还没有站点公开分享统计数据。" />
 
                 <div v-else class="site-grid">
                     <var-card v-for="site in publicSites" :key="site.id" class="site-card" hoverable
