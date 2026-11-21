@@ -84,6 +84,10 @@ function handleRowClick(item) {
 onUnmounted(() => {
     if (clickTimer) clearTimeout(clickTimer)
 })
+
+function handleDataUsageClick() {
+    window.open("https://mysites.undz.cn/sites/7")
+}
 </script>
 
 <template>
@@ -102,6 +106,17 @@ onUnmounted(() => {
                     <span class="meta-row__label">{{ item.label }}</span>
                     <span class="meta-row__value">{{ item.value }}</span>
                 </div>
+            </div>
+        </div>
+
+        <div class="custom-card var-elevation--1">
+            <div class="meta-list" v-ripple @click="handleDataUsageClick()"
+                style="cursor: pointer;flex-direction: row;justify-content: space-between;align-items: center;">
+                <div class="meta-row" style="border: none">
+                    <span class="meta-row__label">查看站点流量</span>
+                    <span class="meta-row__value">查看此站点的流量详情</span>
+                </div>
+                <my-icon icon="open-in-new" style="margin-inline-end: 10px;" size="20px" />
             </div>
         </div>
 

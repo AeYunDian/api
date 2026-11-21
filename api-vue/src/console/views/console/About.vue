@@ -70,6 +70,9 @@ function openLink(path) {
     const base = isProd ? 'https://console.undz.cn' : 'https://console-dev.undz.cn'
     window.open(`${base}${path}`)
 }
+function handleDataUsageClick() {
+    window.open("https://mysites.undz.cn/sites/6")
+}
 </script>
 
 <template>
@@ -89,7 +92,16 @@ function openLink(path) {
                 </div>
             </div>
         </div>
-
+        <div class="custom-card var-elevation--1">
+            <div class="meta-list" v-ripple @click="handleDataUsageClick()"
+                style="cursor: pointer;flex-direction: row;justify-content: space-between;align-items: center;">
+                <div class="meta-row" style="border: none">
+                    <span class="meta-row__label">查看站点流量</span>
+                    <span class="meta-row__value">查看此站点的流量详情</span>
+                </div>
+                <my-icon icon="open-in-new" style="margin-inline-end: 10px;" size="20px" />
+            </div>
+        </div>
         <div class="custom-card" v-if="links.length > 0">
             <div class="custom-card-header">
                 <my-icon icon="file-document-outline" size="1.2em" />
