@@ -10,6 +10,7 @@ import { formatTime } from '@/shared/utils/format'
 const route = useRoute()
 const router = useRouter()
 const user = inject('user')
+const goLogin = inject('goLogin')
 
 const rawId = computed(() => route.params.id)
 const siteId = computed(() => {
@@ -46,6 +47,9 @@ const range = ref('7d')
 const stats = ref(null)
 const realtime = ref(null)
 const notFound = ref(false)
+const needLogin = ref(false)
+const loggingIn = ref(false)
+const realtimeAllowed = ref(true)
 const errorMsg = ref('')
 const lastUpdated = ref(0)
 
@@ -54,17 +58,27 @@ let statsAbort = null
 let realtimeAbort = null
 let statsSeq = 0
 
-/* ───────────── 未登录跳首页 ───────────── */
+/* ───────────── 登录（仅查看需要登录的站点时用） ───────────── */
 
-function redirectToLogin() {
-    const target = encodeURIComponent(route.fullPath)
-    router.replace(`/?redirect=${target}`)
+async function handleLogin() {
+    if (loggingIn.value) return
+    if (typeof goLogin !== 'function') {
+        Snackbar.error('登录服务未就绪')
+        return
+    }
+    loggingIn.value = true
+    try {
+        const logged = await goLogin()
+        if (logged) await reloadAll()
+    } finally {
+        loggingIn.value = false
+    }
 }
 
 /* ───────────── 数据加载（带竞态保护） ───────────── */
 
 async function loadStats() {
-    if (!user.value || !siteId.value) return
+    if (!siteId.value) return
 
     if (statsAbort) statsAbort.abort()
     statsAbort = new AbortController()
@@ -79,13 +93,22 @@ async function loadStats() {
         if (seq !== statsSeq) return
         stats.value = data
         notFound.value = false
+        needLogin.value = false
         lastUpdated.value = Date.now()
     } catch (e) {
         if (e.name === 'AbortError') return
         if (seq !== statsSeq) return
-        if (e.status === 404 || e.status === 403) {
+        if (e.status === 401) {
+            stats.value = null
+            needLogin.value = true
+            notFound.value = false
+            stopRealtime()
+            return
+        }
+        if (e.status === 404) {
             stats.value = null
             notFound.value = true
+            needLogin.value = false
             stopRealtime()
             return
         }
@@ -97,7 +120,7 @@ async function loadStats() {
 }
 
 async function loadRealtime() {
-    if (!user.value || !siteId.value || notFound.value) return
+    if (!siteId.value || notFound.value || needLogin.value || !realtimeAllowed.value) return
     if (realtimeAbort) realtimeAbort.abort()
     realtimeAbort = new AbortController()
 
@@ -106,15 +129,22 @@ async function loadRealtime() {
         realtime.value = data
     } catch (e) {
         if (e.name === 'AbortError') return
-        if (e.status === 404 || e.status === 403) {
+        if (e.status === 403) {
+            // 分享里没开实时，停止轮询
+            realtimeAllowed.value = false
+            realtime.value = null
+            stopRealtime()
+        } else if (e.status === 404 || e.status === 401) {
+            realtime.value = null
             stopRealtime()
         }
     }
 }
 
 async function reloadAll() {
+    realtimeAllowed.value = true
     await loadStats()
-    if (!notFound.value) await loadRealtime()
+    if (!notFound.value && !needLogin.value) await loadRealtime()
 }
 function printPage() {
     // 让浏览器把当前渲染结果打到打印机 / 存成 PDF
@@ -124,6 +154,7 @@ function printPage() {
 
 function startRealtime() {
     stopRealtime()
+    if (!realtimeAllowed.value) return
     realtimeTimer = setInterval(() => {
         if (document.visibilityState === 'visible') loadRealtime()
     }, REALTIME_INTERVAL)
@@ -137,7 +168,7 @@ function stopRealtime() {
 }
 
 function onVisibilityChange() {
-    if (document.visibilityState === 'visible' && !notFound.value && user.value) {
+    if (document.visibilityState === 'visible' && !notFound.value && !needLogin.value) {
         loadRealtime()
     }
 }
@@ -152,26 +183,22 @@ watch(siteId, (v) => {
         realtime.value = null
         stats.value = null
         notFound.value = false
+        needLogin.value = false
         errorMsg.value = ''
         reloadAll().then(() => {
-            if (!notFound.value) startRealtime()
+            if (!notFound.value && !needLogin.value) startRealtime()
         })
     }
 })
 
 watch(
     () => user.value?.sub,
-    (v) => {
-        if (v) {
-            reloadAll().then(() => {
-                if (!notFound.value) startRealtime()
-            })
-        } else {
-            stopRealtime()
-            stats.value = null
-            realtime.value = null
-            redirectToLogin()
-        }
+    () => {
+        if (!siteId.value) return
+        stopRealtime()
+        reloadAll().then(() => {
+            if (!notFound.value && !needLogin.value) startRealtime()
+        })
     }
 )
 
@@ -180,18 +207,13 @@ watch(
 onMounted(async () => {
     document.addEventListener('visibilitychange', onVisibilityChange)
 
-    if (!user.value) {
-        redirectToLogin()
-        return
-    }
-
     if (invalidId.value) {
         notFound.value = true
         return
     }
 
     await reloadAll()
-    if (!notFound.value) startRealtime()
+    if (!notFound.value && !needLogin.value) startRealtime()
 })
 
 onUnmounted(() => {
@@ -289,6 +311,25 @@ const deltas = computed(() => {
     const prev = s.slice(0, -half).reduce((a, b) => a + b.pageviews, 0)
     return { cur, prev, delta: prev === 0 ? null : (cur - prev) / prev }
 })
+
+/* ───────────── 分享裁剪 / 展示辅助 ───────────── */
+
+const isShared = computed(() => stats.value?.access?.level === 'shared')
+const creatorName = computed(() => stats.value?.site?.creator_username || '')
+const seriesHidden = computed(() => stats.value?.series === null)
+const totalsHidden = computed(() => stats.value?.totals?.pageviews === null)
+
+const lockedBreakdowns = computed(() => {
+    const b = stats.value?.breakdowns
+    if (!b) return []
+    return Object.entries(BREAKDOWN_TITLES)
+        .filter(([key]) => b[key] === null)
+        .map(([, title]) => title)
+})
+
+function fmtMetric(n) {
+    return n == null ? '未公开' : fmt(n)
+}
 
 /* ───────────── Breakdown ───────────── */
 
@@ -408,6 +449,15 @@ function tipStyle() {
             <var-button type="primary" @click="goBack">返回站点列表</var-button>
         </div>
 
+        <!-- 需要登录 -->
+        <div v-else-if="needLogin" class="empty-page">
+            <h2>需要登录</h2>
+            <p>该站点仅对已登录用户开放。</p>
+            <var-button type="primary" :loading="loggingIn" @click="handleLogin">
+                登录后查看
+            </var-button>
+        </div>
+
         <template v-else>
             <div class="top-progress" :class="{ active: loading && stats }"></div>
 
@@ -421,6 +471,8 @@ function tipStyle() {
                         <h2 class="md-page-title">{{ stats?.site?.name || '站点数据' }}</h2>
                         <p class="domain md-page-subtitle">
                             {{ stats?.site?.domain || '' }}
+                            <span v-if="creatorName" class="creator"> · 创建者 {{ creatorName }}</span>
+                            <span v-if="isShared" class="shared-badge">只读分享</span>
                             <span v-if="lastUpdated" class="updated">
                                 · {{ fmtUpdated(lastUpdated) }} 更新
                             </span>
@@ -467,17 +519,17 @@ function tipStyle() {
                 <div class="metrics">
                     <div class="metric">
                         <span class="metric-label">浏览</span>
-                        <span class="metric-value">{{ fmt(stats.totals.pageviews) }}</span>
+                        <span class="metric-value">{{ fmtMetric(stats.totals.pageviews) }}</span>
                     </div>
                     <div class="metric">
                         <span class="metric-label">访客</span>
-                        <span class="metric-value">{{ fmt(stats.totals.visitors) }}</span>
+                        <span class="metric-value">{{ fmtMetric(stats.totals.visitors) }}</span>
                     </div>
                     <div class="metric">
                         <span class="metric-label">当前在线</span>
                         <span class="metric-value live">
                             <i v-if="realtime?.online > 0" class="dot"></i>
-                            {{ realtime?.online ?? 0 }}
+                            {{ realtime ? (realtime.online ?? 0) : '—' }}
                         </span>
                     </div>
                     <div class="metric">
@@ -485,6 +537,8 @@ function tipStyle() {
                         <span class="metric-value small">{{ fmtRange(stats.range) }}</span>
                     </div>
                 </div>
+
+                <p v-if="totalsHidden" class="empty-line">站点所有者未公开总量数据</p>
 
                 <!-- 趋势卡片 -->
                 <section class="card">
@@ -495,8 +549,10 @@ function tipStyle() {
                         </span>
                     </div>
 
+                    <p v-if="seriesHidden" class="empty-line">趋势数据未公开</p>
+
                     <!-- 折线图（>= 2 个点） -->
-                    <div v-if="chart" class="chart-wrap">
+                    <div v-else-if="chart" class="chart-wrap">
                         <svg ref="svgRef" :viewBox="`0 0 ${chart.W} ${chart.H}`" class="chart" @mousemove="onChartMove"
                             @mouseleave="onChartLeave">
                             <defs>
@@ -603,6 +659,17 @@ function tipStyle() {
                     <p>该时间范围内暂无数据</p>
                     <p class="hint">请确认嵌入脚本已正确安装</p>
                 </div>
+
+                <section v-if="lockedBreakdowns.length" class="card">
+                    <h3>未公开的数据</h3>
+                    <p class="empty-line">站点所有者没有分享以下维度：</p>
+                    <div class="locked-chips">
+                        <var-chip v-for="title in lockedBreakdowns" :key="title" size="small">
+                            {{ title }}
+                        </var-chip>
+                    </div>
+                </section>
+
                 <div class="print-footer">
                     Generated by AyAnalytics · {{ new Date().toLocaleDateString('zh-CN') }}
                 </div>
@@ -857,6 +924,21 @@ function tipStyle() {
     opacity: 0.7;
 }
 
+.creator {
+    opacity: 0.85;
+}
+
+.shared-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 18px;
+    background: var(--color-primary-container, rgba(91, 84, 232, 0.12));
+    color: var(--color-primary, #5b54e8);
+}
+
 .header-right {
     display: flex;
     align-items: center;
@@ -1082,6 +1164,13 @@ function tipStyle() {
     text-align: center;
     color: var(--color-text-secondary, #888);
     font-size: 13px;
+}
+
+.locked-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 4px;
 }
 
 /* ── 实时 ── */

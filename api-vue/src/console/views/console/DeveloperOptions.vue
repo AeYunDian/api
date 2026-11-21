@@ -19,6 +19,7 @@ const erudaPlugins = [
 
 const defaultConfig = {
     devMode: false,
+    creatorControl: false,
     vConsole: false,
     eruda: false,
     erudaVue: false,
@@ -42,6 +43,7 @@ const getConfig = () => {
 const config = getConfig()
 
 const isDevMode = ref(config.devMode)
+const isCreatorControl = ref(config.creatorControl)
 const isVConsoleEnabled = ref(config.vConsole)
 const isErudaEnabled = ref(config.eruda)
 
@@ -53,6 +55,7 @@ erudaPlugins.forEach(p => {
 const saveConfigAndBroadcast = () => {
     const newConfig = {
         devMode: isDevMode.value,
+        creatorControl: isCreatorControl.value,
         vConsole: isVConsoleEnabled.value,
         eruda: isErudaEnabled.value,
     }
@@ -75,10 +78,17 @@ watch(isDevMode, (val) => {
 
 watch(isVConsoleEnabled, () => saveConfigAndBroadcast())
 watch(isErudaEnabled, () => saveConfigAndBroadcast())
+watch(isCreatorControl, () => saveConfigAndBroadcast())
 
 function switchDevMode() {
     if (!isDevMode.value) return
     isDevMode.value = !isDevMode.value
+}
+
+// 创建者可见性控制：仅在开发者模式开启时可切换
+function switchCreatorControl() {
+    if (!isDevMode.value) return
+    isCreatorControl.value = !isCreatorControl.value
 }
 
 // ⭐ 核心修改：如果开发者模式未开启，直接 return 拦截
@@ -111,6 +121,21 @@ function switchEruda() {
                         <span class="meta-row__value">启用开发者模式</span>
                     </div>
                     <var-switch v-model="isDevMode" @click.stop @mousedown.stop @touchstart.stop
+                        :disabled="!isDevMode" />
+                </div>
+            </div>
+        </div>
+
+        <!-- 网站分析 -->
+        <div class="custom-card var-elevation--1">
+            <div class="meta-list">
+                <div class="meta-row meta-row--action" :class="{ 'meta-row--disabled': !isDevMode }" v-ripple
+                    @click="switchCreatorControl">
+                    <div class="meta-row__text">
+                        <span class="meta-row__label">创建者可见性控制</span>
+                        <span class="meta-row__value">解锁站点表单里的「展示创建者」勾选</span>
+                    </div>
+                    <var-switch v-model="isCreatorControl" @click.stop @mousedown.stop @touchstart.stop
                         :disabled="!isDevMode" />
                 </div>
             </div>

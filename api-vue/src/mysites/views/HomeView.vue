@@ -10,7 +10,8 @@ const user = inject('user')
 const goLogin = inject('goLogin')
 
 const loading = ref(false)
-const sites = ref([])
+const publicSites = ref([])
+const mineSites = ref([])
 const loggingIn = ref(false)
 
 /**
@@ -24,12 +25,20 @@ const redirect = computed(() => {
     return r
 })
 
+const summary = computed(() => {
+    const parts = []
+    if (publicSites.value.length) parts.push(`公开站点 ${publicSites.value.length}`)
+    if (user.value) parts.push(`我的站点 ${mineSites.value.length}`)
+    return parts.length ? parts.join(' · ') : '暂无可浏览的站点'
+})
+
 async function load() {
-    if (!user.value) return
     loading.value = true
     try {
+        // 免授权接口；带了 Cookie 后端会额外返回 mine
         const data = await getSites()
-        sites.value = data.sites || []
+        publicSites.value = data.public || []
+        mineSites.value = data.mine || []
     } catch (e) {
         Snackbar.error(e.message || '加载失败')
     } finally {
@@ -46,6 +55,10 @@ function tryRedirect() {
     return false
 }
 
+function primaryDomain(site) {
+    return (site.domains && site.domains[0]) || ''
+}
+
 function openSite(site) {
     router.push(`/sites/${site.id}`)
 }
@@ -57,7 +70,7 @@ function openConsole() {
 
 /**
  * 点登录：调 goLogin()，等 SDK 模态框关闭。
- * - 登录成功 → 立刻跳回 redirect（不用等轮询）
+ * - 登录成功 → 优先跳回 redirect
  * - 用户关闭 → 停在原地
  */
 async function handleLogin() {
@@ -70,12 +83,10 @@ async function handleLogin() {
     try {
         const loggedUser = await goLogin()
         if (loggedUser) {
-            // 优先跳回原目标
             if (redirect.value) {
                 router.replace(redirect.value)
                 return
             }
-            // 没有 redirect，留在首页并加载列表
             await load()
         }
     } finally {
@@ -96,7 +107,7 @@ watch(
             if (tryRedirect()) return
             load()
         } else {
-            sites.value = []
+            mineSites.value = []
         }
     }
 )
@@ -104,56 +115,73 @@ watch(
 
 <template>
     <div class="home-page">
-        <!-- 未登录：MD3 hero -->
-        <section v-if="!user" class="guest">
-            <h1 class="guest-title">AyAnalytics</h1>
-            <p class="guest-subtitle">登录后查看你的站点数据</p>
-            <var-button type="primary" size="large" :loading="loggingIn" @click="handleLogin">
-                立即登录
-            </var-button>
-        </section>
+        <div class="md-page-header">
+            <div class="md-page-heading">
+                <h1 class="md-page-title">站点分析</h1>
+                <p class="md-page-subtitle">{{ summary }}</p>
+            </div>
 
-        <!-- 已登录 -->
+            <div class="md-page-actions">
+                <var-tooltip content="刷新列表">
+                    <var-button round icon-container :loading="loading" @click="load">
+                        <my-icon icon="refresh" size="1em + 8px" />
+                    </var-button>
+                </var-tooltip>
+                <var-button v-if="!user" type="primary" :loading="loggingIn" @click="handleLogin">
+                    登录
+                </var-button>
+                <var-button v-else @click="openConsole">管理站点</var-button>
+            </div>
+        </div>
+
+        <var-progress v-if="loading && !publicSites.length && !mineSites.length" indeterminate />
+
         <template v-else>
-            <div class="md-page-header">
-                <div class="md-page-heading">
-                    <h1 class="md-page-title">我的站点</h1>
-                    <p class="md-page-subtitle">
-                        {{ sites.length ? `共 ${sites.length} 个站点` : '还没有任何站点' }}
-                    </p>
+            <section class="site-section">
+                <h2 class="section-title">公开站点</h2>
+                <p class="section-desc">站点所有者公开了分享内容的站点；点开即可查看。</p>
+
+                <var-result v-if="!publicSites.length" type="empty" title="暂无公开站点"
+                    description="还没有站点公开分享统计数据。" />
+
+                <div v-else class="site-grid">
+                    <var-card v-for="site in publicSites" :key="site.id" class="site-card" hoverable
+                        @click="openSite(site)">
+                        <template #title="{ slotClass }">
+                            <div :class="slotClass" class="md-card-header">
+                                <my-icon icon="web" size="1.2em" />
+                                <span class="md-card-title">{{ site.name }}</span>
+                            </div>
+                        </template>
+                        <p class="site-domain">{{ primaryDomain(site) }}</p>
+                    </var-card>
                 </div>
+            </section>
 
-                <div class="md-page-actions">
-                    <var-tooltip content="刷新列表">
-                        <var-button round icon-container :loading="loading" @click="load">
-                            <my-icon icon="refresh" size="1em + 8px" />
-                        </var-button>
-                    </var-tooltip>
-                </div>
-            </div>
+            <section v-if="user" class="site-section">
+                <h2 class="section-title">我的站点</h2>
+                <p class="section-desc">包含私密站点，只有你自己可见。</p>
 
-            <var-progress v-if="loading && !sites.length" indeterminate />
-
-            <var-result v-else-if="!sites.length" type="empty" title="还没有站点"
-                description="站点需要在 AyConsole 的「网站分析」里创建，创建后这里会自动出现。">
-                <template #footer>
-                    <var-button type="primary" @click="openConsole">前往 AyConsole</var-button>
-                </template>
-            </var-result>
-
-            <!-- 站点卡片：MD3 filled card + level-1 海拔，整卡可点 -->
-            <div v-else class="site-grid">
-                <var-card v-for="site in sites" :key="site.id" class="site-card" hoverable
-                    @click="openSite(site)">
-                    <template #title="{ slotClass }">
-                        <div :class="slotClass" class="md-card-header">
-                            <my-icon icon="web" size="1.2em" />
-                            <span class="md-card-title">{{ site.name }}</span>
-                        </div>
+                <var-result v-if="!mineSites.length" type="empty" title="还没有站点"
+                    description="站点需要在 AyConsole 的「网站分析」里创建，创建后这里会自动出现。">
+                    <template #footer>
+                        <var-button type="primary" @click="openConsole">前往 AyConsole</var-button>
                     </template>
-                    <p class="site-domain">{{ site.domain }}</p>
-                </var-card>
-            </div>
+                </var-result>
+
+                <div v-else class="site-grid">
+                    <var-card v-for="site in mineSites" :key="site.id" class="site-card" hoverable
+                        @click="openSite(site)">
+                        <template #title="{ slotClass }">
+                            <div :class="slotClass" class="md-card-header">
+                                <my-icon icon="web" size="1.2em" />
+                                <span class="md-card-title">{{ site.name }}</span>
+                            </div>
+                        </template>
+                        <p class="site-domain">{{ primaryDomain(site) }}</p>
+                    </var-card>
+                </div>
+            </section>
         </template>
     </div>
 </template>
@@ -166,31 +194,23 @@ watch(
     padding-bottom: calc(var(--md-space-10) + 24px);
 }
 
-/* ── 未登录 ── */
-.guest {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--md-space-2);
-    min-height: 60vh;
-    text-align: center;
+/* ── 区块 ── */
+.site-section {
+    margin-bottom: var(--md-space-8);
 }
 
-.guest-title {
-    margin: 0;
-    font-size: 36px;
-    line-height: 44px;
-    font-weight: 400;
-    letter-spacing: 0;
+.section-title {
+    margin: 0 0 4px;
+    font-size: 18px;
+    line-height: 24px;
+    font-weight: 500;
     color: var(--color-text);
 }
 
-.guest-subtitle {
-    margin: 0 0 var(--md-space-4);
-    font-size: 14px;
-    line-height: 20px;
-    letter-spacing: 0.25px;
+.section-desc {
+    margin: 0 0 var(--md-space-3);
+    font-size: 13px;
+    line-height: 18px;
     color: var(--color-text-secondary);
 }
 

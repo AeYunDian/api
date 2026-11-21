@@ -23,6 +23,14 @@ bucket_name = "exm"
 binding = "AI"
 
 [[ratelimits]]
+name = "analy_limiter"
+namespace_id = "1002"
+
+  [ratelimits.simple]
+  limit = 20
+  period = 10
+
+[[ratelimits]]
 name = "limiter"
 namespace_id = "1001"
 

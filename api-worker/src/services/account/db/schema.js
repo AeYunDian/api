@@ -265,6 +265,84 @@ async function initDatabase(db) {
      ON analytics_events(site_token, path)`,
       )
       .run();
+    // ── 网站分析 v2（新表，代码只读写这两张；旧表保留不动） ──
+    await db
+      .prepare(
+        `CREATE TABLE IF NOT EXISTS analytics_sites_v2 (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token TEXT NOT NULL UNIQUE,
+        user_sub INTEGER NOT NULL,
+        domain TEXT NOT NULL,
+        domains TEXT NOT NULL DEFAULT '[]',
+        name TEXT NOT NULL,
+        visibility TEXT NOT NULL DEFAULT 'private',
+        listed INTEGER NOT NULL DEFAULT 0,
+        share_config TEXT NOT NULL DEFAULT '{}',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+    )`,
+      )
+      .run();
+    await db
+      .prepare(
+        `CREATE UNIQUE INDEX IF NOT EXISTS idx_asv2_domain ON analytics_sites_v2(domain)`,
+      )
+      .run();
+    await db
+      .prepare(
+        `CREATE INDEX IF NOT EXISTS idx_asv2_user ON analytics_sites_v2(user_sub)`,
+      )
+      .run();
+    await db
+      .prepare(
+        `CREATE INDEX IF NOT EXISTS idx_asv2_listed ON analytics_sites_v2(listed, visibility)`,
+      )
+      .run();
+    await db
+      .prepare(
+        `CREATE TABLE IF NOT EXISTS analytics_events_v2 (
+        site_token TEXT NOT NULL,
+        ts INTEGER NOT NULL,
+        visitor TEXT NOT NULL,
+        session_id TEXT NOT NULL DEFAULT '',
+        name TEXT NOT NULL,
+        path TEXT NOT NULL,
+        ref TEXT NOT NULL DEFAULT '',
+        country TEXT NOT NULL DEFAULT '',
+        province TEXT NOT NULL DEFAULT '',
+        browser TEXT NOT NULL DEFAULT '',
+        browser_version TEXT NOT NULL DEFAULT '',
+        os TEXT NOT NULL DEFAULT '',
+        os_version TEXT NOT NULL DEFAULT '',
+        device TEXT NOT NULL DEFAULT '',
+        screen TEXT NOT NULL DEFAULT '',
+        touch_points INTEGER NOT NULL DEFAULT 0,
+        utm_source TEXT NOT NULL DEFAULT '',
+        utm_medium TEXT NOT NULL DEFAULT '',
+        utm_campaign TEXT NOT NULL DEFAULT '',
+        utm_term TEXT NOT NULL DEFAULT '',
+        utm_content TEXT NOT NULL DEFAULT ''
+    )`,
+      )
+      .run();
+    await db
+      .prepare(
+        `CREATE INDEX IF NOT EXISTS idx_aev2_token_ts
+     ON analytics_events_v2(site_token, ts)`,
+      )
+      .run();
+    await db
+      .prepare(
+        `CREATE INDEX IF NOT EXISTS idx_aev2_token_name_ts
+     ON analytics_events_v2(site_token, name, ts)`,
+      )
+      .run();
+    await db
+      .prepare(
+        `CREATE INDEX IF NOT EXISTS idx_aev2_token_path
+     ON analytics_events_v2(site_token, path)`,
+      )
+      .run();
     const clientExists = await db
       .prepare(
         `SELECT COUNT(*) as cnt FROM oauth_clients WHERE client_id = 'app_chat'`,

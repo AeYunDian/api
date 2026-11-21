@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed, onMounted, inject } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
 import { Dialog, Snackbar } from '@varlet/ui'
 import {
     getSites,
     registerSite,
+    updateSite,
     deleteSite,
     getUsers,
     transferSiteOwner,
@@ -20,13 +21,50 @@ const user = inject('user')
 const isAdmin = useIsAdmin()
 
 // ── 常量 ──
-// 普通用户最多可注册的站点数；user.sub === 1 不受限
 const MY_SITE_LIMIT = 5
+const DEVOPT_KEY = 'devopt-config'
 
-// 概览站点（独立的 SPA，不在本组件内渲染）
 const MYSITES_BASE = import.meta.env.PROD
     ? 'https://mysites.undz.cn'
     : 'https://mysites-dev.undz.cn'
+
+const VISIBILITY_OPTIONS = [
+    { value: 'private', label: '仅自己可见' },
+    { value: 'logged_in', label: '登录可见' },
+    { value: 'public', label: '公开' },
+]
+
+const TOTAL_ITEMS = [
+    { key: 'pageviews', label: '浏览量', desc: '页面浏览次数' },
+    { key: 'visitors', label: '访客数', desc: '独立访客数' },
+    { key: 'sessions', label: '会话数', desc: '独立会话数' },
+]
+
+const BREAKDOWN_ITEMS = [
+    { key: 'path', label: '热门页面', desc: '访问次数最多的页面路径' },
+    { key: 'referrer', label: '来源', desc: '带来访问的来源域名' },
+    { key: 'country', label: '国家/地区', desc: '访客所在国家或地区' },
+    { key: 'browser', label: '浏览器', desc: '访客使用的浏览器' },
+    { key: 'os', label: '操作系统', desc: '访客使用的操作系统' },
+    { key: 'device', label: '设备', desc: '桌面、手机或平板' },
+    { key: 'event', label: '自定义事件', desc: '页面内手动上报的事件' },
+]
+
+// ── 开发者选项（仅解锁 creator 勾选） ──
+function readDevOptions() {
+    try {
+        return JSON.parse(localStorage.getItem(DEVOPT_KEY) || '{}')
+    } catch {
+        return {}
+    }
+}
+const devOptions = ref(readDevOptions())
+const creatorEditable = computed(
+    () => !!devOptions.value.devMode && !!devOptions.value.creatorControl
+)
+function syncDevOptions() {
+    devOptions.value = readDevOptions()
+}
 
 // ── 响应式状态 ──
 const loading = ref(false)
@@ -36,34 +74,120 @@ const transferring = ref(false)
 const sites = ref([])
 const users = ref([])
 
-const showRegisterDialog = ref(false)
+const showSiteDialog = ref(false)
 const showTransferDialog = ref(false)
 const showSnippetDialog = ref(false)
 const snippetSite = ref(null)
-const registerFormRef = ref(null)
+const siteFormRef = ref(null)
 const transferFormRef = ref(null)
 
-const emptyRegisterForm = () => ({ domain: '', name: '' })
+const defaultShareConfig = () => ({
+    totals: { pageviews: true, visitors: true, sessions: true },
+    series: true,
+    realtime: false,
+    creator: true,
+    breakdowns: {
+        path: true,
+        referrer: true,
+        country: true,
+        province: true,
+        browser: true,
+        os: true,
+        device: true,
+        event: true,
+    },
+})
+
+function normalizeShareConfig(raw) {
+    const base = defaultShareConfig()
+    if (!raw || typeof raw !== 'object') return base
+    return {
+        totals: { ...base.totals, ...(raw.totals || {}) },
+        series: raw.series !== undefined ? !!raw.series : base.series,
+        realtime: !!raw.realtime,
+        creator: raw.creator !== undefined ? !!raw.creator : true,
+        breakdowns: { ...base.breakdowns, ...(raw.breakdowns || {}) },
+    }
+}
+
+const emptySiteForm = () => ({
+    id: null,
+    name: '',
+    domainsText: '',
+    visibility: 'private',
+    listed: false,
+    share: defaultShareConfig(),
+})
+
 const emptyTransferForm = () => ({ siteId: '', targetUserId: 1 })
 
-const registerForm = ref(emptyRegisterForm())
+const siteForm = ref(emptySiteForm())
 const transferForm = ref(emptyTransferForm())
+const isEditing = computed(() => !!siteForm.value.id)
 
-// 普通用户达到上限时禁用注册入口。管理员始终不受限。
-// 普通用户看到列表即为自己所有；管理员看到全量，故此处只对非管理员判长。
 const limitReached = computed(
-    () => !isAdmin.value && sites.value.length >= MY_SITE_LIMIT
+    () => !isAdmin.value && sites.value.filter((s) => s.is_owner).length >= MY_SITE_LIMIT
 )
 
 const pageSubtitle = computed(() => {
     if (loading.value && !sites.value.length) return '正在读取站点列表…'
     if (!sites.value.length) return '还没有注册任何站点'
     if (isAdmin.value) return `共 ${sites.value.length} 个站点（管理员视图）`
-    return `已注册 ${sites.value.length} / ${MY_SITE_LIMIT} 个站点`
+    return `已注册 ${sites.value.filter((s) => s.is_owner).length} / ${MY_SITE_LIMIT} 个站点`
 })
 
+// 省份三态：false / true / "CN_ONLY"
+const provinceEnabled = computed({
+    get: () => siteForm.value.share.breakdowns.province !== false,
+    set: (v) => {
+        siteForm.value.share.breakdowns.province = v ? true : false
+    },
+})
+const provinceCnOnly = computed({
+    get: () => siteForm.value.share.breakdowns.province === 'CN_ONLY',
+    set: (v) => {
+        siteForm.value.share.breakdowns.province = v ? 'CN_ONLY' : true
+    },
+})
+
+function onVisibilityChange(value) {
+    if (value === 'private') siteForm.value.listed = false
+}
+
+// 「省份」「仅中国」依赖「国家/地区」维度
+const countryEnabled = computed(() => siteForm.value.share.breakdowns.country)
+const provinceEditable = computed(() => countryEnabled.value && provinceEnabled.value)
+
+function toggleField(target, key) {
+    target[key] = !target[key]
+}
+
+function toggleListed() {
+    siteForm.value.listed = !siteForm.value.listed
+}
+
+function toggleCreator() {
+    if (!creatorEditable.value) return
+    siteForm.value.share.creator = !siteForm.value.share.creator
+}
+
+function toggleBreakdown(key) {
+    const breakdowns = siteForm.value.share.breakdowns
+    breakdowns[key] = !breakdowns[key]
+    if (key === 'country' && !breakdowns.country) breakdowns.province = false
+}
+
+function toggleProvince() {
+    if (!countryEnabled.value) return
+    provinceEnabled.value = !provinceEnabled.value
+}
+
+function toggleProvinceCnOnly() {
+    if (!provinceEditable.value) return
+    provinceCnOnly.value = !provinceCnOnly.value
+}
+
 // ── 嵌入代码 ──
-// 两种写法任选其一；同时出现则必须一致，否则跟踪脚本拒绝上报
 const snippetQuery = computed(() => {
     if (!snippetSite.value) return ''
     return (
@@ -128,8 +252,12 @@ async function onPullRefresh() {
     }
 }
 
-// ── 注册 ──
-function openRegisterDialog() {
+// ── 站点表单 ──
+function canEdit(site) {
+    return isAdmin.value || site.is_owner
+}
+
+function openCreateDialog() {
     if (!user?.value) {
         Snackbar.warning('请先登录后再注册站点')
         return
@@ -138,34 +266,75 @@ function openRegisterDialog() {
         Snackbar.warning(`每个账号最多注册 ${MY_SITE_LIMIT} 个站点`)
         return
     }
-    showRegisterDialog.value = true
+    siteForm.value = emptySiteForm()
+    showSiteDialog.value = true
 }
 
-async function handleRegister() {
-    const valid = await registerFormRef.value?.validate()
+function openEditDialog(site) {
+    if (!canEdit(site)) return
+    siteForm.value = {
+        id: site.id,
+        name: site.name,
+        domainsText: (site.domains?.length ? site.domains : [site.domain]).join('\n'),
+        visibility: site.visibility || 'private',
+        listed: !!site.listed,
+        share: normalizeShareConfig(site.share_config),
+    }
+    showSiteDialog.value = true
+}
+
+function buildSharePayload() {
+    const share = JSON.parse(JSON.stringify(siteForm.value.share))
+    // 省份依赖国家/地区维度；国家/地区关闭时不保留省份配置
+    if (!share.breakdowns.country) share.breakdowns.province = false
+    // 至少一项为 true；全关时打开 creator
+    const anyOn =
+        share.series ||
+        share.realtime ||
+        share.creator ||
+        Object.values(share.totals).some(Boolean) ||
+        Object.values(share.breakdowns).some(Boolean)
+    if (!anyOn) share.creator = true
+    return share
+}
+
+async function handleSubmitSite() {
+    const valid = await siteFormRef.value?.validate()
     if (!valid) return
 
-    const form = registerForm.value
-    const domain = form.domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+    const form = siteForm.value
+    const domains = form.domainsText
+        .split(/\r?\n/)
+        .map((d) => d.trim())
+        .filter(Boolean)
+
+    const payload = {
+        domains,
+        name: form.name.trim() || domains[0],
+        visibility: form.visibility,
+        listed: form.visibility === 'private' ? false : form.listed,
+        share_config: buildSharePayload(),
+    }
 
     submitting.value = true
     try {
-        const result = await registerSite({
-            domain,
-            name: form.name.trim() || domain,
-        })
-        Snackbar.success('站点注册成功')
-        showRegisterDialog.value = false
-        registerForm.value = emptyRegisterForm()
-        await loadSites()
-
-        // 顺手把嵌入代码推到用户面前
-        if (result.site) {
-            snippetSite.value = result.site
-            showSnippetDialog.value = true
+        if (form.id) {
+            await updateSite(form.id, payload)
+            Snackbar.success('站点已更新')
+            showSiteDialog.value = false
+            await loadSites()
+        } else {
+            const result = await registerSite(payload)
+            Snackbar.success('站点注册成功')
+            showSiteDialog.value = false
+            await loadSites()
+            if (result.site) {
+                snippetSite.value = result.site
+                showSnippetDialog.value = true
+            }
         }
     } catch (error) {
-        Snackbar.error(error.message || '注册失败')
+        Snackbar.error(error.message || (form.id ? '更新失败' : '注册失败'))
     } finally {
         submitting.value = false
     }
@@ -226,17 +395,25 @@ function openTransferDialog(siteId) {
 }
 
 function openSnippet(site) {
+    if (!site.token) return
     snippetSite.value = site
     showSnippetDialog.value = true
 }
 
 function resetForms() {
-    registerForm.value = emptyRegisterForm()
+    siteForm.value = emptySiteForm()
     transferForm.value = emptyTransferForm()
 }
 
+function visibilityLabel(site) {
+    return VISIBILITY_OPTIONS.find((o) => o.value === site.visibility)?.label || '私密'
+}
+
+function siteDomains(site) {
+    return site.domains?.length ? site.domains : [site.domain]
+}
+
 // ── 跳转概览 ──
-// 实际数据视图在 mysites.undz.cn，这里只是把用户送过去
 function openOverview(site) {
     window.open(`${MYSITES_BASE}/sites/${site.id}`, '_blank', 'noopener')
 }
@@ -259,6 +436,13 @@ function copySnippet() {
 onMounted(() => {
     loadSites()
     if (isAdmin.value) loadUsers()
+    window.addEventListener('devmode-changed', syncDevOptions)
+    window.addEventListener('storage', syncDevOptions)
+})
+
+onUnmounted(() => {
+    window.removeEventListener('devmode-changed', syncDevOptions)
+    window.removeEventListener('storage', syncDevOptions)
 })
 </script>
 
@@ -283,9 +467,9 @@ onMounted(() => {
             <var-progress v-if="loading && !sites.length" indeterminate />
 
             <var-result v-else-if="!sites.length" type="empty" title="暂无站点"
-                description="注册站点后即可获得专属 Token，把统计脚本嵌入到你的网站中开始收集数据。">
+                description="注册站点后即可获得专属 Token，将统计脚本嵌入到网站中开始收集数据。">
                 <template #footer>
-                    <var-button type="primary" @click="openRegisterDialog">注册新站点</var-button>
+                    <var-button type="primary" @click="openCreateDialog">注册新站点</var-button>
                 </template>
             </var-result>
 
@@ -295,20 +479,30 @@ onMounted(() => {
                         <div :class="slotClass" class="md-card-header">
                             <my-icon icon="web" size="1.1em" />
                             <span class="md-card-title">{{ site.name }}</span>
-                            <var-chip size="small">{{ site.domain }}</var-chip>
+                            <var-chip size="small">{{ visibilityLabel(site) }}</var-chip>
+                            <var-chip v-if="site.listed" size="small" type="primary">列表</var-chip>
+                            <var-chip v-if="!site.is_owner" size="small">他人</var-chip>
                         </div>
                     </template>
 
                     <div class="site-fields">
                         <div class="site-field">
+                            <span class="site-field__label">域名</span>
+                            <span class="site-field__value">
+                                <var-chip v-for="d in siteDomains(site)" :key="d" size="small" class="domain-chip">
+                                    {{ d }}
+                                </var-chip>
+                            </span>
+                        </div>
+                        <div v-if="site.token" class="site-field">
                             <span class="site-field__label">Token</span>
                             <span class="site-field__value md-mono md-copyable" title="点击复制"
                                 @click="copyText(site.token)">
                                 {{ site.token }}
                             </span>
                         </div>
-                        <div v-if="isAdmin && site.creator_username" class="site-field">
-                            <span class="site-field__label">所有者</span>
+                        <div v-if="site.creator_username" class="site-field">
+                            <span class="site-field__label">创建者</span>
                             <span class="site-field__value">
                                 {{ site.creator_username }}
                                 <span v-if="site.user_sub === 1" class="site-owner-admin">（管理员）</span>
@@ -325,14 +519,17 @@ onMounted(() => {
                             <var-button type="primary" text size="small" @click="openOverview(site)">
                                 查看概览
                             </var-button>
-                            <var-button text size="small" @click="openSnippet(site)">
+                            <var-button v-if="site.token" text size="small" @click="openSnippet(site)">
                                 嵌入代码
+                            </var-button>
+                            <var-button v-if="canEdit(site)" text size="small" @click="openEditDialog(site)">
+                                编辑
                             </var-button>
                             <var-button v-if="isAdmin" text size="small" @click="openTransferDialog(site.id)">
                                 转移
                             </var-button>
                             <var-button text type="danger" size="small" @click="handleDelete(site)"
-                                :disabled="!isAdmin && site.user_sub !== user?.sub">
+                                :disabled="!canEdit(site)">
                                 删除
                             </var-button>
                         </div>
@@ -344,37 +541,130 @@ onMounted(() => {
 
     <!-- MD3 FAB：注册站点 -->
     <var-fab class="analytics-fab" type="primary" position="right-bottom" inactive-icon="plus" :elevation="3"
-        :disabled="!user" @click="openRegisterDialog" />
+        :disabled="!user" @click="openCreateDialog" />
 
-    <!-- 注册站点 -->
-    <var-dialog v-model:show="showRegisterDialog" title="注册新站点" :confirm-button="false" :cancel-button="false"
-        :close-on-click-overlay="false" width="min(520px, calc(100vw - 32px))" @closed="resetForms">
+    <!-- 注册 / 编辑站点 -->
+    <var-dialog v-model:show="showSiteDialog" :confirm-button="false" :cancel-button="false"
+        :close-on-click-overlay="false" width="min(560px, calc(100vw - 32px))" @closed="resetForms">
         <template #title>
             <div class="md-dialog-title">
-                <my-icon icon="web-plus" size="1.25em" class="md-dialog-title__icon" />
-                <span>注册新站点</span>
+                <my-icon :icon="isEditing ? 'pencil' : 'web-plus'" size="1.25em" class="md-dialog-title__icon" />
+                <span>{{ isEditing ? '编辑站点' : '注册新站点' }}</span>
             </div>
         </template>
-        <var-form ref="registerFormRef" class="md-dialog-form" scroll-to-error="start" @submit.prevent>
-            <var-input v-model="registerForm.domain" variant="outlined" placeholder="站点域名，如 example.com"
-                :rules="[(v) => !!String(v).trim() || '请输入域名']" />
-            <var-input v-model="registerForm.name" variant="outlined" placeholder="站点名称（可选，默认使用域名）" />
-            <p class="md-hint">
-                只填裸域名 —— 不要协议头，不要末尾斜杠。注册成功后会得到一个专属 Token 用于嵌入脚本。
+
+        <var-form ref="siteFormRef" class="md-dialog-form site-form" scroll-to-error="start" @submit.prevent>
+            <var-input v-model="siteForm.name" variant="outlined" placeholder="站点名称" />
+
+            <var-input textarea v-model="siteForm.domainsText" variant="outlined" type="textarea" :rows="4"
+                placeholder="站点域名" :rules="[(v) => !!String(v).trim() || '请至少填写一个域名']" />
+            <p class="md-hint field-hint">
+                一行一个域名，最多 10 个，第一个作为主域名；不要协议头和路径。
             </p>
+
+            <var-select v-model="siteForm.visibility" variant="outlined" placeholder="可见性" @change="onVisibilityChange">
+                <var-option v-for="opt in VISIBILITY_OPTIONS" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </var-select>
+
+            <div v-if="siteForm.visibility !== 'private'" class="switch-list switch-list--single">
+                <div class="switch-row" v-ripple @click="toggleListed">
+                    <div class="switch-row__text">
+                        <span class="switch-row__label">进入公开列表</span>
+                        <span class="switch-row__desc">出现在 mysites 首页的公开站点区块</span>
+                    </div>
+                    <var-switch v-model="siteForm.listed" :size="18" @click.stop />
+                </div>
+            </div>
+
+            <template v-if="siteForm.visibility !== 'private'">
+
+                <div class="switch-row__text">
+                    <p class="section-title">分享内容</p>
+                    <p class="section-desc">对外展示的数据范围，至少开启一项。</p>
+                </div>
+
+                <div class="switch-list">
+                    <div class="switch-row" :class="{ 'switch-row--disabled': !creatorEditable }"
+                        v-ripple="{ disabled: !creatorEditable }" @click="toggleCreator">
+                        <div class="switch-row__text">
+                            <span class="switch-row__label">展示创建者</span>
+                            <span class="switch-row__desc">分享页显示站点创建者用户名</span>
+                        </div>
+                        <var-switch v-model="siteForm.share.creator" :size="18" :disabled="!creatorEditable"
+                            @click.stop />
+                    </div>
+                    <div v-for="item in TOTAL_ITEMS" :key="item.key" class="switch-row" v-ripple
+                        @click="toggleField(siteForm.share.totals, item.key)">
+                        <div class="switch-row__text">
+                            <span class="switch-row__label">{{ item.label }}</span>
+                            <span class="switch-row__desc">{{ item.desc }}</span>
+                        </div>
+                        <var-switch v-model="siteForm.share.totals[item.key]" :size="18" @click.stop />
+                    </div>
+                    <div class="switch-row" v-ripple @click="toggleField(siteForm.share, 'series')">
+                        <div class="switch-row__text">
+                            <span class="switch-row__label">趋势图</span>
+                            <span class="switch-row__desc">按天或按小时的访问曲线</span>
+                        </div>
+                        <var-switch v-model="siteForm.share.series" :size="18" @click.stop />
+                    </div>
+                    <div class="switch-row" v-ripple @click="toggleField(siteForm.share, 'realtime')">
+                        <div class="switch-row__text">
+                            <span class="switch-row__label">实时数据</span>
+                            <span class="switch-row__desc">最近 30 分钟的在线情况</span>
+                        </div>
+                        <var-switch v-model="siteForm.share.realtime" :size="18" @click.stop />
+                    </div>
+                </div>
+
+                <p class="section-title">明细维度</p>
+
+                <div class="switch-list">
+                    <template v-for="item in BREAKDOWN_ITEMS" :key="item.key">
+                        <div class="switch-row" v-ripple @click="toggleBreakdown(item.key)">
+                            <div class="switch-row__text">
+                                <span class="switch-row__label">{{ item.label }}</span>
+                                <span class="switch-row__desc">{{ item.desc }}</span>
+                            </div>
+                            <var-switch v-model="siteForm.share.breakdowns[item.key]" :size="18" @click.stop />
+                        </div>
+
+                        <template v-if="item.key === 'country' && countryEnabled">
+                            <div class="switch-row" :class="{ 'switch-row--disabled': !provinceEditable }"
+                                v-ripple="{ disabled: !provinceEditable }" @click="toggleProvinceCnOnly">
+                                <div class="switch-row__text">
+                                    <span class="switch-row__label">仅中国</span>
+                                    <span class="switch-row__desc">分享时只显示中国大陆地区的数据</span>
+                                </div>
+                                <var-switch v-model="provinceCnOnly" :size="18" :disabled="!provinceEditable"
+                                    @click.stop />
+                            </div>
+                            <div class="switch-row" v-ripple @click="toggleProvince">
+                                <div class="switch-row__text">
+                                    <span class="switch-row__label">省份</span>
+                                    <span class="switch-row__desc">分享时按中国省级拆分访客地区</span>
+                                </div>
+                                <var-switch v-model="provinceEnabled" :size="18" @click.stop />
+                            </div>
+                        </template>
+                    </template>
+                </div>
+            </template>
         </var-form>
 
         <template #actions="{ slotClass }">
             <div :class="slotClass" class="md-dialog-actions">
-                <var-button text type="primary" @click="showRegisterDialog = false">取消</var-button>
-                <var-button type="primary" :loading="submitting" @click="handleRegister">注册</var-button>
+                <var-button text type="primary" @click="showSiteDialog = false">取消</var-button>
+                <var-button type="primary" :loading="submitting" @click="handleSubmitSite">
+                    {{ isEditing ? '保存' : '注册' }}
+                </var-button>
             </div>
         </template>
     </var-dialog>
 
     <!-- 转移所有者（管理员） -->
-    <var-dialog v-model:show="showTransferDialog" title="转移站点所有者" :confirm-button="false"
-        :cancel-button="false" width="min(480px, calc(100vw - 32px))" @closed="resetForms">
+    <var-dialog v-model:show="showTransferDialog" title="转移站点所有者" :confirm-button="false" :cancel-button="false"
+        width="min(480px, calc(100vw - 32px))" @closed="resetForms">
         <template #title>
             <div class="md-dialog-title">
                 <my-icon icon="swap-horizontal" size="1.25em" class="md-dialog-title__icon" />
@@ -443,7 +733,6 @@ onMounted(() => {
     padding-bottom: var(--md-space-4);
 }
 
-
 .site-fields {
     display: flex;
     flex-direction: column;
@@ -471,6 +760,10 @@ onMounted(() => {
     word-break: break-all;
 }
 
+.domain-chip {
+    margin: 0 6px 6px 0;
+}
+
 .site-owner-admin {
     color: var(--color-primary);
 }
@@ -481,6 +774,92 @@ onMounted(() => {
     gap: var(--md-space-1);
     flex-wrap: wrap;
     width: 100%;
+}
+
+/* ── 站点表单 ── */
+.site-form {
+    max-height: min(58vh, 520px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 2px;
+    padding-top: 12px;
+}
+
+.field-hint {
+    margin: 2px 0 0;
+}
+
+.section-title {
+    margin: 16px 0 2px;
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.section-desc {
+    margin: 0 0 6px;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--color-text-secondary);
+}
+
+.switch-list {
+    border-top: none;
+}
+
+.switch-list--single {
+    margin-top: 8px;
+}
+
+.switch-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--md-space-3);
+    padding: 8px;
+    margin: 0 -8px;
+    border-bottom: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.switch-row:hover {
+    background: var(--color-surface-variant, rgba(0, 0, 0, 0.04));
+}
+
+.switch-list>.switch-row:last-child {
+    border-bottom: none;
+}
+
+.switch-row--disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.switch-row--disabled:hover {
+    background: none;
+}
+
+.switch-row__label {
+    color: var(--color-text);
+    font-size: 13px;
+    line-height: 18px;
+}
+
+.switch-row__text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.switch-row__desc {
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--color-text-secondary);
 }
 
 .snippet-hint {

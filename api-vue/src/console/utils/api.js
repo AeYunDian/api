@@ -205,14 +205,30 @@ export function getSites() {
  * 注册新站点
  * 普通用户最多 5 个，user.sub === 1 不限（后端已校验）
  * @param {object} params
- * @param {string} params.domain - 裸域名，如 example.com
- * @param {string} [params.name] - 站点名称，默认使用域名
+ * @param {string[]} [params.domains] - 域名列表，如 ["example.com"]
+ * @param {string} [params.domain] - 兼容旧字段，domains 缺省时使用
+ * @param {string} [params.name] - 站点名称，默认使用第一个域名
+ * @param {string} [params.visibility] - private | logged_in | public
+ * @param {boolean} [params.listed] - 是否进入公开列表
+ * @param {object} [params.share_config] - 分享维度配置
  * @returns {Promise<{ success: boolean, site: object }>}
  */
-export function registerSite({ domain, name }) {
+export function registerSite({ domain, domains, name, visibility, listed, share_config }) {
   return request("console/sites", {
     method: "POST",
-    body: { domain, name },
+    body: { domain, domains, name, visibility, listed, share_config },
+  });
+}
+
+/**
+ * 编辑站点（名称 / 可见性 / 域名 / 分享配置）
+ * @param {number} id
+ * @param {object} patch
+ */
+export function updateSite(id, patch) {
+  return request(`console/sites/${id}`, {
+    method: "PUT",
+    body: patch,
   });
 }
 
