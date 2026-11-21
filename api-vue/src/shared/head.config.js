@@ -14,16 +14,25 @@ export const head = [
     },
   },
   {
-    apps: ["analytics"],
+    apps: ["console"],
     phase: "beforeLoadModule",
     tag: "script",
     attrs: {
-      src: "https://mysites.undz.cn/analytics.js?token=33c4316fe7f09cf653e3f9f7e1f09325c4b3f62a2488426412f47d5f0b06e62a",
+      src: "https://mysites.undz.cn/analytics.js?token=bf99d0386b79d9d751a24cf23960c71c4c76c1740acd58bbfa0d76024ef71354",
       id: "ayanalytics",
       defer: true,
     },
   },
-
+  {
+    apps: ["account"],
+    phase: "beforeLoadModule",
+    tag: "script",
+    attrs: {
+      src: "https://mysites.undz.cn/analytics.js?token=61019c459094f30c6c2b1eb58845886fe7567222c9eb5575238492f2f395d4c2",
+      id: "ayanalytics",
+      defer: true,
+    },
+  },
   // 字体样式，越早加载越好（避免 FOUT）
   {
     apps: ["*"],

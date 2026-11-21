@@ -1,7 +1,22 @@
 // services/analytics/db.js
 // 分析服务的全部 SQL。表名统一走 config.TABLES，别处不要写裸表名。
+//
+// 安全约定：
+//   - SQL 里的 `${}` 只允许拼接「常量表名」或「白名单列名」，禁止拼接任何请求数据；
+//   - 所有用户输入一律通过 .bind() 传参，不得进入 SQL 字符串。
 
 import { TABLES } from "./config.js";
+
+/** 站点表允许被 UPDATE 的列（白名单，禁止外部传列名进来） */
+const SITE_UPDATABLE_COLUMNS = new Set([
+  "name",
+  "domain",
+  "domains",
+  "visibility",
+  "listed",
+  "share_config",
+  "updated_at",
+]);
 
 /* ─────────────────────── 站点 ─────────────────────── */
 
@@ -73,7 +88,7 @@ export function listPublicSites(db, { viewerSub = null, isAdmin = false, limit }
   if (isAdmin) {
     return db
       .prepare(
-        `SELECT id, name, domain, domains, domain FROM ${TABLES.sites}
+        `SELECT id, name, domain, domains FROM ${TABLES.sites}
           ORDER BY created_at DESC LIMIT ?`,
       )
       .bind(limit)
@@ -82,7 +97,7 @@ export function listPublicSites(db, { viewerSub = null, isAdmin = false, limit }
   if (viewerSub) {
     return db
       .prepare(
-        `SELECT id, name, domain, domains, domain FROM ${TABLES.sites}
+        `SELECT id, name, domain, domains FROM ${TABLES.sites}
           WHERE listed = 1 AND visibility = 'public' AND user_sub <> ?
           ORDER BY created_at DESC LIMIT ?`,
       )
@@ -91,7 +106,7 @@ export function listPublicSites(db, { viewerSub = null, isAdmin = false, limit }
   }
   return db
     .prepare(
-      `SELECT id, name, domain, domains, domain FROM ${TABLES.sites}
+      `SELECT id, name, domain, domains FROM ${TABLES.sites}
         WHERE listed = 1 AND visibility = 'public'
         ORDER BY created_at DESC LIMIT ?`,
     )
@@ -103,7 +118,7 @@ export function listPublicSites(db, { viewerSub = null, isAdmin = false, limit }
 export function listSitesByUser(db, userSub, limit) {
   return db
     .prepare(
-      `SELECT id, name, domain, domains, domain FROM ${TABLES.sites}
+      `SELECT id, name, domain, domains FROM ${TABLES.sites}
         WHERE user_sub = ? ORDER BY created_at DESC LIMIT ?`,
     )
     .bind(userSub, limit)
@@ -133,9 +148,18 @@ export function insertSite(db, site) {
     .run();
 }
 
-/** 动态 UPDATE；fields 的 key 必须是固定白名单（见 console 路由） */
+/**
+ * 动态 UPDATE：只允许白名单列，列名不来自请求，值一律 bind。
+ * 传入未知列直接抛错，避免有人把用户可控的 key 递进来。
+ */
 export function updateSite(db, id, fields) {
   const keys = Object.keys(fields);
+  const illegal = keys.filter((k) => !SITE_UPDATABLE_COLUMNS.has(k));
+  if (illegal.length) {
+    throw new Error(`updateSite: illegal column(s): ${illegal.join(", ")}`);
+  }
+  if (!keys.length) throw new Error("updateSite: no fields");
+
   const sets = keys.map((k) => `${k} = ?`).join(", ");
   const values = keys.map((k) => fields[k]);
   return db

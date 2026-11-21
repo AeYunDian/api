@@ -4,6 +4,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { Snackbar } from '@varlet/ui'
 import { getSiteStats, getSiteRealtime } from '@/mysites/utils/api'
 import { formatTime } from '@/shared/utils/format'
+import chinaMap from '@/mysites/assets/china-map.js'
+import GeoMap from '@/mysites/components/GeoMap.vue'
+import {
+    provinceMapId,
+    provinceName,
+    countryMapId,
+    countryName,
+} from '@/mysites/utils/geo'
 
 /* ───────────── 上下文 ───────────── */
 
@@ -327,6 +335,42 @@ const lockedBreakdowns = computed(() => {
         .map(([, title]) => title)
 })
 
+/* ───────────── 地理分布 ───────────── */
+
+function validRows(key) {
+    const rows = stats.value?.breakdowns?.[key]
+    return Array.isArray(rows) ? rows.filter((row) => row.val) : []
+}
+
+const provinceRows = computed(() => validRows('province'))
+const countryRows = computed(() => validRows('country'))
+const showChinaMap = computed(() => provinceRows.value.length > 0)
+const showWorldMap = computed(() => countryRows.value.length > 1)
+
+function worldLabel(loc) {
+    return countryName(loc.id)
+}
+
+const worldMap = ref(null)
+let worldMapLoading = false
+
+watch(
+    showWorldMap,
+    async (need) => {
+        if (!need || worldMap.value || worldMapLoading) return
+        worldMapLoading = true
+        try {
+            const mod = await import('@svg-maps/world')
+            worldMap.value = mod.default
+        } catch (e) {
+            if (import.meta.env.DEV) console.error('[analytics] world map load failed', e)
+        } finally {
+            worldMapLoading = false
+        }
+    },
+    { immediate: true }
+)
+
 function fmtMetric(n) {
     return n == null ? '未公开' : fmt(n)
 }
@@ -646,6 +690,20 @@ function primaryDomain(site) {
                         </div>
                         <p v-if="!realtime.recent.length" class="empty-line">暂无</p>
                     </div>
+                </section>
+
+                <!-- 地理分布 -->
+                <GeoMap v-if="showChinaMap" title="中国省份" subtitle="按浏览量着色" :map="chinaMap"
+                    :rows="provinceRows" :code-to-id="provinceMapId" :code-to-name="provinceName"
+                    print-all footnote="地图数据：antvis/china-geojson（MIT）" />
+
+                <GeoMap v-if="showWorldMap && worldMap" title="全球分布" subtitle="按浏览量着色"
+                    :map="worldMap" :rows="countryRows" :code-to-id="countryMapId"
+                    :code-to-name="countryName" :label-for="worldLabel"
+                    footnote="地图数据 © svg-maps（CC BY 4.0）" />
+                <section v-else-if="showWorldMap" class="card">
+                    <h3>全球分布</h3>
+                    <p class="empty-line">地图加载中…</p>
                 </section>
 
                 <!-- Breakdown -->

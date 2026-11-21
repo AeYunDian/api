@@ -23,6 +23,7 @@ declare module 'vue' {
     VarCell: typeof import('@varlet/ui')['Cell']
     VarCheckbox: typeof import('@varlet/ui')['Checkbox']
     VarChip: typeof import('@varlet/ui')['Chip']
+    VarCollapseTransition: typeof import('@varlet/ui')['CollapseTransition']
     VarDateInput: typeof import('@varlet/ui')['DateInput']
     VarDatePicker: typeof import('@varlet/ui')['DatePicker']
     VarDialog: typeof import('@varlet/ui')['_DialogComponent']
