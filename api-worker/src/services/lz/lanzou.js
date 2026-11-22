@@ -43,6 +43,7 @@ const UA_DESKTOP = config.userAgent;
 const UA_MOBILE = config.mobileUserAgent;
 const FALLBACK_HOST = config.fallbackHost;
 const TIMEOUT_MS = config.requestTimeoutMs;
+const ACCEPT_LANGUAGE = config.acceptLanguage;
 
 /* ------------------------------------------------------------------ *
  * 文件：公开入口
@@ -140,8 +141,7 @@ async function resolveByPassword(shareHtml, shareUrl, password) {
   const payload = await postJson(api, { action: 'downprocess', sign, kd, p: password }, shareUrl);
 
   if (String(payload?.zt) !== '1') {
-    const info = typeof payload?.inf === 'string' ? payload.inf : `zt=${payload?.zt}`;
-    throw new LanzouError(`无法下载：${info}`, 'DOWNLOAD_REJECTED', 403);
+    throw new LanzouError(`无法下载：${rejectionMessage(payload)}`, 'DOWNLOAD_REJECTED', 403);
   }
 
   const link = await resolveLocation(buildCandidates(payload, kd !== '0'), shareUrl);
@@ -214,9 +214,8 @@ export async function resolveFolder(folderUrl, password, maxPages = config.maxFo
     if (String(payload?.zt) !== '1') {
       // 首页就失败 = 密码错 / 令牌过期；后面页失败 = 已经到底（实测 zt=4）
       if (page === firstPage) {
-        const info = typeof payload?.inf === 'string' ? payload.inf : '';
         throw new LanzouError(
-          `文件夹接口返回 zt=${payload?.zt}${info ? `（${info}）` : ''}`,
+          `文件夹接口拒绝：${rejectionMessage(payload)}`,
           'FOLDER_REJECTED',
           403,
         );
@@ -267,8 +266,7 @@ async function downProcess(endpoints, form, preferKd, referer) {
         const payload = await postJson(endpoint, { ...form, kd }, referer);
         if (String(payload?.zt) === '1') return payload;
 
-        const info = payload?.inf ?? payload?.info ?? `zt=${payload?.zt}`;
-        errors.push(String(info));
+        errors.push(rejectionMessage(payload));
       } catch (err) {
         errors.push(err instanceof Error ? err.message : String(err));
       }
@@ -325,7 +323,12 @@ async function resolveLocation(candidates, referer) {
       const res = await fetch(candidate, {
         method: 'GET',
         redirect: 'manual',
-        headers: { 'user-agent': UA_DESKTOP, referer },
+        headers: {
+          'user-agent': UA_DESKTOP,
+          accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'accept-language': ACCEPT_LANGUAGE,
+          referer,
+        },
         signal: timeoutSignal(TIMEOUT_MS),
       });
 
@@ -350,7 +353,12 @@ async function resolveLocation(candidates, referer) {
       const res = await fetch(candidate, {
         method: 'GET',
         redirect: 'follow',
-        headers: { 'user-agent': UA_DESKTOP, referer },
+        headers: {
+          'user-agent': UA_DESKTOP,
+          accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'accept-language': ACCEPT_LANGUAGE,
+          referer,
+        },
         signal: timeoutSignal(TIMEOUT_MS),
       });
 
@@ -396,7 +404,7 @@ async function getText(url, referer, ua = UA_DESKTOP) {
     headers: {
       'user-agent': ua,
       accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'accept-language': 'zh-CN,zh;q=0.9',
+      'accept-language': ACCEPT_LANGUAGE,
       ...(referer ? { referer } : {}),
     },
     signal: timeoutSignal(TIMEOUT_MS),
@@ -424,19 +432,72 @@ async function postJson(url, form, referer) {
       'user-agent': UA_DESKTOP,
       accept: 'application/json, text/javascript, */*; q=0.01',
       'x-requested-with': 'XMLHttpRequest',
-      'accept-language': 'zh-CN,zh;q=0.9',
+      'accept-language': ACCEPT_LANGUAGE,
       ...(referer ? { referer } : {}),
     },
     signal: timeoutSignal(TIMEOUT_MS),
   });
 
   const text = await res.text();
+  const payload = parseJsonLoose(text);
+
+  if (payload === null) {
+    const contentType = res.headers.get('content-type') ?? '无 content-type';
+    throw new LanzouError(
+      `接口返回无法解析（${contentType}，HTTP ${res.status}）：${snippet(text)}`,
+      'BAD_RESPONSE',
+      502,
+    );
+  }
+
+  return payload;
+}
+
+/**
+ * 宽松解析：上游有时会带 UTF-8 BOM，或在 JSON 前后塞网关日志/挑战脚本，
+ * 直接 JSON.parse 会整串失败，所以先剥 BOM，再兜底抠第一段 {...}。
+ *
+ * @param {string} text
+ * @returns {any | null}
+ */
+function parseJsonLoose(text) {
+  const cleaned = text.replace(/^\uFEFF/, '').trim();
 
   try {
-    return JSON.parse(text);
+    return JSON.parse(cleaned);
   } catch {
-    throw new LanzouError(`接口返回的不是 JSON：${snippet(text)}`, 'BAD_RESPONSE', 502);
+    /* 继续尝试下面的兜底 */
   }
+
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(cleaned.slice(start, end + 1));
+    } catch {
+      /* 兜底也失败 */
+    }
+  }
+
+  return null;
+}
+
+/**
+ * 上游拒绝时把原因捞出来：蓝奏云/网关可能给 inf、info、Message、message 或 error。
+ * @param {any} payload
+ * @returns {string}
+ */
+function rejectionMessage(payload) {
+  if (payload && typeof payload === 'object') {
+    for (const key of ['inf', 'info', 'Message', 'message', 'error', 'errorMessage']) {
+      const value = payload[key];
+      if (typeof value === 'string' && value.length > 0) return value;
+    }
+    if (payload.zt !== undefined) return `zt=${payload.zt}`;
+  }
+
+  return '上游未给出原因';
 }
 
 /* ------------------------------------------------------------------ *

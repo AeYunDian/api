@@ -12,115 +12,132 @@ function getAny(search, names) {
     const value = search.get(name);
     if (value !== null) return value;
   }
-  return undefined;
+  return null;
 }
 
 export default {
+  /**
+   * @param {Request} request
+   * @returns {Promise<Response>}
+   */
   async fetch(request) {
-    const reqUrl = new URL(request.url);
-    const search = reqUrl.searchParams;
-
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: cors() });
-    }
-
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      return errorResponse(new LanzouError('只支持 GET / HEAD', 'METHOD_NOT_ALLOWED', 405));
-    }
-
-    const segs = reqUrl.pathname.split('/').filter(Boolean);
-
-    if (segs.length === 0) return indexResponse(reqUrl);
-    if (segs.length !== 2) {
-      return errorResponse(new LanzouError('路径格式错误', 'BAD_PATH', 400));
-    }
-
-    const [sub, id] = segs;
-
-    // 只允许拼出 lanzou 的子域，避免被当成任意站点的代理（SSRF）
-    if (!/^[a-z0-9-]{1,63}$/i.test(sub)) {
-      return errorResponse(new LanzouError('子域参数不合法', 'BAD_PATH', 400));
-    }
-    if (!/^[0-9a-z_]{4,64}$/i.test(id)) {
-      return errorResponse(new LanzouError('分享 ID 不合法', 'BAD_PATH', 400));
-    }
-
-    let baseDomain = config.baseDomain;
-
-    // 参数别名全部来自 config.params
-    const password = getAny(search, config.params.password);
-    const wantJson = hasAny(search, config.params.json);
-    const wantProxy = hasAny(search, config.params.proxy);
-    const wantToolsdown = hasAny(search, config.params.toolsdown);
-    const forceFolder = hasAny(search, config.params.folder);
-
-    // ?d= 切换备用主域；不在 config.domains 里直接报错
-    const domainParam = getAny(search, config.params.domain);
-    if (domainParam !== null) {
-      const suffix = domainParam.trim().toLowerCase();
-
-      if (!Object.hasOwn(config.domains, suffix)) {
-        return errorResponse(new LanzouError('d 参数不在白名单', 'BAD_DOMAIN', 400));
-      }
-
-      baseDomain = config.domains[suffix];
-    }
-
-    const shareUrl = `https://${sub}.${baseDomain}/${id}`;
-
-    // 蓝奏云文件外链是 /iXXXX，文件夹是 /bXXXX
-    const isFolder = forceFolder || /^b[0-9a-z]+$/i.test(id);
-
+    // 兜底：任何未预料的异常也返回 JSON，而不是裸的 "Worker threw exception"
     try {
-      if (isFolder) {
-        const files = await resolveFolder(shareUrl, password);
-        const lanzouOrigin = new URL(shareUrl).origin;
-
-        return json({
-          ok: true,
-          type: 'folder',
-          folder: shareUrl,
-          count: files.length,
-          files: files.map((file) => ({
-            ...file,
-            share: `${lanzouOrigin}/${file.id}`,
-            url: `${reqUrl.origin}/${sub}/${file.id}`,
-          })),
-        });
-      }
-
-      if (wantProxy) {
-        const file = await resolveFile(shareUrl, password, wantToolsdown);
-        return await proxyDownload(file, request);
-      }
-
-      const resolved = await resolveFile(shareUrl, password, wantToolsdown);
-
-      if (wantJson) {
-        return json({
-          ok: true,
-          type: 'file',
-          link: resolved.link,
-          name: resolved.name,
-          size: resolved.size,
-          toolsdown: wantToolsdown,
-        });
-      }
-
-      return new Response(null, {
-        status: 302,
-        headers: {
-          location: resolved.link,
-          'content-disposition': contentDisposition(resolved.name),
-          'cache-control': 'no-store',
-          ...cors(),
-        },
-      });
+      return await handleRequest(request);
     } catch (err) {
       return errorResponse(err);
     }
   },
 };
+
+/**
+ * @param {Request} request
+ * @returns {Promise<Response>}
+ */
+async function handleRequest(request) {
+  const reqUrl = new URL(request.url);
+  const search = reqUrl.searchParams;
+
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: cors() });
+  }
+
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    return errorResponse(new LanzouError('只支持 GET / HEAD', 'METHOD_NOT_ALLOWED', 405));
+  }
+
+  const segs = reqUrl.pathname.split('/').filter(Boolean);
+
+  if (segs.length === 0) return indexResponse(reqUrl);
+  if (segs.length !== 2) {
+    return errorResponse(new LanzouError('路径格式错误', 'BAD_PATH', 400));
+  }
+
+  const [sub, id] = segs;
+
+  // 只允许拼出 lanzou 的子域，避免被当成任意站点的代理（SSRF）
+  if (!/^[a-z0-9-]{1,63}$/i.test(sub)) {
+    return errorResponse(new LanzouError('子域参数不合法', 'BAD_PATH', 400));
+  }
+  if (!/^[0-9a-z_]{4,64}$/i.test(id)) {
+    return errorResponse(new LanzouError('分享 ID 不合法', 'BAD_PATH', 400));
+  }
+
+  let baseDomain = config.baseDomain;
+
+  // 参数别名全部来自 config.params
+  const password = getAny(search, config.params.password);
+  const wantJson = hasAny(search, config.params.json);
+  const wantProxy = hasAny(search, config.params.proxy);
+  const wantToolsdown = hasAny(search, config.params.toolsdown);
+  const forceFolder = hasAny(search, config.params.folder);
+
+  // ?d= 切换备用主域；不在 config.domains 里直接报错
+  const domainParam = getAny(search, config.params.domain);
+  if (domainParam !== null) {
+    const suffix = domainParam.trim().toLowerCase();
+
+    if (!Object.hasOwn(config.domains, suffix)) {
+      return errorResponse(new LanzouError('d 参数不在白名单', 'BAD_DOMAIN', 400));
+    }
+
+    baseDomain = config.domains[suffix];
+  }
+
+  const shareUrl = `https://${sub}.${baseDomain}/${id}`;
+
+  // 蓝奏云文件外链是 /iXXXX，文件夹是 /bXXXX
+  const isFolder = forceFolder || /^b[0-9a-z]+$/i.test(id);
+
+  try {
+    if (isFolder) {
+      const files = await resolveFolder(shareUrl, password);
+      const lanzouOrigin = new URL(shareUrl).origin;
+
+      return json({
+        ok: true,
+        type: 'folder',
+        folder: shareUrl,
+        count: files.length,
+        files: files.map((file) => ({
+          ...file,
+          share: `${lanzouOrigin}/${file.id}`,
+          url: `${reqUrl.origin}/${sub}/${file.id}`,
+        })),
+      });
+    }
+
+    if (wantProxy) {
+      const file = await resolveFile(shareUrl, password, wantToolsdown);
+      return await proxyDownload(file, request);
+    }
+
+    const resolved = await resolveFile(shareUrl, password, wantToolsdown);
+
+    if (wantJson) {
+      return json({
+        ok: true,
+        type: 'file',
+        link: resolved.link,
+        name: resolved.name,
+        size: resolved.size,
+        toolsdown: wantToolsdown,
+      });
+    }
+
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: resolved.link,
+        'content-disposition': contentDisposition(resolved.name),
+        'cache-control': 'no-store',
+        ...cors(),
+      },
+    });
+  } catch (err) {
+    return errorResponse(err);
+  }
+}
 
 /* ------------------------------------------------------------------ *
  * ?p / ?ps —— 服务端抓回文件再以 200 吐给客户端
@@ -138,6 +155,7 @@ async function proxyDownload(file, request) {
     redirect: 'follow',
     headers: {
       'user-agent': config.userAgent,
+      'accept-language': config.acceptLanguage,
       ...(range ? { range } : {}),
     },
     signal: timeoutSignal(config.proxyTimeoutMs),

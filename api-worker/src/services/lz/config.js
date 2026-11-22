@@ -41,6 +41,12 @@ export const config = {
   /** 单次上游请求超时（毫秒） */
   requestTimeoutMs: 15_000,
 
+  /**
+   * Accept-Language。实测蓝奏的 CDN 会对**不带这个头**的请求返回 JS 挑战页，
+   * 带上就直接 302，所以每个请求都要发。
+   */
+  acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+
   /** ?p / ?ps 下载文件的超时（毫秒） */
   proxyTimeoutMs: 120_000,
 
