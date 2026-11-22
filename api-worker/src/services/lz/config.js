@@ -38,12 +38,15 @@ export const config = {
     'AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/61.0.3163.128 ' +
     'Mobile Safari/537.36 XiaoMi/MiuiBrowser/9.8.7',
 
-  /** 单次上游请求超时（毫秒） */
-  requestTimeoutMs: 15_000,
+  /**
+   * 单次上游请求超时（毫秒）。
+   * 别调太大：一次解析最多会打 6~8 个上游请求，每个都卡满就是灾难。
+   */
+  requestTimeoutMs: 10_000,
 
   /**
    * Accept-Language。实测蓝奏的 CDN 会对**不带这个头**的请求返回 JS 挑战页，
-   * 带上就直接 302，所以每个请求都要发。
+   * 带上就直接 302，所以每个请求都要发，别删。
    */
   acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
 

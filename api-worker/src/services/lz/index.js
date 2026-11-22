@@ -1,5 +1,5 @@
 import { config } from './config.js';
-import { LanzouError, resolveFile, resolveFolder } from './lanzou.js';
+import { LanzouError, isTimeoutError, resolveFile, resolveFolder } from './lanzou.js';
 
 /** 任一参数存在即算 */
 function hasAny(search, names) {
@@ -223,6 +223,12 @@ function json(body, status = 200) {
 function errorResponse(err) {
   if (err instanceof LanzouError) {
     return json({ ok: false, error: { code: err.code, message: err.message } }, err.status);
+  }
+
+  // fetch 被 AbortSignal.timeout 掐断时抛的是 TimeoutError/AbortError，
+  // 别让它变成通用的 INTERNAL
+  if (isTimeoutError(err)) {
+    return json({ ok: false, error: { code: 'TIMEOUT', message: '上游请求超时' } }, 504);
   }
 
   const message = err instanceof Error ? err.message : String(err);

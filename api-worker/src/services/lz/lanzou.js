@@ -256,14 +256,16 @@ async function downProcess(endpoints, form, preferKd, referer) {
   }
 
   const errors = [];
-
-  // 正常网络用 kd=1；失败再按“检测到 DNS 劫持”发 kd=0
   const kdRounds = preferKd ? ['1', '0'] : ['0', '1'];
 
   for (const kd of kdRounds) {
+    let answered = false;
+
     for (const endpoint of endpoints) {
       try {
         const payload = await postJson(endpoint, { ...form, kd }, referer);
+        answered = true;
+
         if (String(payload?.zt) === '1') return payload;
 
         errors.push(rejectionMessage(payload));
@@ -271,6 +273,9 @@ async function downProcess(endpoints, form, preferKd, referer) {
         errors.push(err instanceof Error ? err.message : String(err));
       }
     }
+
+    // 一轮下来全是网络错误/超时（没有任何 HTTP 响应），再来一轮只会更慢
+    if (!answered) break;
   }
 
   throw new LanzouError(
@@ -310,82 +315,105 @@ function buildCandidates(payload, killDns) {
  * ------------------------------------------------------------------ */
 
 /**
+ * 拿 302 的 Location。
+ *
+ * 两个候选（`dom` 主机、`:661` 兜底主机）**并发竞速**，谁先给出直链用谁：
+ * - 顺序试的话，一个候选挂住就要白等一整个超时，再叠上下一个；
+ * - 实测 `developer4.lanrar.com` 基本只回挑战页，真正能用的是 `:661`，
+ *   而这个非标端口从 Cloudflare 出口偶尔会卡住，竞速能把最坏等待压到一个超时。
+ *
  * @param {string[]} candidates
  * @param {string} referer
  * @returns {Promise<string>}
  */
 async function resolveLocation(candidates, referer) {
-  const failures = [];
+  const headers = {
+    'user-agent': UA_DESKTOP,
+    accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'accept-language': ACCEPT_LANGUAGE,
+    referer,
+  };
 
-  for (const candidate of candidates) {
-    // 首选 manual：能直接读到 302 的 Location，不用把文件下下来
-    try {
-      const res = await fetch(candidate, {
-        method: 'GET',
-        redirect: 'manual',
-        headers: {
-          'user-agent': UA_DESKTOP,
-          accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'accept-language': ACCEPT_LANGUAGE,
-          referer,
-        },
-        signal: timeoutSignal(TIMEOUT_MS),
-      });
+  const attempt = async (candidate) => {
+    const res = await fetch(candidate, {
+      method: 'GET',
+      redirect: 'manual',
+      headers,
+      signal: timeoutSignal(TIMEOUT_MS),
+    });
 
-      if (res.status >= 300 && res.status < 400) {
-        const location = res.headers.get('location');
-        if (location) return new URL(location, candidate).toString();
-      }
+    const status = res.status;
+    const location = res.headers.get('location');
+    const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
 
-      try {
-        await res.body?.cancel();
-      } catch {
-        /* 忽略 */
-      }
+    await discard(res);
 
-      failures.push(`${new URL(candidate).host} → HTTP ${res.status}`);
-    } catch (err) {
-      failures.push(`${new URL(candidate).host} → ${err instanceof Error ? err.message : err}`);
+    // 正常情况：302 + Location
+    if (status >= 300 && status < 400 && location) {
+      return new URL(location, candidate).toString();
     }
 
-    // 兜底：跟随重定向，用最终 URL 当直链（排除反爬挑战页）
-    try {
-      const res = await fetch(candidate, {
-        method: 'GET',
-        redirect: 'follow',
-        headers: {
-          'user-agent': UA_DESKTOP,
-          accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'accept-language': ACCEPT_LANGUAGE,
-          referer,
-        },
-        signal: timeoutSignal(TIMEOUT_MS),
-      });
-
-      const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
-      const finalUrl = res.url || candidate;
-
-      try {
-        await res.body?.cancel();
-      } catch {
-        /* 忽略 */
-      }
-
-      const looksLikeChallenge = contentType.includes('text/html') || finalUrl.includes('arg1=');
-
-      if (res.ok && !looksLikeChallenge) return finalUrl;
-
-      failures.push(`${new URL(candidate).host} → 跟随重定向后仍是挑战页/HTML`);
-    } catch (err) {
-      failures.push(`${new URL(candidate).host} → ${err instanceof Error ? err.message : err}`);
+    // 没有重定向、直接给文件（非 HTML）→ 这个地址本身就是直链
+    if (status === 200 && contentType.length > 0 && !contentType.includes('text/html')) {
+      return candidate;
     }
+
+    throw new Error(
+      `${hostOf(candidate)} → HTTP ${status}${contentType.includes('text/html') ? '（挑战页）' : ''}`,
+    );
+  };
+
+  try {
+    return await Promise.any(candidates.map(attempt));
+  } catch (err) {
+    const reasons =
+      err && typeof err === 'object' && Array.isArray(err.errors)
+        ? err.errors.map(errText)
+        : [errText(err)];
+
+    const failed = reasons.join(' | ').slice(0, 300);
+
+    if (reasons.length > 0 && reasons.every(isTimeoutText)) {
+      throw new LanzouError(`获取直链超时：${failed}`, 'TIMEOUT', 504);
+    }
+
+    throw new LanzouError(`未能获取直链：${failed}`, 'NO_LOCATION', 502);
   }
+}
 
-  throw new LanzouError(
-    `未能获取直链：${failures.join(' | ').slice(0, 300)}`,
-    'NO_LOCATION',
-    502,
-  );
+/** 不读完 body，直接丢弃连接 */
+async function discard(res) {
+  try {
+    await res.body?.cancel();
+  } catch {
+    /* 忽略 */
+  }
+}
+
+/** @param {string} url */
+function hostOf(url) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
+/** @param {unknown} err */
+function errText(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** @param {string} text */
+function isTimeoutText(text) {
+  return text === 'TimeoutError' || /aborted due to timeout|timed? ?out/i.test(text);
+}
+
+/** @param {unknown} err */
+export function isTimeoutError(err) {
+  const name = err && typeof err === 'object' && 'name' in err ? String(err.name) : '';
+  const message = err && typeof err === 'object' && 'message' in err ? String(err.message) : '';
+  return name === 'TimeoutError' || name === 'AbortError' || /aborted due to timeout/i.test(message);
 }
 
 /* ------------------------------------------------------------------ *
