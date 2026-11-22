@@ -20,6 +20,7 @@ import ayFiles from "./services/files/ayFiles.js";
 import yzhAi from "./services/ai/yzh.ai.js";
 import { handleShortLink } from "./services/console/shortlink.js";
 import adminServices from "./shared/admin.js";
+import ayLanzou from "./services/lz/index.js"
 
 // const corsHeaders_GPO = {
 //     'Access-Control-Allow-Origin': '*',
@@ -73,17 +74,24 @@ export default {
       if (hostname === "i1.undz.cn") return await i1UndzCn.fetch(request);
       if (hostname === "i2.undz.cn") return await i2UndzCn.fetch(request);
 
+      if (hostname === "lz.undz.cn") return await ayLanzou.fetch(request);
+
+      // P2P 打洞 / ws 中继服务
       if (hostname === "relay.undz.cn")
         return await ayRelay.fetch(request, env, ctx);
 
+      // 站点分析服务
       if (hostname === "mysites.undz.cn")
         return await ayAnalytics.fetch(request, env);
 
       // jsdelivr 代理服务
       if (hostname === "cdn.undz.cn") return await uniCDN.fetch(request, env);
 
+      // ai 服务
       if (hostname === "ai.undz.cn") return await ai.fetch(request, env);
       if (hostname === "yzh.ai.undz.cn") return await yzhAi.fetch(request, env);
+
+      // 文件分享服务
       if (hostname === "files.undz.cn")
         return await ayFiles.fetch(request, env);
 

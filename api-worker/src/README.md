@@ -28,6 +28,8 @@
 | `chat.undz.cn` / `c.undz.cn`    | `services/chat/ayChatRoom.js`       | 聊天室（数据层在 `chat_room.js`）                            |
 | `cdn.undz.cn`                   | `services/cdn/jsdelivrCDN.js`       | jsDelivr / gstatic 代理                                      |
 | `i0/i1/i2.undz.cn`              | `services/image/*`                  | 图床反代（三份仅换 host）                                    |
+| `lz.undz.cn`               | `services/lz/index.js` | 蓝奏云链接解析                                          |
+
 | `kv.undz.cn`                    | `index.js` 内联                     | 运维端点：`/initdb`、`/runtask`（需 `X-Admin-Key: env.KEY`） |
 | 其它 / `undz.cn` / `mail.*`     | `env.assets`                        | 前端 SPA 与静态页兜底                                        |
 
@@ -71,6 +73,10 @@ src/
 │   │       ├── sites.js          # /sites*（统计站点增删查与转移）
 │   │       ├── links.js          # /api/console/links*（短链增删改查 / 换码 / 转移）
 │   │       └── files.js          # /api/filesmanager（R2 上传 / 更新 / 下载 / 删除）
+│   ├── lz/                       # lz.undz.cn 蓝奏云链接解析
+│   │   ├── index.js              # 入口
+│   │   ├── lanzou.js             # 解析实现
+│   │   └── config.js             # 配置
 │   ├── analytics/ayAnalytics.js  # mysites.undz.cn —— 埋点采集与统计
 │   ├── relay/wsRelay.js          # relay.undz.cn —— WebSocket 中继（PSP 1.0，含离线队列）
 │   ├── ai/ai.js                  # ai.undz.cn —— Workers AI 流式代理
